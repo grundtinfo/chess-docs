@@ -1,0 +1,15 @@
+# ignore python cache files
+__pycache__/
+*.pyc
+# ignore virtual environment
+bin/
+lib/
+lib64
+include/
+pyvenv.cfg
+# ignore editor files
+.vscode/
+.idea/
+*.swp
+# ignore pdf files
+*.pdf
