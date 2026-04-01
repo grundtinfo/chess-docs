@@ -1,1913 +1,780 @@
 [
-    {
-        "nom": "1. Le Mat du Berger",
-        "coups": "1. e4 e5 2. Dh5 Cc6 3. Fc4 Cf6?? 4. Dxf7#",
-        "fen_final": "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
-        "fen_intermediaire": "r1bqkb1r/pppp1p1p/2n3p1/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 4",
-        "conseil_defense": "Les Noirs font une gaffe en ignorant la double pression sur f7.",
-        "coup_defense": "3... g6! bloque la diagonale de la Dame et prépare le développement du fou.",
-        "fleches_defense": [
-            "g7g6"
-        ],
-        "fleches_menace": [
-            "h5f7",
-            "c4f7"
-        ],
-        "fen_defense": "r1bqkbnr/pppp1p1p/2n3p1/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 4",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Dh5",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "2... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3. Fc4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "3... Cf6??",
-                "commentaire": "Erreur critique."
-            },
-            {
-                "coup": "4. Dxf7#",
-                "commentaire": "Mat immédiat."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Mat"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Facile"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Les Noirs font une gaffe en ignorant la double pression sur f7."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "3... g6! bloque la diagonale de la Dame et prépare le développement du fou."
-            }
-        ]
-    },
-    {
-        "nom": "2. Le Mat du Sot",
-        "coups": "1. f4 e5 2. g4?? Dh4#",
-        "fen_final": "rnb1kbnr/pppp1ppp/8/4p3/5PPq/8/PPPPP2P/RNBQKBNR w KQkq - 1 3",
-        "conseil_defense": "Les Blancs affaiblissent prématurément la diagonale e1-h4.",
-        "coup_defense": "Ne jouez pas 2. g4??. Jouez plutôt 2. Cf3 ou 2. e4 pour occuper le centre.",
-        "fleches_defense": [
-            "g1f3",
-            "e2e4"
-        ],
-        "fleches_menace": [
-            "d8h4"
-        ],
-        "fen_defense": "rnbqkbnr/pppp1ppp/8/4p3/4PP2/8/PPPP2PP/RNBQKBNR b KQkq - 0 2",
-        "moves": [
-            {
-                "coup": "1. f4",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "1... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. g4??",
-                "commentaire": "Erreur critique."
-            },
-            {
-                "coup": "2... Dh4#",
-                "commentaire": "Mat immédiat."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Mat"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Facile"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Les Blancs affaiblissent prématurément la diagonale e1-h4."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Ne jouez pas 2. g4??. Jouez plutôt 2. Cf3 ou 2. e4 pour occuper le centre."
-            }
-        ]
-    },
-    {
-        "nom": "3. Le Mat de Légal",
-        "coups": "1. e4 e5 2. Cf3 d6 3. Fc4 Fg4 4. Cc3 g6? 5. Cxe5! Fxd1?? 6. Fxf7+ Re7 7. Cd5#",
-        "fen_final": "rn1q1bnr/ppp1kB1p/3p2p1/3NN3/4P3/8/PPPP1PPP/R1BbK2R b KQ - 2 7",
-        "conseil_defense": "Le fou g4 n'est pas réellement protégé si la menace sur f7 est plus forte.",
-        "coup_defense": "Prenez le Cavalier avec 5... dxe5! ou 5... Cxe5! au lieu de prendre la Dame.",
-        "fleches_defense": [
-            "d6e5",
-            "c6e5"
-        ],
-        "fleches_menace": [
-            "f3e5",
-            "c4f7",
-            "c3d5"
-        ],
-        "fen_defense": "rn1qkb1r/ppp1pppp/3p2n1/8/2B1P1b1/2N5/PPPP1PPP/R1BQK2R w KQkq - 0 6",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "2... d6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3. Fc4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "3... Fg4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "4. Cc3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4... g6?",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "5. Cxe5!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "5... Fxd1??",
-                "commentaire": "Erreur critique."
-            },
-            {
-                "coup": "6. Fxf7+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "6... Re7",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "7. Cd5#",
-                "commentaire": "Mat immédiat."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Mat"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Facile"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Le fou g4 n'est pas réellement protégé si la menace sur f7 est plus forte."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Prenez le Cavalier avec 5... dxe5! ou 5... Cxe5! au lieu de prendre la Dame."
-            }
-        ]
-    },
-    {
-        "nom": "4. Le Piège de Blackburne Shilling",
-        "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cd4?! 4. Cxe5?! Dg5! 5. Cxf7? Dxg2 6. Tf1 Qxe4+ 7. Fe2 Cf3#",
-        "fen_final": "r1b1kbnr/pppp1Npp/8/8/4q3/5n2/PPPPBP1P/RNBQKR2 w Qkq - 2 8",
-        "conseil_defense": "La Dame noire attaque simultanément le Cavalier e5 et le pion g2.",
-        "coup_defense": "Jouez sagement 4. O-O ou 4. Cxd4 au lieu de 4. Cxe5.",
-        "fleches_defense": [
-            "e1g1",
-            "f3d4"
-        ],
-        "fleches_menace": [
-            "d8g5",
-            "g5g2",
-            "d4f3"
-        ],
-        "fen_defense": "r1bqkbnr/pppp1ppp/2n5/4P3/2B5/5N2/PPPP1PPP/RNBQK2R b KQkq - 0 4",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "2... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3. Fc4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "3... Cd4?!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "4. Cxe5?!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "4... Dg5!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "5. Cxf7?",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5... Dxg2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "6. Tf1",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "6... Qxe4+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "7. Fe2",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "7... Cf3#",
-                "commentaire": "Mat immédiat."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Mat"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "La Dame noire attaque simultanément le Cavalier e5 et le pion g2."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez sagement 4. O-O ou 4. Cxd4 au lieu de 4. Cxe5."
-            }
-        ]
-    },
-    {
-        "nom": "5. Le Mat Étouffé (Défense Caro-Kann)",
-        "coups": "1. e4 c6 2. d4 d5 3. Cc3 dxe4 4. Cxe4 Cd7 5. De2 Cgf6?? 6. Cd6#",
-        "fen_final": "r1bqkb1r/pp1npppp/2pN1n2/8/3P4/8/PPP1QPPP/R1B1KBNR b KQkq - 4 6",
-        "conseil_defense": "La Dame blanche cloue le pion e7. Le cavalier ne peut être capturé.",
-        "coup_defense": "Jouez 5... e6 pour donner de l'air au Roi et boucher la colonne e.",
-        "fleches_defense": [
-            "e7e6"
-        ],
-        "fleches_menace": [
-            "e4d6",
-            "e2e7"
-        ],
-        "fen_defense": "r1bqkbnr/pp1n1ppp/2p1p3/3p4/3PN3/8/PPP1QPPP/R1B1KBNR w KQkq - 0 6",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... c6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "2... d5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3. Cc3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3... dxe4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "4. Cxe4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4... Cd7",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5. De2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "5... Cgf6??",
-                "commentaire": "Erreur critique."
-            },
-            {
-                "coup": "6. Cd6#",
-                "commentaire": "Mat immédiat."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Mat"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Facile"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "La Dame blanche cloue le pion e7. Le cavalier ne peut être capturé."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 5... e6 pour donner de l'air au Roi et boucher la colonne e."
-            }
-        ]
-    },
-    {
-        "nom": "6. Enfermer le Fou (L'Arche de Noé)",
-        "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 a6 4. Fa4 d6 5. d4 b5 6. Fb3 Cxd4 7. Cxd4 exd4 8. Dxd4?? c5 9. Dd5 Fe6 10. Dc6+ Fd7 11. Dd5 c4!",
-        "fen_final": "r2qkbnr/3b1ppp/p2p4/1p1Q4/2p1P3/1B6/PPP2PPP/RNB1K2R w KQkq - 0 12",
-        "conseil_defense": "Le fou en b3 manque de cases de repli face à la marée de pions.",
-        "coup_defense": "Jouez 8. c3 ou 8. Fd5 au lieu de capturer en d4.",
-        "fleches_defense": [
-            "c2c3",
-            "b5b4"
-        ],
-        "fleches_menace": [
-            "c5c4",
-            "e5d4"
-        ],
-        "fen_defense": "r1bqkbnr/1ppp1ppp/p1np4/8/8/1B3N2/PPP2PPP/RNBQK2R b KQkq - 0 8",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "2... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3. Fb5",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "3... a6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "4. Fa4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "4... d6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "5. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "5... b5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "6. Fb3",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "6... Cxd4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "7. Cxd4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "7... exd4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "8. Dxd4??",
-                "commentaire": "Erreur critique."
-            },
-            {
-                "coup": "8... c5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "9. Dd5",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "9... Fe6",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "10. Dc6+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "10... Fd7",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "11. Dd5",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "11... c4!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Facile"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Le fou en b3 manque de cases de repli face à la marée de pions."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 8. c3 ou 8. Fd5 au lieu de capturer en d4."
-            }
-        ]
-    },
-    {
-        "nom": "7. Piège de la Canne à Pêche",
-        "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 Cf6 4. O-O Cg4!? 5. h3 h5! 6. hxg4? hxg4 7. Ce1 Dh4",
-        "fen_final": "r1b1kb1r/pppp1pp1/2n5/1B2p3/4P1pq/8/PPPP1PP1/RNBQNRK1 w kq - 2 8",
-        "conseil_defense": "Ne prenez pas le cavalier, cela ouvre la colonne h vers votre Roi.",
-        "coup_defense": "Ne prenez pas le cavalier en g4. Jouez simplement 6. d4 ou 6. Te1.",
-        "fleches_defense": [
-            "d2d4",
-            "f1e1"
-        ],
-        "fleches_menace": [
-            "h5g4",
-            "h8h1",
-            "d8h4"
-        ],
-        "fen_defense": "r1bqkb1r/pppp1pp1/2n2n2/1B2p2p/4P1P1/5N1P/PPPP1P2/RNBQ1RK1 b kq - 0 6",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "2... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3. Fb5",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "3... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4. O-O",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "4... Cg4!?",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "5. h3",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "5... h5!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "6. hxg4?",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "6... hxg4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "7. Ce1",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "7... Dh4",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Ne prenez pas le cavalier, cela ouvre la colonne h vers votre Roi."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Ne prenez pas le cavalier en g4. Jouez simplement 6. d4 ou 6. Te1."
-            }
-        ]
-    },
-    {
-        "nom": "8. Le piège du Gambit Englund",
-        "coups": "1. d4 e5 2. dxe5 Cc6 3. Cf3 De7 4. Ff4 Db4+ 5. Fd2 Dxb2 6. Fc3 Fb4 7. Dd2 Fxc3 8. Dxc3 Dc1#",
-        "fen_final": "r1b1k1nr/pppp1ppp/2n5/4P3/8/2Q2N2/P1P1PPPP/RNq1KB1R w KQkq - 1 9",
-        "conseil_defense": "Les Noirs visent la case faible b2 et profitent du clouage sur la diagonale a3-f8.",
-        "coup_defense": "Jouez 6. Cc3 pour protéger b2 tout en développant une pièce.",
-        "fleches_defense": [
-            "b1c3"
-        ],
-        "fleches_menace": [
-            "b4c3",
-            "b2a1",
-            "b2c1"
-        ],
-        "fen_defense": "r1b1k1nr/pppp1ppp/2n5/4P3/8/2N2N2/PqPBPPPP/R3KB1R w KQkq - 0 7",
-        "moves": [
-            {
-                "coup": "1. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. dxe5",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "2... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3... De7",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "4. Ff4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "4... Db4+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "5. Fd2",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "5... Dxb2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "6. Fc3",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "6... Fb4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "7. Dd2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "7... Fxc3",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "8. Dxc3",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "8... Dc1#",
-                "commentaire": "Mat immédiat."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Mat"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Avancé"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Les Noirs visent la case faible b2 et profitent du clouage sur la diagonale a3-f8."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 6. Cc3 pour protéger b2 tout en développant une pièce."
-            }
-        ]
-    },
-    {
-        "nom": "9. Piège de Sibérie (Gambit Smith-Morra)",
-        "coups": "1. e4 c5 2. d4 cxd4 3. c3 dxc3 4. Cxc3 Cc6 5. Cf3 e6 6. Fc4 Dc7 7. O-O Cf6 8. De2 Cg4! 9. h3?? Cd4! 10. hxg4 Cxe2+",
-        "fen_final": "r1b1kb1r/ppqp1ppp/4p3/8/2B1P1P1/2N2N2/PP2nPP1/R1B2RK1 w kq - 0 11",
-        "conseil_defense": "Le Cavalier d4 attaque la Dame et déloge le défenseur de h2.",
-        "coup_defense": "Jouez 9. Te1 ou 9. Td1 au lieu de pousser 9. h3.",
-        "fleches_defense": [
-            "f1e1",
-            "f1d1"
-        ],
-        "fleches_menace": [
-            "c6d4",
-            "g4h2"
-        ],
-        "fen_defense": "r1bqkb1r/pp1n1ppp/2p1p3/3p4/3PN3/8/PPP1QPPP/R1B1KBNR w KQkq - 0 6",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... c5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "2... cxd4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "3. c3",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3... dxc3",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "4. Cxc3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5... e6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "6. Fc4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "6... Dc7",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "7. O-O",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "7... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "8. De2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "8... Cg4!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "9. h3??",
-                "commentaire": "Erreur critique."
-            },
-            {
-                "coup": "9... Cd4!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "10. hxg4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "10... Cxe2+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Facile"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Le Cavalier d4 attaque la Dame et déloge le défenseur de h2."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 9. Te1 ou 9. Td1 au lieu de pousser 9. h3."
-            }
-        ]
-    },
-    {
-        "nom": "10. Piège de l'Éléphant",
-        "coups": "1. d4 d5 2. c4 e6 3. Cc3 Cf6 4. Fg5 Cbd7 5. cxd5 exd5 6. Cxd5?? Cxd5! 7. Fxd8 Fb4+ 8. Dd2 Fxd2+ 9. Rxd2 Rxd8",
-        "fen_final": "r1bk3r/pppn1ppp/8/3n4/3P4/8/PP1KPPPP/R4BNR w - - 0 10",
-        "conseil_defense": "Le Cavalier d7 protège indirectement d5 grâce à l'échec en b4.",
-        "coup_defense": "Jouez 6. e3 ou 6. Cf3 au lieu de 6. Cxd5??.",
-        "fleches_defense": [
-            "e2e3",
-            "g1f3"
-        ],
-        "fleches_menace": [
-            "f8b4",
-            "f6e4"
-        ],
-        "fen_defense": "r1bqkb1r/pppn1ppp/5n2/3p2B1/2PP4/2N5/PP2PPPP/R2QKBNR b KQkq - 1 5",
-        "moves": [
-            {
-                "coup": "1. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... d5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. c4",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2... e6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3. Cc3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4. Fg5",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "4... Cbd7",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5. cxd5",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "5... exd5",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "6. Cxd5??",
-                "commentaire": "Erreur critique."
-            },
-            {
-                "coup": "6... Cxd5!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "7. Fxd8",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "7... Fb4+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "8. Dd2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "8... Fxd2+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "9. Rxd2",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "9... Rxd8",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Facile"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Le Cavalier d7 protège indirectement d5 grâce à l'échec en b4."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 6. e3 ou 6. Cf3 au lieu de 6. Cxd5??."
-            }
-        ]
-    },
-    {
-        "nom": "11. Piège de Lasker",
-        "coups": "1. d4 d5 2. c4 e5 3. dxe5 d4 4. e3 Fb4+ 5. Fd2 dxe3! 6. Fxb4 exf2+ 7. Re2 fxg1=C+! 8. Txg1 Fg4+",
-        "fen_final": "rn1qk1nr/ppp2ppp/8/4P3/1BP3b1/8/PP2K1PP/RN1Q1BR1 w kq - 1 9",
-        "conseil_defense": "La sous-promotion en Cavalier avec échec empêche la capture de la Dame noire.",
-        "coup_defense": "Jouez 6. fxe3 pour garder un équilibre dynamique au lieu de prendre en b4.",
-        "fleches_defense": [
-            "f2e3",
-            "d1a4"
-        ],
-        "fleches_menace": [
-            "d4e3",
-            "f2g1",
-            "c8g4"
-        ],
-        "fen_defense": "rn1qkbnr/ppp2ppp/4b3/4P3/1BP5/4p3/PP1Q1PPP/RN2KBNR w KQkq - 0 7",
-        "moves": [
-            {
-                "coup": "1. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... d5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. c4",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3. dxe5",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "3... d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "4. e3",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "4... Fb4+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "5. Fd2",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "5... dxe3!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "6. Fxb4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "6... exf2+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "7. Re2",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "7... fxg1=C+!",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "8. Txg1",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "8... Fg4+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "La sous-promotion en Cavalier avec échec empêche la capture de la Dame noire."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 6. fxe3 pour garder un équilibre dynamique au lieu de prendre en b4."
-            }
-        ]
-    },
-    {
-        "nom": "12. Vis-à-vis Dame et Roi (Défense Petrov)",
-        "coups": "1. e4 e5 2. Cf3 Cf6 3. Cxe5 Cxe4? 4. De2 Cf6?? 5. Cc6+ Fe7 6. Cxd8",
-        "fen_final": "rnbNk2r/ppppbppp/5n2/8/8/8/PPPPQPPP/RNB1KB1R b KQkq - 0 6",
-        "conseil_defense": "Le retrait du cavalier ouvre une découverte mortelle sur la colonne e.",
-        "coup_defense": "Jouez 4... De7 pour clouer le Cavalier blanc ou 4... d5.",
-        "fleches_defense": [
-            "d8e7",
-            "d7d5"
-        ],
-        "fleches_menace": [
-            "e5c6",
-            "e2e7"
-        ],
-        "fen_defense": "rnbqkb1r/pppp1ppp/5n2/4N3/4P3/8/PPPPQPPP/RNB1KB1R b KQkq - 2 4",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "2... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3. Cxe5",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3... Cxe4?",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4. De2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "4... Cf6??",
-                "commentaire": "Erreur critique."
-            },
-            {
-                "coup": "5. Cc6+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "5... Fe7",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "6. Cxd8",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Facile"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Le retrait du cavalier ouvre une découverte mortelle sur la colonne e."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 4... De7 pour clouer le Cavalier blanc ou 4... d5."
-            }
-        ]
-    },
-    {
-        "nom": "13. Échec en a4 (Perte de pièce)",
-        "coups": "1. d4 d5 2. c4 c6 3. cxd5 cxd5 4. Cc3 Cf6 5. Cf3 Cc6 6. e4?! dxe4 7. Cxe4 Cxe4 8. Da4+ Fd7 9. Dxe4",
-        "fen_final": "r2qkb1r/pp1bpppp/2n5/8/Q2Pn3/5N2/PP3PPP/R1B1KB1R w KQkq - 2 9",
-        "conseil_defense": "L'échec en a4 permet de récupérer la pièce sacrifiée via une attaque double.",
-        "coup_defense": "Jouez 6. Ff4 ou 6. e3 au lieu du risqué 6. e4?!.",
-        "fleches_defense": [
-            "c1f4",
-            "e2e3"
-        ],
-        "fleches_menace": [
-            "d1a4",
-            "a4e4"
-        ],
-        "fen_defense": "r2qkb1r/pp1bpppp/2n5/8/3Pn3/5N2/PP3PPP/R1B1KB1R w KQkq - 2 9",
-        "moves": [
-            {
-                "coup": "1. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... d5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. c4",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2... c6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3. cxd5",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "3... cxd5",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "4. Cc3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "6. e4?!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "6... dxe4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "7. Cxe4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "7... Cxe4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "8. Da4+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "8... Fd7",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "9. Dxe4",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "L'échec en a4 permet de récupérer la pièce sacrifiée via une attaque double."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 6. Ff4 ou 6. e3 au lieu du risqué 6. e4?!."
-            }
-        ]
-    },
-    {
-        "nom": "14. Piège de Cambridge Springs",
-        "coups": "1. d4 d5 2. c4 e6 3. Cc3 Cf6 4. Fg5 Cbd7 5. Cf3 c6 6. e3 Da5 7. Cd2 Fb4 8. Dc2 O-O 9. Fd3? dxc4! 10. Fxf6 cxd3!",
-        "fen_final": "r1b2rk1/pp1n1ppp/2p1pB2/q7/1b1P4/2NpP3/PPQN1PPP/R3K2R w KQ - 0 11",
-        "conseil_defense": "L'attaque à la découverte sur la Dame blanche gagne un temps précieux.",
-        "coup_defense": "Jouez 9. Fxf6 ou 9. a3 au lieu de 9. Fd3.",
-        "fleches_defense": [
-            "g5f6",
-            "a2a3"
-        ],
-        "fleches_menace": [
-            "d5c4",
-            "a5g5",
-            "b4c3"
-        ],
-        "fen_defense": "r1b2rk1/pp1n1ppp/2p1p3/q2P2B1/1b1P4/2N1P3/PPQN1PPP/R3KB1R b KQ - 0 9",
-        "moves": [
-            {
-                "coup": "1. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... d5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. c4",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2... e6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3. Cc3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4. Fg5",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "4... Cbd7",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5... c6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "6. e3",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "6... Da5",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "7. Cd2",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "7... Fb4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "8. Dc2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "8... O-O",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "9. Fd3?",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "9... dxc4!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "10. Fxf6",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "10... cxd3!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "L'attaque à la découverte sur la Dame blanche gagne un temps précieux."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 9. Fxf6 ou 9. a3 au lieu de 9. Fd3."
-            }
-        ]
-    },
-    {
-        "nom": "15. Piège de Monticelli",
-        "coups": "1. d4 Cf6 2. c4 e6 3. Cf3 b6 4. g3 Fb7 5. Fg2 Fb4+ 6. Fd2 Fxd2+ 7. Dxd2 O-O 8. Cc3 Ce4 9. Dc2 Cxc3? 10. Cg5!",
-        "fen_final": "rn1q1rk1/pbpp1ppp/1p2p3/6N1/2PP4/2n3P1/PPQ1PPBP/R3K2R b KQ - 1 10",
-        "conseil_defense": "Le Cavalier g5 menace à la fois mat en h7 et le Fou en b7.",
-        "coup_defense": "Ne jouez pas 9... Cxc3?. Jouez 9... f5 pour renforcer le cavalier central.",
-        "fleches_defense": [
-            "f7f5"
-        ],
-        "fleches_menace": [
-            "f3g5",
-            "c2h7",
-            "g2b7"
-        ],
-        "fen_defense": "rn1q1rk1/pbpp1ppp/1p2p3/5n2/2PP4/2N2NP1/PPQ1PPBP/R3K2R b KQ - 1 9",
-        "moves": [
-            {
-                "coup": "1. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "2. c4",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2... e6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3... b6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "4. g3",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "4... Fb7",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "5. Fg2",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "5... Fb4+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "6. Fd2",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "6... Fxd2+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "7. Dxd2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "7... O-O",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "8. Cc3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "8... Ce4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "9. Dc2",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "9... Cxc3?",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "10. Cg5!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Le Cavalier g5 menace à la fois mat en h7 et le Fou en b7."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Ne jouez pas 9... Cxc3?. Jouez 9... f5 pour renforcer le cavalier central."
-            }
-        ]
-    },
-    {
-        "nom": "16. Fourchette mortelle en c7",
-        "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 e6 5. Cb5 d6 6. Ff4! e5 7. Fe3 a6",
-        "fen_final": "r1bqkbnr/1p3ppp/p1np4/1N2p3/4P3/4B3/PPP2PPP/RN1QKB1R w KQkq - 0 8",
-        "conseil_defense": "La case d6 est un trou que le cavalier blanc peut exploiter.",
-        "coup_defense": "Jouez 5... Cf6 pour contester le centre au lieu de d6 prématuré.",
-        "fleches_defense": [
-            "g8f6"
-        ],
-        "fleches_menace": [
-            "b5d6",
-            "b5c7"
-        ],
-        "fen_defense": "r1bqkbnr/1p3ppp/p1np4/1N2p3/4P3/4B3/PPP2PPP/RN1QKB1R w KQkq - 0 8",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... c5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "2... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "3... cxd4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "4. Cxd4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4... e6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "5. Cb5",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5... d6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "6. Ff4!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "6... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "7. Fe3",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "7... a6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "La case d6 est un trou que le cavalier blanc peut exploiter."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 5... Cf6 pour contester le centre au lieu de d6 prématuré."
-            }
-        ]
-    },
-    {
-        "nom": "17. Clouage fatal de la Dame en c6",
-        "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. d4 exd4 5. O-O Cxe4 6. Te1 d5 7. Fxd5 Dxd5 8. Cc3 Da5 9. Cxe4 Fe6 10. Fb5!",
-        "fen_final": "r3kb1r/ppp2ppp/2n1b3/q7/3pN3/5N2/PPP2PPP/R1BQR1K1 w kq - 1 10",
-        "conseil_defense": "La tour e1 cloue tout ce qui se trouve sur la colonne e.",
-        "coup_defense": "Préparez le petit roque rapidement pour sortir de la colonne e.",
-        "fleches_defense": [
-            "f8e7",
-            "e8g8"
-        ],
-        "fleches_menace": [
-            "e1e4",
-            "c3d5",
-            "e4f6"
-        ],
-        "fen_defense": "r3kb1r/ppp2ppp/2n1b3/q7/3pN3/5N2/PPP2PPP/R1BQR1K1 w kq - 1 10",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "2... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3. Fc4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "3... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "4... exd4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "5. O-O",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "5... Cxe4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "6. Te1",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "6... d5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "7. Fxd5",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "7... Dxd5",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "8. Cc3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "8... Da5",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "9. Cxe4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "9... Fe6",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "10. Fb5!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "La tour e1 cloue tout ce qui se trouve sur la colonne e."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Préparez le petit roque rapidement pour sortir de la colonne e."
-            }
-        ]
-    },
-    {
-        "nom": "18. Sortir sa Dame trop tôt",
-        "coups": "1. e4 c6 2. d4 d5 3. e5 c5 4. c3 Cc6 5. Cf3 Db6 6. Fd3 cxd4 7. cxd4 Cxd4?? 8. Cxd4 Dxd4 9. Fb5+ Fd7 10. Fxd7+ Kxd7 11. Dxd4",
-        "fen_final": "r4bnr/pp1kpppp/8/3pP3/3Q4/8/PP3PPP/RNB1K2R b KQ - 0 11",
-        "conseil_defense": "La Dame est en vis-à-vis avec le Roi adverse via un fou intermédiaire.",
-        "coup_defense": "Ne prenez pas en d4 ! Jouez 7... Fd7 pour briser l'alignement.",
-        "fleches_defense": [
-            "c8d7"
-        ],
-        "fleches_menace": [
-            "d3b5",
-            "b5d7",
-            "d4d8"
-        ],
-        "fen_defense": "r1bqkbnr/pp1n1ppp/2p5/3pP3/3Q4/8/PP3PPP/RNB1KBNR w KQkq - 0 7",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... c6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "2... d5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3. e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3... c5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "4. c3",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "4... Cc6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5... Db6",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "6. Fd3",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "6... cxd4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "7. cxd4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "7... Cxd4??",
-                "commentaire": "Erreur critique."
-            },
-            {
-                "coup": "8. Cxd4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "8... Dxd4",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "9. Fb5+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "9... Fd7",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "10. Fxd7+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "10... Kxd7",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "11. Dxd4",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Facile"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "La Dame est en vis-à-vis avec le Roi adverse via un fou intermédiaire."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Ne prenez pas en d4 ! Jouez 7... Fd7 pour briser l'alignement."
-            }
-        ]
-    },
-    {
-        "nom": "19. Danger de la colonne d ouverte",
-        "coups": "1. e4 d6 2. Fc4 Cf6 3. d4 e5 4. Cc3 Cbd7 5. Cf3 exd4 6. Dxd4 Fe7? 7. Fxf7+! Kxf7 8. Cg5+ Re8",
-        "fen_final": "r1bqk2r/pppnb1pp/3p1n2/6N1/3QP3/2N5/PPP2PPP/R1B1K2R w KQ - 2 9",
-        "conseil_defense": "Le sacrifice en f7 déloge le roi et prépare une fourchette ou une intrusion.",
-        "coup_defense": "Jouez 6... h6 pour empêcher le cavalier d'atteindre g5.",
-        "fleches_defense": [
-            "h7h6"
-        ],
-        "fleches_menace": [
-            "c4f7",
-            "f3g5",
-            "g5e6"
-        ],
-        "fen_defense": "r1bqkb1r/pppn1ppp/3p1n1p/4p3/2BPP3/2N5/PPP2PPP/R1BQK1NR w KQkq - 0 5",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... d6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Fc4",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "2... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "3. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "3... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "4. Cc3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4... Cbd7",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5... exd4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "6. Dxd4",
-                "commentaire": "Sortie de la Dame."
-            },
-            {
-                "coup": "6... Fe7?",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "7. Fxf7+!",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "7... Kxf7",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "8. Cg5+",
-                "commentaire": "Échec."
-            },
-            {
-                "coup": "8... Re8",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "Le sacrifice en f7 déloge le roi et prépare une fourchette ou une intrusion."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Jouez 6... h6 pour empêcher le cavalier d'atteindre g5."
-            }
-        ]
-    },
-    {
-        "nom": "20. Tour en a8 non-protégée",
-        "coups": "1. e4 c5 2. Cf3 d6 3. d4 cxd4 4. Cxd4 Cf6 5. f3 e5 6. Cb3 d5 7. Fg5 d4 8. Dd5!",
-        "fen_final": "rnbqkb1r/pp3ppp/5n2/4p1B1/3pP3/1N3P2/PPP3PP/RN1QKB1R w KQkq - 0 8",
-        "conseil_defense": "L'ouverture prématurée du centre laisse des faiblesses sur les grandes diagonales.",
-        "coup_defense": "Stabilisez d'abord avec 6... Fe7 avant de pousser d5.",
-        "fleches_defense": [
-            "f8e7"
-        ],
-        "fleches_menace": [
-            "d1d5",
-            "d5a8",
-            "g5f6"
-        ],
-        "fen_defense": "rnbqkb1r/pp3ppp/5n2/4p1B1/3pP3/1N3P2/PPP3PP/RN1QKB1R w KQkq - 0 8",
-        "moves": [
-            {
-                "coup": "1. e4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "1... c5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "2. Cf3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "2... d6",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "3. d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "3... cxd4",
-                "commentaire": "Capture."
-            },
-            {
-                "coup": "4. Cxd4",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "4... Cf6",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "5. f3",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "5... e5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "6. Cb3",
-                "commentaire": "Développement du cavalier."
-            },
-            {
-                "coup": "6... d5",
-                "commentaire": "Développement."
-            },
-            {
-                "coup": "7. Fg5",
-                "commentaire": "Développement du fou."
-            },
-            {
-                "coup": "7... d4",
-                "commentaire": "Contrôle du centre."
-            },
-            {
-                "coup": "8. Dd5!",
-                "commentaire": "Très bon coup."
-            },
-            {
-                "coup": "Thème",
-                "commentaire": "Gain matériel"
-            },
-            {
-                "coup": "Difficulté",
-                "commentaire": "Intermédiaire"
-            },
-            {
-                "coup": "Idée",
-                "commentaire": "L'ouverture prématurée du centre laisse des faiblesses sur les grandes diagonales."
-            },
-            {
-                "coup": "Défense",
-                "commentaire": "Stabilisez d'abord avec 6... Fe7 avant de pousser d5."
-            }
-        ]
-    }
+  {
+    "nom": "1. Le Mat du Berger",
+    "coups": "1. e4 e5 2. Dh5 Cc6 3. Fc4 Cf6?? 4. Dxf7#",
+    "fen_final": "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
+    "fen_intermediaire": "r1bqkb1r/pppp1ppp/2n2n2/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 3",
+    "conseil_defense": "Ne laissez pas la case f7 sans protection au début de la partie. Évitez de développer le cavalier en f6 si la Dame adverse peut viser f7.",
+    "coup_defense": "3... g6! interpose un pion sur la diagonale et force la Dame à se retirer, tout en préparant le développement du fou-roi.",
+    "fleches_defense": [
+      "g7g6"
+    ],
+    "fleches_menace": [
+      "h5f7",
+      "c4f7"
+    ],
+    "fen_defense": "r1bqkbnr/pppp1p1p/2n3p1/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 4",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre et ouverture naturelle." },
+      { "coup": "1... e5", "commentaire": "Réponse symétrique, contrôle du centre." },
+      { "coup": "2. Dh5", "commentaire": "Sortie précoce de la Dame pour menacer f7." },
+      { "coup": "2... Cc6", "commentaire": "Développement du cavalier, standard." },
+      { "coup": "3. Fc4", "commentaire": "Visée sur f7, développement actif." },
+      { "coup": "3... Cf6??", "commentaire": "Erreur tactique: ignore la menace sur f7." },
+      { "coup": "4. Dxf7#", "commentaire": "Mat immédiat par la combinaison Dame+Fou." },
+      { "coup": "Thème", "commentaire": "Mat" },
+      { "coup": "Difficulté", "commentaire": "Facile" },
+      { "coup": "Idée", "commentaire": "Exploiter la faiblesse de f7 en début de partie." },
+      { "coup": "Défense", "commentaire": "3... g6! ou 3... Df6 sont des réponses prudentes pour neutraliser la menace." }
+    ],
+    "defenseur": "Noirs"
+  },
+  {
+    "nom": "2. Le Mat du Sot",
+    "coups": "1. f4 e5 2. g4?? Dh4#",
+    "fen_final": "rnb1kbnr/pppp1ppp/8/4p3/5PPq/8/PPPPP2P/RNBQKBNR w KQkq - 1 3",
+    "fen_intermediaire": "rnbqkbnr/pppp1ppp/8/4p3/5P2/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1",
+    "conseil_defense": "Ne fragilisez pas la diagonale e1-h4 par des poussées de pions inutiles devant le roi.",
+    "coup_defense": "Au lieu de 2. g4??, les Blancs devraient jouer 2. Cf3 ou 2. e4 ; la position après 2. Cf3 neutralise la menace.",
+    "fleches_defense": [
+      "g1f3",
+      "e2e4"
+    ],
+    "fleches_menace": [
+      "d8h4"
+    ],
+    "fen_defense": "rnbqkbnr/pppp1ppp/8/4p3/5P2/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1",
+    "moves": [
+      { "coup": "1. f4", "commentaire": "Ouverture agressive mais affaiblit la case e1." },
+      { "coup": "1... e5", "commentaire": "Réponse centrale, ouvre la diagonale pour la Dame." },
+      { "coup": "2. g4??", "commentaire": "Affaiblissement dangereux du roque et des cases autour du roi." },
+      { "coup": "2... Dh4#", "commentaire": "Mat immédiat exploitant la diagonale ouverte." },
+      { "coup": "Thème", "commentaire": "Mat" },
+      { "coup": "Difficulté", "commentaire": "Facile" },
+      { "coup": "Idée", "commentaire": "Ne pas pousser des pions devant le roi sans raison." },
+      { "coup": "Défense", "commentaire": "2. Cf3 ou 2. e4 sont des réponses solides pour occuper le centre." }
+    ],
+    "defenseur": "Blancs"
+  },
+  {
+    "nom": "3. Le Mat de Légal",
+    "coups": "1. e4 e5 2. Cf3 d6 3. Fc4 Fg4 4. Cc3 g6? 5. Cxe5! Fxd1?? 6. Fxf7+ Re7 7. Cd5#",
+    "fen_final": "rn1q1bnr/ppp1kB1p/3p2p1/3NN3/4P3/8/PPPP1PPP/R1BbK2R w KQ - 0 7",
+    "fen_intermediaire": "rn1qkbnr/ppp2ppp/3p4/4p3/2B1P1b1/2N2N2/PPPP1PPP/R1BQK2R w KQkq - 0 4",
+    "conseil_defense": "Ne prenez pas la Dame si cela permet une combinaison tactique. Vérifiez les menaces sur f7 et les fourchettes possibles.",
+    "coup_defense": "Après 5. Cxe5, répondez 5... dxe5 ou 5... Cxe5 pour éviter la combinaison gagnante.",
+    "fleches_defense": [
+      "d6e5",
+      "c6e5"
+    ],
+    "fleches_menace": [
+      "f3e5",
+      "c4f7",
+      "c3d5"
+    ],
+    "fen_defense": "r2qkbnr/ppp2ppp/2np4/4N3/2B1P1b1/2N5/PPPP1PPP/R1BQK2R w KQkq - 0 4",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... e5", "commentaire": "Réponse classique." },
+      { "coup": "2. Cf3", "commentaire": "Développement naturel." },
+      { "coup": "2... d6", "commentaire": "Soutien du pion e5." },
+      { "coup": "3. Fc4", "commentaire": "Visée sur f7." },
+      { "coup": "3... Fg4", "commentaire": "Clouage apparent du cavalier." },
+      { "coup": "4. Cc3", "commentaire": "Renforcement du centre et préparation de Cxe5." },
+      { "coup": "4... g6?", "commentaire": "Affaiblit les cases noires et ne neutralise pas la tactique." },
+      { "coup": "5. Cxe5!", "commentaire": "Sacrifice tactique qui ouvre la voie au mat." },
+      { "coup": "5... Fxd1??", "commentaire": "Erreur fatale: la prise de la Dame permet la combinaison." },
+      { "coup": "6. Fxf7+", "commentaire": "Échec décisif." },
+      { "coup": "6... Re7", "commentaire": "Le roi est délogé, la position est perdue." },
+      { "coup": "7. Cd5#", "commentaire": "Mat final." },
+      { "coup": "Thème", "commentaire": "Mat" },
+      { "coup": "Difficulté", "commentaire": "Facile" },
+      { "coup": "Idée", "commentaire": "Exploiter la clouure et la faiblesse de f7 par une combinaison." },
+      { "coup": "Défense", "commentaire": "5... dxe5 ou 5... Cxe5 neutralisent la tactique." }
+    ],
+    "defenseur": "Noirs"
+  },
+  {
+    "nom": "4. Le Piège de Blackburne Shilling",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cd4?! 4. Cxe5?! Dg5! 5. Cxf7? Dxg2 6. Tf1 Qxe4+ 7. Fe2 Cf3#",
+    "fen_final": "r1b1kbnr/pppp1Npp/8/8/4q3/5n2/PPPPBP1P/RNBQKR2 w Qkq - 2 8",
+    "fen_intermediaire": "r1bqkbnr/pppp1ppp/8/4p3/2BnP3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 3",
+    "conseil_defense": "Ne tombez pas dans des captures apparemment gagnantes sans vérifier les menaces tactiques adverses.",
+    "coup_defense": "Au lieu de 4. Cxe5, préférez 4. O-O ou 4. Cxd4 pour éviter les menaces de la Dame noire.",
+    "fleches_defense": [
+      "e1g1",
+      "f3d4"
+    ],
+    "fleches_menace": [
+      "d8g5",
+      "g5g2",
+      "d4f3",
+      "g2e4"
+    ],
+    "fen_defense": "r1bqkbnr/pppp1ppp/8/4p3/2BnP3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 3",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... e5", "commentaire": "Réponse classique." },
+      { "coup": "2. Cf3", "commentaire": "Développement du cavalier." },
+      { "coup": "2... Cc6", "commentaire": "Développement du cavalier." },
+      { "coup": "3. Fc4", "commentaire": "Fou actif sur la diagonale." },
+      { "coup": "3... Cd4?!", "commentaire": "Coup agressif qui cherche à provoquer des erreurs." },
+      { "coup": "4. Cxe5?!", "commentaire": "Capture risquée qui ouvre la porte aux tactiques adverses." },
+      { "coup": "4... Dg5!", "commentaire": "La Dame attaque plusieurs cibles et crée des menaces tactiques." },
+      { "coup": "5. Cxf7?", "commentaire": "Capture imprudente qui néglige la sécurité du roi." },
+      { "coup": "5... Dxg2", "commentaire": "La Dame s'infiltre et menace mat ou gain matériel." },
+      { "coup": "6. Tf1", "commentaire": "Tentative de défense, mais insuffisante." },
+      { "coup": "6... Qxe4+", "commentaire": "Échec tactique qui décide la partie." },
+      { "coup": "7. Fe2", "commentaire": "Dernière tentative de défense." },
+      { "coup": "7... Cf3#", "commentaire": "Mat net." },
+      { "coup": "Thème", "commentaire": "Mat" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "La Dame noire exploite les faiblesses créées par les captures imprudentes." },
+      { "coup": "Défense", "commentaire": "4. O-O ou 4. Cxd4 évitent le piège." }
+    ],
+    "defenseur": "Blancs"
+  },
+  {
+    "nom": "5. Le Mat Étouffé (Défense Caro-Kann)",
+    "coups": "1. e4 c6 2. d4 d5 3. Cc3 dxe4 4. Cxe4 Cd7 5. De2 Cgf6?? 6. Cd6#",
+    "fen_final": "r1bqkb1r/pp1npppp/2p2N2/8/3P4/8/PPP1QPPP/R1B1KBNR w KQkq - 0 6",
+    "fen_intermediaire": "r1bqkbnr/pp1npppp/2p5/8/3PN3/8/PPP1QPPP/R1B1KBNR w KQkq - 0 5",
+    "conseil_defense": "Attention aux clouages et aux cases faibles autour du roi. Ne développez pas une pièce en laissant la colonne e ouverte.",
+    "coup_defense": "5... e6 est une réponse solide pour libérer le fou et protéger la case d5 et la colonne e.",
+    "fleches_defense": [
+      "e7e6"
+    ],
+    "fleches_menace": [
+      "e4d6",
+      "e2e7"
+    ],
+    "fen_defense": "r1bqkbnr/pp1n1ppp/2p1p3/8/3PN3/8/PPP1QPPP/R1B1KBNR w KQkq - 0 5",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... c6", "commentaire": "Prépare d5, structure Caro-Kann." },
+      { "coup": "2. d4", "commentaire": "Occupation du centre." },
+      { "coup": "2... d5", "commentaire": "Contestation du centre." },
+      { "coup": "3. Cc3", "commentaire": "Développement naturel." },
+      { "coup": "3... dxe4", "commentaire": "Échange central." },
+      { "coup": "4. Cxe4", "commentaire": "Reprise avec le cavalier." },
+      { "coup": "4... Cd7", "commentaire": "Développement, mais attention aux clouages." },
+      { "coup": "5. De2", "commentaire": "La Dame vise e7 et prépare des menaces tactiques." },
+      { "coup": "5... Cgf6??", "commentaire": "Erreur: permet Cd6#." },
+      { "coup": "6. Cd6#", "commentaire": "Mat étouffé par intrusion du cavalier." },
+      { "coup": "Thème", "commentaire": "Mat" },
+      { "coup": "Difficulté", "commentaire": "Facile" },
+      { "coup": "Idée", "commentaire": "Exploiter la colonne e et le clouage du pion e7." },
+      { "coup": "Défense", "commentaire": "5... e6 ou 5... Cf6 évitent la combinaison." }
+    ],
+    "defenseur": "Noirs"
+  },
+  {
+    "nom": "6. Enfermer le Fou (L'Arche de Noé)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 a6 4. Fa4 d6 5. d4 b5 6. Fb3 Cxd4 7. Cxd4 exd4 8. Dxd4?? c5 9. Dd5 Fe6 10. Dc6+ Fd7 11. Dd5 c4!",
+    "fen_final": "r2qkbnr/3b1ppp/p2p4/1p1Q4/2p1P3/1B6/PPP2PPP/RNB1K2R w KQkq - 0 11",
+    "fen_intermediaire": "r1bqkbnr/2p2ppp/p2p4/1p6/3pP3/1B6/PPP2PPP/RNBQK2R w KQkq - 0 7",
+    "conseil_defense": "Ne laissez pas votre fou se retrouver sans cases de repli face à une poussée de pions adverse.",
+    "coup_defense": "Au lieu de 8. Dxd4??, jouez 8. c3 ou 8. Fd5 pour maintenir l'activité et éviter l'enfermement.",
+    "fleches_defense": [
+      "c2c3",
+      "b3d5"
+    ],
+    "fleches_menace": [],
+    "fen_defense": "r1bqkbnr/2p2ppp/p2p4/1p6/3pP3/1B6/PPP2PPP/RNBQK2R w KQkq - 0 7",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... e5", "commentaire": "Réponse classique." },
+      { "coup": "2. Cf3", "commentaire": "Développement du cavalier." },
+      { "coup": "2... Cc6", "commentaire": "Développement du cavalier." },
+      { "coup": "3. Fb5", "commentaire": "Fianchetto du fou sur la diagonale a4-e8." },
+      { "coup": "3... a6", "commentaire": "Forcer le fou à décider." },
+      { "coup": "4. Fa4", "commentaire": "Retrait du fou." },
+      { "coup": "4... d6", "commentaire": "Soutien du pion e5." },
+      { "coup": "5. d4", "commentaire": "Percée centrale." },
+      { "coup": "5... b5", "commentaire": "Gain d'espace sur l'aile dame." },
+      { "coup": "6. Fb3", "commentaire": "Le fou se retrouve sur une case moins active." },
+      { "coup": "6... Cxd4", "commentaire": "Cavalier actif qui cible le centre." },
+      { "coup": "7. Cxd4", "commentaire": "Reprise naturelle." },
+      { "coup": "7... exd4", "commentaire": "Poussée de pion qui restreint le fou." },
+      { "coup": "8. Dxd4??", "commentaire": "Erreur: la Dame s'expose aux contre-coups." },
+      { "coup": "8... c5", "commentaire": "Gain d'espace et attaque sur la Dame." },
+      { "coup": "9. Dd5", "commentaire": "La Dame cherche une case active." },
+      { "coup": "9... Fe6", "commentaire": "Développement avec gain de tempo." },
+      { "coup": "10. Dc6+", "commentaire": "Échec tactique." },
+      { "coup": "10... Fd7", "commentaire": "Réponse solide." },
+      { "coup": "11. Dd5", "commentaire": "La Dame revient mais la structure adverse est favorable." },
+      { "coup": "11... c4!", "commentaire": "Coup décisif qui enferme le fou en b3." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Facile" },
+      { "coup": "Idée", "commentaire": "Exploiter la poussée de pions pour restreindre les pièces adverses." },
+      { "coup": "Défense", "commentaire": "8. c3 ou 8. Fd5 maintiennent l'activité et évitent l'enfermement." }
+    ],
+    "defenseur": "Blancs"
+  },
+  {
+    "nom": "7. Piège de la Canne à Pêche",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 Cf6 4. O-O Cg4!? 5. h3 h5! 6. hxg4? hxg4 7. Ce1 Dh4",
+    "fen_final": "r1b1kb1r/pppp1pp1/2n5/1B2p3/4P1pq/8/PPPP1PP1/RNBQNRK1 w kq - 2 8",
+    "fen_intermediaire": "r1bqkb1r/pppp1pp1/2n5/1B2p2p/4P1n1/5N1P/PPPP1PP1/RNBQ1RK1 w kq - 0 5",
+    "conseil_defense": "Ne capturez pas mécaniquement un cavalier en g4 si cela ouvre une colonne vers votre roi.",
+    "coup_defense": "Au lieu de 6. hxg4?, jouez 6. d4 ou 6. Te1 pour garder la structure et éviter l'ouverture de la colonne h.",
+    "fleches_defense": [
+      "d2d4",
+      "f1e1"
+    ],
+    "fleches_menace": [
+      "h5g4",
+      "h8h1",
+      "d8h4"
+    ],
+    "fen_defense": "r1bqkb1r/pppp1pp1/2n5/1B2p2p/4P1n1/5N1P/PPPP1PP1/RNBQ1RK1 w kq - 0 5",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... e5", "commentaire": "Réponse classique." },
+      { "coup": "2. Cf3", "commentaire": "Développement du cavalier." },
+      { "coup": "2... Cc6", "commentaire": "Développement du cavalier." },
+      { "coup": "3. Fb5", "commentaire": "Fou actif sur la diagonale." },
+      { "coup": "3... Cf6", "commentaire": "Développement naturel." },
+      { "coup": "4. O-O", "commentaire": "Roque, mise en sécurité du roi." },
+      { "coup": "4... Cg4!?", "commentaire": "Coup agressif visant f2 ou h2." },
+      { "coup": "5. h3", "commentaire": "Questionne le cavalier." },
+      { "coup": "5... h5!", "commentaire": "Réponse tranchante qui prépare l'ouverture de la colonne h." },
+      { "coup": "6. hxg4?", "commentaire": "Capture dangereuse qui ouvre la colonne h pour la tour." },
+      { "coup": "6... hxg4", "commentaire": "La colonne h devient une arme contre le roi blanc." },
+      { "coup": "7. Ce1", "commentaire": "Tentative de défense mais la position est compromise." },
+      { "coup": "7... Dh4", "commentaire": "La Dame s'infiltre et crée des menaces décisives." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "Ne prenez pas le cavalier si cela ouvre une colonne vers votre roi." },
+      { "coup": "Défense", "commentaire": "6. d4 ou 6. Te1 sont des alternatives sûres." }
+    ],
+    "defenseur": "Blancs"
+  },
+  {
+    "nom": "8. Le piège du Gambit Englund",
+    "coups": "1. d4 e5 2. dxe5 Cc6 3. Cf3 De7 4. Ff4 Db4+ 5. Fd2 Dxb2 6. Fc3 Fb4 7. Dd2 Fxc3 8. Dxc3 Dc1#",
+    "fen_final": "r1b1k1nr/pppp1ppp/2n5/4P3/8/2Q2N2/P1P1PPPP/RNq1KB1R w KQkq - 0 8",
+    "fen_intermediaire": "r1b1kbnr/pppp1ppp/2n5/4P3/8/5N2/PqPBPPPP/RN1QKB1R w KQkq - 0 5",
+    "conseil_defense": "Protégez les pions faibles comme b2 et ne laissez pas la Dame adverse s'infiltrer sur la première rangée.",
+    "coup_defense": "6. Cc3 est une défense simple qui protège b2 tout en développant une pièce.",
+    "fleches_defense": [
+      "b1c3"
+    ],
+    "fleches_menace": [
+      "e7b4",
+      "b4b2",
+      "b2c1",
+      "f1b4"
+    ],
+    "fen_defense": "r1b1kbnr/pppp1ppp/2n5/4P3/8/2N2N2/PqPBPPPP/R2QKB1R w KQkq - 0 6",
+    "moves": [
+      { "coup": "1. d4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... e5", "commentaire": "Réponse agressive visant à surprendre." },
+      { "coup": "2. dxe5", "commentaire": "Prise centrale." },
+      { "coup": "2... Cc6", "commentaire": "Développement du cavalier avec pression." },
+      { "coup": "3. Cf3", "commentaire": "Développement naturel." },
+      { "coup": "3... De7", "commentaire": "La Dame se prépare à des incursions." },
+      { "coup": "4. Ff4", "commentaire": "Développement du fou." },
+      { "coup": "4... Db4+", "commentaire": "Échec qui force des concessions." },
+      { "coup": "5. Fd2", "commentaire": "Réponse forcée pour parer l'échec." },
+      { "coup": "5... Dxb2", "commentaire": "La Dame capture un pion faible." },
+      { "coup": "6. Fc3", "commentaire": "Tentative de gain de tempo et de protection." },
+      { "coup": "6... Fb4", "commentaire": "La Dame et le fou coordonnent l'attaque." },
+      { "coup": "7. Dd2", "commentaire": "La Dame blanche cherche à se défendre." },
+      { "coup": "7... Fxc3", "commentaire": "Le fou capture et ouvre la voie à la Dame." },
+      { "coup": "8. Dxc3", "commentaire": "Reprise qui laisse la première rangée vulnérable." },
+      { "coup": "8... Dc1#", "commentaire": "Mat net par infiltration de la Dame." },
+      { "coup": "Thème", "commentaire": "Mat" },
+      { "coup": "Difficulté", "commentaire": "Avancé" },
+      { "coup": "Idée", "commentaire": "Exploiter la faiblesse de b2 et la première rangée." },
+      { "coup": "Défense", "commentaire": "6. Cc3 protège b2 et développe une pièce." }
+    ],
+    "defenseur": "Blancs"
+  },
+  {
+    "nom": "9. Piège de Sibérie (Gambit Smith-Morra)",
+    "coups": "1. e4 c5 2. d4 cxd4 3. c3 dxc3 4. Cxc3 Cc6 5. Cf3 e6 6. Fc4 Dc7 7. O-O Cf6 8. De2 Cg4! 9. h3?? Cd4! 10. hxg4 Cxe2+",
+    "fen_final": "r1b1kb1r/ppqp1ppp/4p3/8/2B1P1P1/2N2N2/PP2nPP1/R1B2RK1 w kq - 0 10",
+    "fen_intermediaire": "r1b1kb1r/ppqp1ppp/2n1p3/8/2B1P1n1/2N2N2/PP2QPPP/R1B2RK1 w kq - 0 8",
+    "conseil_defense": "Ne jouez pas h3 sans vérifier les menaces tactiques sur d4 et g2. La poussée peut être exploitée par des sauts de cavalier.",
+    "coup_defense": "9. Te1 ou 9. Td1 sont des alternatives sûres qui évitent la fourchette sur d4.",
+    "fleches_defense": [
+      "f1e1",
+      "f1d1"
+    ],
+    "fleches_menace": [
+      "c6d4",
+      "d4e2"
+    ],
+    "fen_defense": "r1b1kb1r/ppqp1ppp/2n1p3/8/2B1P1n1/2N2N2/PP2QPPP/R1BR2K1 w kq - 0 9",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... c5", "commentaire": "Défense sicilienne, contre-jeu sur l'aile dame." },
+      { "coup": "2. d4", "commentaire": "Gambit central pour ouvrir les lignes." },
+      { "coup": "2... cxd4", "commentaire": "Acceptation du gambit." },
+      { "coup": "3. c3", "commentaire": "Tentative de récupération du pion." },
+      { "coup": "3... dxc3", "commentaire": "Prise qui donne du jeu aux Noirs." },
+      { "coup": "4. Cxc3", "commentaire": "Reprise avec le cavalier." },
+      { "coup": "4... Cc6", "commentaire": "Développement du cavalier." },
+      { "coup": "5. Cf3", "commentaire": "Développement naturel." },
+      { "coup": "5... e6", "commentaire": "Solidité et préparation du développement." },
+      { "coup": "6. Fc4", "commentaire": "Fou actif visant f7." },
+      { "coup": "6... Dc7", "commentaire": "La Dame se place derrière la structure." },
+      { "coup": "7. O-O", "commentaire": "Roque, mise en sécurité." },
+      { "coup": "7... Cf6", "commentaire": "Développement du cavalier." },
+      { "coup": "8. De2", "commentaire": "La Dame se replace mais reste vulnérable." },
+      { "coup": "8... Cg4!", "commentaire": "Coup agressif qui vise f2 et h2." },
+      { "coup": "9. h3??", "commentaire": "Pousse le pion sans neutraliser la menace sur d4." },
+      { "coup": "9... Cd4!", "commentaire": "Fourchette tactique qui attaque la Dame et le cavalier." },
+      { "coup": "10. hxg4", "commentaire": "Capture qui permet la combinaison adverse." },
+      { "coup": "10... Cxe2+", "commentaire": "Échec et gain matériel décisif." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Facile" },
+      { "coup": "Idée", "commentaire": "Utiliser les sauts de cavalier pour créer des fourchettes et déloger les défenseurs." },
+      { "coup": "Défense", "commentaire": "9. Te1 ou 9. Td1 évitent la tactique." }
+    ],
+    "defenseur": "Blancs"
+  },
+  {
+    "nom": "10. Piège de l'Éléphant",
+    "coups": "1. d4 d5 2. c4 e6 3. Cc3 Cf6 4. Fg5 Cbd7 5. cxd5 exd5 6. Cxd5?? Cxd5! 7. Fxd8 Fb4+ 8. Dd2 Fxd2+ 9. Rxd2 Rxd8",
+    "fen_final": "r1bk3r/pppn1ppp/8/3n4/3P4/8/PP1KPPPP/R4BNR w - - 0 9",
+    "fen_intermediaire": "r1bqkb1r/pppn1ppp/5n2/3p2B1/3P4/2N5/PP2PPPP/R2QKBNR w KQkq - 0 5",
+    "conseil_defense": "Ne capturez pas mécaniquement si cela permet une contre-attaque tactique. Vérifiez les échecs et les clouages.",
+    "coup_defense": "6. e3 ou 6. Cf3 sont des alternatives plus sûres que 6. Cxd5??.",
+    "fleches_defense": [
+      "e2e3",
+      "g1f3"
+    ],
+    "fleches_menace": [
+      "f8b4",
+      "b4d2"
+    ],
+    "fen_defense": "r1bqkb1r/pppn1ppp/5n2/3p2B1/3P4/2N5/PP2PPPP/R2QKBNR w KQkq - 0 5",
+    "moves": [
+      { "coup": "1. d4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... d5", "commentaire": "Réponse solide." },
+      { "coup": "2. c4", "commentaire": "Pression sur le centre." },
+      { "coup": "2... e6", "commentaire": "Prépare le développement du fou." },
+      { "coup": "3. Cc3", "commentaire": "Développement naturel." },
+      { "coup": "3... Cf6", "commentaire": "Développement du cavalier." },
+      { "coup": "4. Fg5", "commentaire": "Cloue le cavalier." },
+      { "coup": "4... Cbd7", "commentaire": "Renforcement du centre." },
+      { "coup": "5. cxd5", "commentaire": "Échange central." },
+      { "coup": "5... exd5", "commentaire": "Reprise qui ouvre des lignes." },
+      { "coup": "6. Cxd5??", "commentaire": "Erreur: permet Cxd5! avec gain de matériel." },
+      { "coup": "6... Cxd5!", "commentaire": "Contre-attaque tactique." },
+      { "coup": "7. Fxd8", "commentaire": "Capture qui semble gagner du matériel mais est trompeuse." },
+      { "coup": "7... Fb4+", "commentaire": "Échec décisif qui renverse la situation." },
+      { "coup": "8. Dd2", "commentaire": "Tentative de défense." },
+      { "coup": "8... Fxd2+", "commentaire": "Échange qui mène à un avantage matériel pour les Noirs." },
+      { "coup": "9. Rxd2", "commentaire": "Reprise forcée." },
+      { "coup": "9... Rxd8", "commentaire": "Les Noirs récupèrent l'équilibre matériel avec une meilleure structure." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Facile" },
+      { "coup": "Idée", "commentaire": "Attention aux échecs et aux clouages qui peuvent retourner la situation." },
+      { "coup": "Défense", "commentaire": "6. e3 ou 6. Cf3 évitent la tactique." }
+    ],
+    "defenseur": "Blancs"
+  },
+  {
+    "nom": "11. Piège de Lasker",
+    "coups": "1. d4 d5 2. c4 e5 3. dxe5 d4 4. e3 Fb4+ 5. Fd2 dxe3! 6. Fxb4 exf2+ 7. Re2 fxg1=C+! 8. Txg1 Fg4+",
+    "fen_final": "rn1qk1nr/ppp2ppp/8/4P3/1BP3b1/8/PP2K1PP/RN1Q1BR1 w kq - 1 9",
+    "fen_intermediaire": "rn1qkbnr/ppp2ppp/8/4P3/1BP3b1/8/PP2K1PP/RN1Q1BR1 b kq - 0 6",
+    "conseil_defense": "La sous-promotion peut être une ressource tactique surprenante. Vérifiez toujours les possibilités de promotion avec échec.",
+    "coup_defense": "6. fxe3 est une alternative qui maintient un équilibre matériel et évite la complication de la sous-promotion.",
+    "fleches_defense": [
+      "f2e3",
+      "d1a4"
+    ],
+    "fleches_menace": [
+      "d4e3",
+      "f2g1",
+      "c8g4"
+    ],
+    "fen_defense": "rn1qkbnr/ppp2ppp/4b3/4P3/1BP3b1/8/PP2K1PP/RN1Q1BR1 w KQkq - 0 7",
+    "moves": [
+      { "coup": "1. d4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... d5", "commentaire": "Réponse solide." },
+      { "coup": "2. c4", "commentaire": "Pression sur le centre." },
+      { "coup": "2... e5", "commentaire": "Réponse agressive." },
+      { "coup": "3. dxe5", "commentaire": "Prise centrale." },
+      { "coup": "3... d4", "commentaire": "Avance du pion pour gagner de l'espace." },
+      { "coup": "4. e3", "commentaire": "Tentative de libération." },
+      { "coup": "4... Fb4+", "commentaire": "Échec qui force des concessions." },
+      { "coup": "5. Fd2", "commentaire": "Réponse naturelle." },
+      { "coup": "5... dxe3!", "commentaire": "Coup tactique qui ouvre des lignes." },
+      { "coup": "6. Fxb4", "commentaire": "Capture qui semble logique." },
+      { "coup": "6... exf2+", "commentaire": "Poussée dangereuse avec échec." },
+      { "coup": "7. Re2", "commentaire": "Le roi se déplace pour échapper à l'échec." },
+      { "coup": "7... fxg1=C+!", "commentaire": "Sous-promotion en Cavalier avec échec, ressource tactique rare mais décisive." },
+      { "coup": "8. Txg1", "commentaire": "Reprise forcée." },
+      { "coup": "8... Fg4+", "commentaire": "Échec qui maintient l'initiative noire." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "La sous-promotion peut créer des échecs inattendus et sauver des positions." },
+      { "coup": "Défense", "commentaire": "6. fxe3 est une alternative plus simple et sûre." }
+    ]
+  },
+  {
+    "nom": "12. Vis-à-vis Dame et Roi (Défense Petrov)",
+    "coups": "1. e4 e5 2. Cf3 Cf6 3. Cxe5 Cxe4? 4. De2 Cf6?? 5. Cc6+ Fe7 6. Cxd8",
+    "fen_final": "rnbNk2r/ppppbppp/5n2/8/8/8/PPPPQPPP/RNB1KB1R b KQkq - 0 6",
+    "fen_intermediaire": "rnbqkb1r/pppp1ppp/5n2/4N3/4P3/8/PPPPQPPP/RNB1KB1R b KQkq - 2 4",
+    "conseil_defense": "Évitez des retours de pièces qui ouvrent des découvertes sur la colonne e. Vérifiez les échecs et les fourchettes possibles.",
+    "coup_defense": "4... De7 ou 4... d5 sont des réponses plus prudentes pour neutraliser la menace sur e5.",
+    "fleches_defense": [
+      "d8e7",
+      "d7d5"
+    ],
+    "fleches_menace": [
+      "e5c6",
+      "e2e7"
+    ],
+    "fen_defense": "rnbqkb1r/pppp1ppp/5n2/4N3/4P3/8/PPPPQPPP/RNB1KB1R b KQkq - 2 4",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... e5", "commentaire": "Réponse classique." },
+      { "coup": "2. Cf3", "commentaire": "Développement du cavalier." },
+      { "coup": "2... Cf6", "commentaire": "Développement symétrique." },
+      { "coup": "3. Cxe5", "commentaire": "Capture centrale agressive." },
+      { "coup": "3... Cxe4?", "commentaire": "Prise risquée qui expose la position." },
+      { "coup": "4. De2", "commentaire": "La Dame vise e4 et prépare des tactiques." },
+      { "coup": "4... Cf6??", "commentaire": "Retour imprudent qui permet une combinaison." },
+      { "coup": "5. Cc6+", "commentaire": "Échec décisif." },
+      { "coup": "5... Fe7", "commentaire": "Tentative de bloquer l'échec." },
+      { "coup": "6. Cxd8", "commentaire": "Gain matériel par la fourchette et la découverte." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Facile" },
+      { "coup": "Idée", "commentaire": "Les retours de pièces peuvent créer des découvertes fatales." },
+      { "coup": "Défense", "commentaire": "4... De7 ou 4... d5 neutralisent la tactique." }
+    ]
+  },
+  {
+    "nom": "13. Échec en a4 (Perte de pièce)",
+    "coups": "1. d4 d5 2. c4 c6 3. cxd5 cxd5 4. Cc3 Cf6 5. Cf3 Cc6 6. e4?! dxe4 7. Cxe4 Cxe4 8. Da4+ Fd7 9. Dxe4",
+    "fen_final": "r2qkb1r/pp1bpppp/2n5/8/Q2Pn3/5N2/PP3PPP/R1B1KB1R w KQkq - 2 9",
+    "fen_intermediaire": "r2qkb1r/pp1bpppp/2n5/8/Q2Pn3/5N2/PP3PPP/R1B1KB1R b KQkq - 1 8",
+    "conseil_defense": "Ne lancez pas d'avances centrales risquées sans calculer les échanges. L'échec en a4 peut récupérer une pièce perdue.",
+    "coup_defense": "6. Ff4 ou 6. e3 sont des alternatives plus sûres que 6. e4?! ; fen_defense montre 6. e3.",
+    "fleches_defense": [
+      "e2e3",
+      "c1f4"
+    ],
+    "fleches_menace": [
+      "d1a4",
+      "a4e4"
+    ],
+    "fen_defense": "r2qkb1r/pp1bpppp/2n5/8/Q2Pn3/5N2/PP3PPP/R1B1KB1R w KQkq - 2 9",
+    "moves": [
+      { "coup": "1. d4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... d5", "commentaire": "Réponse solide." },
+      { "coup": "2. c4", "commentaire": "Pression sur le centre." },
+      { "coup": "2... c6", "commentaire": "Structure solide." },
+      { "coup": "3. cxd5", "commentaire": "Échange central." },
+      { "coup": "3... cxd5", "commentaire": "Reprise symétrique." },
+      { "coup": "4. Cc3", "commentaire": "Développement du cavalier." },
+      { "coup": "4... Cf6", "commentaire": "Développement du cavalier." },
+      { "coup": "5. Cf3", "commentaire": "Renforcement du centre." },
+      { "coup": "5... Cc6", "commentaire": "Développement du cavalier." },
+      { "coup": "6. e4?!", "commentaire": "Poussée risquée sans préparation." },
+      { "coup": "6... dxe4", "commentaire": "Réponse tactique." },
+      { "coup": "7. Cxe4", "commentaire": "Reprise naturelle." },
+      { "coup": "7... Cxe4", "commentaire": "Échange qui mène à l'échec tactique." },
+      { "coup": "8. Da4+", "commentaire": "Échec qui récupère du matériel." },
+      { "coup": "8... Fd7", "commentaire": "Blocage de l'échec." },
+      { "coup": "9. Dxe4", "commentaire": "Reprise qui laisse les Blancs avec un avantage matériel." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "Utiliser un échec pour récupérer une pièce après un échange." },
+      { "coup": "Défense", "commentaire": "6. Ff4 ou 6. e3 sont plus prudents." }
+    ]
+  },
+  {
+    "nom": "14. Piège de Cambridge Springs",
+    "coups": "1. d4 d5 2. c4 e6 3. Cc3 Cf6 4. Fg5 Cbd7 5. Cf3 c6 6. e3 Da5 7. Cd2 Fb4 8. Dc2 O-O 9. Fd3? dxc4! 10. Fxf6 cxd3!",
+    "fen_final": "r1b2rk1/pp1n1ppp/2p1pB2/q7/1b1P4/2NpP3/PPQN1PPP/R3K2R w KQ - 0 11",
+    "fen_intermediaire": "r1b2rk1/pp1n1ppp/2p1p3/q2P2B1/1b1P4/2N1P3/PPQN1PPP/R3KB1R b KQ - 0 9",
+    "conseil_defense": "Attention aux découvertes et aux attaques sur la Dame. Le gain de tempo peut être décisif.",
+    "coup_defense": "9. Fxf6 ou 9. a3 sont des alternatives qui évitent la découverte sur c4.",
+    "fleches_defense": [
+      "g5f6",
+      "a2a3"
+    ],
+    "fleches_menace": [
+      "d5c4",
+      "a5g5",
+      "b4c3"
+    ],
+    "fen_defense": "r1b2rk1/pp1n1ppp/2p1p3/q2P2B1/1b1P4/2N1P3/PPQN1PPP/R3KB1R b KQ - 0 9",
+    "moves": [
+      { "coup": "1. d4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... d5", "commentaire": "Réponse solide." },
+      { "coup": "2. c4", "commentaire": "Pression sur le centre." },
+      { "coup": "2... e6", "commentaire": "Prépare le développement du fou." },
+      { "coup": "3. Cc3", "commentaire": "Développement naturel." },
+      { "coup": "3... Cf6", "commentaire": "Développement du cavalier." },
+      { "coup": "4. Fg5", "commentaire": "Clouage du cavalier." },
+      { "coup": "4... Cbd7", "commentaire": "Renforcement du centre." },
+      { "coup": "5. Cf3", "commentaire": "Développement du cavalier." },
+      { "coup": "5... c6", "commentaire": "Prépare b5 et soutient d5." },
+      { "coup": "6. e3", "commentaire": "Libération du fou." },
+      { "coup": "6... Da5", "commentaire": "La Dame cherche des incursions." },
+      { "coup": "7. Cd2", "commentaire": "Développement et protection." },
+      { "coup": "7... Fb4", "commentaire": "Pression sur la diagonale." },
+      { "coup": "8. Dc2", "commentaire": "La Dame se replace." },
+      { "coup": "8... O-O", "commentaire": "Roque et mise en sécurité." },
+      { "coup": "9. Fd3?", "commentaire": "Erreur: permet la découverte sur c4." },
+      { "coup": "9... dxc4!", "commentaire": "Découverte qui gagne du temps et du matériel." },
+      { "coup": "10. Fxf6", "commentaire": "Capture qui ne suffit pas." },
+      { "coup": "10... cxd3!", "commentaire": "Coup décisif qui exploite la découverte." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "Les découvertes sur la Dame peuvent retourner la position." },
+      { "coup": "Défense", "commentaire": "9. Fxf6 ou 9. a3 évitent la tactique." }
+    ]
+  },
+  {
+    "nom": "15. Piège de Monticelli",
+    "coups": "1. d4 Cf6 2. c4 e6 3. Cf3 b6 4. g3 Fb7 5. Fg2 Fb4+ 6. Fd2 Fxd2+ 7. Dxd2 O-O 8. Cc3 Ce4 9. Dc2 Cxc3? 10. Cg5!",
+    "fen_final": "rn1q1rk1/pbpp1ppp/1p2p3/6N1/2PP4/2n3P1/PPQ1PPBP/R3K2R b KQ - 1 10",
+    "fen_intermediaire": "rn1q1rk1/pbpp1ppp/1p2p3/6N1/2PP4/2n3P1/PPQ1PPBP/R3K2R b KQ - 1 9",
+    "conseil_defense": "Ne capturez pas un cavalier central si cela permet une attaque sur h7 ou une intrusion sur la septième rangée.",
+    "coup_defense": "9... f5 est une alternative qui renforce le cavalier central et évite la perte tactique.",
+    "fleches_defense": [
+      "f7f5"
+    ],
+    "fleches_menace": [
+      "f3g5",
+      "c2h7",
+      "g2b7"
+    ],
+    "fen_defense": "rn1q1rk1/pbpp1ppp/1p2p3/5n2/2PP4/2N2NP1/PPQ1PPBP/R3K2R b KQ - 1 9",
+    "moves": [
+      { "coup": "1. d4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... Cf6", "commentaire": "Développement du cavalier." },
+      { "coup": "2. c4", "commentaire": "Pression sur le centre." },
+      { "coup": "2... e6", "commentaire": "Prépare le développement du fou." },
+      { "coup": "3. Cf3", "commentaire": "Développement naturel." },
+      { "coup": "3... b6", "commentaire": "Prépare Fb7." },
+      { "coup": "4. g3", "commentaire": "Fianchetto du fou-roi." },
+      { "coup": "4... Fb7", "commentaire": "Fou sur la grande diagonale." },
+      { "coup": "5. Fg2", "commentaire": "Développement du fou." },
+      { "coup": "5... Fb4+", "commentaire": "Échec qui force des échanges." },
+      { "coup": "6. Fd2", "commentaire": "Réponse naturelle." },
+      { "coup": "6... Fxd2+", "commentaire": "Échange qui simplifie la position." },
+      { "coup": "7. Dxd2", "commentaire": "Reprise avec la Dame." },
+      { "coup": "7... O-O", "commentaire": "Roque et mise en sécurité." },
+      { "coup": "8. Cc3", "commentaire": "Développement du cavalier." },
+      { "coup": "8... Ce4", "commentaire": "Cavalier actif au centre." },
+      { "coup": "9. Dc2", "commentaire": "La Dame se replace." },
+      { "coup": "9... Cxc3?", "commentaire": "Erreur: permet Cg5! avec menaces tactiques." },
+      { "coup": "10. Cg5!", "commentaire": "Menace double sur h7 et le fou en b7." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "Exploiter les faiblesses autour du roi et la septième rangée." },
+      { "coup": "Défense", "commentaire": "9... f5 renforce le cavalier et évite la tactique." }
+    ]
+  },
+  {
+    "nom": "16. Fourchette mortelle en c7",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 e6 5. Cb5 d6 6. Ff4! e5 7. Fe3 a6",
+    "fen_final": "r1bqkbnr/1p3ppp/p1np4/1N2p3/4P3/4B3/PPP2PPP/RN1QKB1R w KQkq - 0 8",
+    "fen_intermediaire": "r1bqkbnr/1p3ppp/p1np4/1N2p3/4P3/4B3/PPP2PPP/RN1QKB1R b KQkq - 0 7",
+    "conseil_defense": "La case c7 peut devenir une cible pour une fourchette. Évitez de laisser des trous dans la structure centrale.",
+    "coup_defense": "5... Cf6 est préférable pour contester le centre avant d'étendre la structure par d6.",
+    "fleches_defense": [
+      "g8f6"
+    ],
+    "fleches_menace": [
+      "b5d6",
+      "b5c7"
+    ],
+    "fen_defense": "r1bqkbnr/1p3ppp/p1np4/1N2p3/4P3/4B3/PPP2PPP/RN1QKB1R w KQkq - 0 8",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... c5", "commentaire": "Sicilienne, contre-jeu sur l'aile dame." },
+      { "coup": "2. Cf3", "commentaire": "Développement du cavalier." },
+      { "coup": "2... Cc6", "commentaire": "Développement du cavalier." },
+      { "coup": "3. d4", "commentaire": "Percée centrale." },
+      { "coup": "3... cxd4", "commentaire": "Échange central." },
+      { "coup": "4. Cxd4", "commentaire": "Reprise avec le cavalier." },
+      { "coup": "4... e6", "commentaire": "Solidité et préparation du développement." },
+      { "coup": "5. Cb5", "commentaire": "Cavalier en b5 vise c7." },
+      { "coup": "5... d6", "commentaire": "Renforcement du centre mais crée un trou en c6/c7." },
+      { "coup": "6. Ff4!", "commentaire": "Coup positionnel qui prépare des incursions sur c7." },
+      { "coup": "6... e5", "commentaire": "Poussée qui affaiblit d5 et c6." },
+      { "coup": "7. Fe3", "commentaire": "Repositionnement du fou pour soutenir les idées tactiques." },
+      { "coup": "7... a6", "commentaire": "Tentative d'expulsion du cavalier." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "Exploiter le trou en c7 par une fourchette du cavalier." },
+      { "coup": "Défense", "commentaire": "5... Cf6 conteste le centre et réduit les possibilités tactiques." }
+    ]
+  },
+  {
+    "nom": "17. Clouage fatal de la Dame en c6",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. d4 exd4 5. O-O Cxe4 6. Te1 d5 7. Fxd5 Dxd5 8. Cc3 Da5 9. Cxe4 Fe6 10. Fb5!",
+    "fen_final": "r3kb1r/ppp2ppp/2n1b3/q7/3pN3/5N2/PPP2PPP/R1BQR1K1 w kq - 1 10",
+    "fen_intermediaire": "r3kb1r/ppp2ppp/2n1b3/q7/3pN3/5N2/PPP2PPP/R1BQR1K1 b kq - 1 9",
+    "conseil_defense": "Ne laissez pas la colonne e ouverte sans protection. Le clouage peut devenir décisif.",
+    "coup_defense": "Roquez tôt pour sortir de la colonne e et réduire les menaces tactiques.",
+    "fleches_defense": [
+      "e8g8",
+      "f8e7"
+    ],
+    "fleches_menace": [
+      "e1e4",
+      "c3d5",
+      "e4f6"
+    ],
+    "fen_defense": "r3kb1r/ppp2ppp/2n1b3/q7/3pN3/5N2/PPP2PPP/R1BQR1K1 w kq - 1 10",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... e5", "commentaire": "Réponse classique." },
+      { "coup": "2. Cf3", "commentaire": "Développement du cavalier." },
+      { "coup": "2... Cc6", "commentaire": "Développement du cavalier." },
+      { "coup": "3. Fc4", "commentaire": "Fou actif sur la diagonale." },
+      { "coup": "3... Cf6", "commentaire": "Développement du cavalier." },
+      { "coup": "4. d4", "commentaire": "Percée centrale." },
+      { "coup": "4... exd4", "commentaire": "Réponse centrale." },
+      { "coup": "5. O-O", "commentaire": "Roque, mise en sécurité." },
+      { "coup": "5... Cxe4", "commentaire": "Prise centrale qui peut être risquée." },
+      { "coup": "6. Te1", "commentaire": "Tour sur la colonne e pour exploiter le clouage." },
+      { "coup": "6... d5", "commentaire": "Contre-attaque au centre." },
+      { "coup": "7. Fxd5", "commentaire": "Capture qui ouvre la colonne e." },
+      { "coup": "7... Dxd5", "commentaire": "La Dame reprend et se retrouve clouée." },
+      { "coup": "8. Cc3", "commentaire": "Développement avec attaque sur la Dame." },
+      { "coup": "8... Da5", "commentaire": "La Dame cherche une case active." },
+      { "coup": "9. Cxe4", "commentaire": "Reprise qui renforce la pression." },
+      { "coup": "9... Fe6", "commentaire": "Tentative de libération." },
+      { "coup": "10. Fb5!", "commentaire": "Coup tactique qui exploite le clouage et la colonne e." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "Utiliser la colonne e et le clouage pour gagner du matériel." },
+      { "coup": "Défense", "commentaire": "Roquez tôt pour réduire les menaces sur la colonne e." }
+    ]
+  },
+  {
+    "nom": "18. Sortir sa Dame trop tôt",
+    "coups": "1. e4 c6 2. d4 d5 3. e5 c5 4. c3 Cc6 5. Cf3 Db6 6. Fd3 cxd4 7. cxd4 Cxd4?? 8. Cxd4 Dxd4 9. Fb5+ Fd7 10. Fxd7+ Kxd7 11. Dxd4",
+    "fen_final": "r4bnr/pp1kpppp/8/3pP3/3Q4/8/PP3PPP/RNB1K2R b KQ - 0 11",
+    "fen_intermediaire": "r1bqkbnr/pp1n1ppp/2p5/3pP3/3Q4/8/PP3PPP/RNB1KBNR w KQkq - 0 7",
+    "conseil_defense": "Ne laissez pas la Dame adverse s'installer sur des lignes actives. Brisez les alignements avant qu'ils ne deviennent décisifs.",
+    "coup_defense": "7... Fd7 est une défense simple qui évite l'alignement fatal avec le fou blanc.",
+    "fleches_defense": [
+      "c8d7"
+    ],
+    "fleches_menace": [
+      "d3b5",
+      "b5d7",
+      "d4d8"
+    ],
+    "fen_defense": "r1bqkbnr/pp1n1ppp/2p5/3pP3/3Q4/8/PP3PPP/RNB1KBNR w KQkq - 0 7",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... c6", "commentaire": "Prépare d5, structure Caro-Kann." },
+      { "coup": "2. d4", "commentaire": "Occupation du centre." },
+      { "coup": "2... d5", "commentaire": "Contestation du centre." },
+      { "coup": "3. e5", "commentaire": "Gain d'espace." },
+      { "coup": "3... c5", "commentaire": "Contre-attaque sur l'aile dame." },
+      { "coup": "4. c3", "commentaire": "Soutien du centre." },
+      { "coup": "4... Cc6", "commentaire": "Développement du cavalier." },
+      { "coup": "5. Cf3", "commentaire": "Développement naturel." },
+      { "coup": "5... Db6", "commentaire": "La Dame noire s'avance prématurément." },
+      { "coup": "6. Fd3", "commentaire": "Développement du fou." },
+      { "coup": "6... cxd4", "commentaire": "Échange central." },
+      { "coup": "7. cxd4", "commentaire": "Reprise naturelle." },
+      { "coup": "7... Cxd4??", "commentaire": "Erreur: permet une combinaison." },
+      { "coup": "8. Cxd4", "commentaire": "Reprise qui ouvre la colonne." },
+      { "coup": "8... Dxd4", "commentaire": "La Dame s'expose à des échecs." },
+      { "coup": "9. Fb5+", "commentaire": "Échec qui force la perte de la Dame ou du matériel." },
+      { "coup": "9... Fd7", "commentaire": "Tentative de défense." },
+      { "coup": "10. Fxd7+", "commentaire": "Échange qui profite aux Blancs." },
+      { "coup": "10... Kxd7", "commentaire": "Le roi est forcé à se déplacer et la Dame noire est perdue." },
+      { "coup": "11. Dxd4", "commentaire": "Reprise qui laisse les Blancs avec un avantage matériel." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Facile" },
+      { "coup": "Idée", "commentaire": "Ne sortez pas la Dame trop tôt sans protection." },
+      { "coup": "Défense", "commentaire": "7... Fd7 brise l'alignement et évite la tactique." }
+    ]
+  },
+  {
+    "nom": "19. Danger de la colonne d ouverte",
+    "coups": "1. e4 d6 2. Fc4 Cf6 3. d4 e5 4. Cc3 Cbd7 5. Cf3 exd4 6. Dxd4 Fe7? 7. Fxf7+! Kxf7 8. Cg5+ Re8",
+    "fen_final": "r1bqk2r/pppnb1pp/3p1n2/6N1/3QP3/2N5/PPP2PPP/R1BQK1NR w KQ - 2 9",
+    "fen_intermediaire": "r1bqkb1r/pppn1ppp/3p1n1p/4p3/2BPP3/2N5/PPP2PPP/R1BQK1NR w KQkq - 0 5",
+    "conseil_defense": "Ne laissez pas la case g5 accessible au cavalier adverse. Un sacrifice sur f7 peut déloger le roi et créer des menaces décisives.",
+    "coup_defense": "6... h6 empêche le cavalier d'atteindre g5 et réduit les possibilités tactiques.",
+    "fleches_defense": [
+      "h7h6"
+    ],
+    "fleches_menace": [
+      "c4f7",
+      "f3g5",
+      "g5e6"
+    ],
+    "fen_defense": "r1bqkb1r/pppn1ppp/3p1n1p/4p3/2BPP3/2N5/PPP2PPP/R1BQK1NR w KQkq - 0 5",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... d6", "commentaire": "Développement solide." },
+      { "coup": "2. Fc4", "commentaire": "Fou actif visant f7." },
+      { "coup": "2... Cf6", "commentaire": "Développement du cavalier." },
+      { "coup": "3. d4", "commentaire": "Percée centrale." },
+      { "coup": "3... e5", "commentaire": "Contre-attaque au centre." },
+      { "coup": "4. Cc3", "commentaire": "Renforcement du centre." },
+      { "coup": "4... Cbd7", "commentaire": "Développement du cavalier." },
+      { "coup": "5. Cf3", "commentaire": "Développement naturel." },
+      { "coup": "5... exd4", "commentaire": "Échange central." },
+      { "coup": "6. Dxd4", "commentaire": "La Dame reprend et vise f7." },
+      { "coup": "6... Fe7?", "commentaire": "Développement passif qui permet le sacrifice." },
+      { "coup": "7. Fxf7+!", "commentaire": "Sacrifice qui déloge le roi." },
+      { "coup": "7... Kxf7", "commentaire": "Prise forcée qui expose le roi." },
+      { "coup": "8. Cg5+", "commentaire": "Échec qui exploite la position du roi." },
+      { "coup": "8... Re8", "commentaire": "Le roi est forcé à se déplacer, la position est compromise." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "Le sacrifice sur f7 déloge le roi et ouvre des lignes d'attaque." },
+      { "coup": "Défense", "commentaire": "6... h6 empêche Cg5 et réduit les possibilités tactiques." }
+    ]
+  },
+  {
+    "nom": "20. Tour en a8 non-protégée",
+    "coups": "1. e4 c5 2. Cf3 d6 3. d4 cxd4 4. Cxd4 Cf6 5. f3 e5 6. Cb3 d5 7. Fg5 d4 8. Dd5!",
+    "fen_final": "rnbqkb1r/pp3ppp/5n2/4p1B1/3pP3/1N3P2/PPP3PP/RN1QKB1R w KQkq - 0 8",
+    "fen_intermediaire": "rnbqkb1r/pp3ppp/5n2/4p1B1/3pP3/1N3P2/PPP3PP/RN1QKB1R b KQkq - 0 7",
+    "conseil_defense": "Ne laissez pas la colonne d ou la diagonale a8-d1 sans surveillance. Une Dame active peut viser des pièces mal protégées.",
+    "coup_defense": "6... Fe7 ou 6... Be7 stabilisent la position avant d'étendre le centre.",
+    "fleches_defense": [
+      "f8e7"
+    ],
+    "fleches_menace": [
+      "d1d5",
+      "d5a8",
+      "g5f6"
+    ],
+    "fen_defense": "rnbqkb1r/pp3ppp/5n2/4p1B1/3pP3/1N3P2/PPP3PP/RN1QKB1R w KQkq - 0 8",
+    "moves": [
+      { "coup": "1. e4", "commentaire": "Contrôle du centre." },
+      { "coup": "1... c5", "commentaire": "Sicilienne, contre-jeu sur l'aile dame." },
+      { "coup": "2. Cf3", "commentaire": "Développement du cavalier." },
+      { "coup": "2... d6", "commentaire": "Prépare d5." },
+      { "coup": "3. d4", "commentaire": "Percée centrale." },
+      { "coup": "3... cxd4", "commentaire": "Échange central." },
+      { "coup": "4. Cxd4", "commentaire": "Reprise avec le cavalier." },
+      { "coup": "4... Cf6", "commentaire": "Développement du cavalier." },
+      { "coup": "5. f3", "commentaire": "Renforce e4 mais affaiblit légèrement l'aile roi." },
+      { "coup": "5... e5", "commentaire": "Poussée centrale qui ouvre des lignes." },
+      { "coup": "6. Cb3", "commentaire": "Retrait du cavalier vers une case active." },
+      { "coup": "6... d5", "commentaire": "Contre-attaque centrale." },
+      { "coup": "7. Fg5", "commentaire": "Fou actif visant f6." },
+      { "coup": "7... d4", "commentaire": "Avance qui gagne de l'espace mais crée des faiblesses." },
+      { "coup": "8. Dd5!", "commentaire": "La Dame s'infiltre et menace des pièces mal protégées, y compris la tour en a8." },
+      { "coup": "Thème", "commentaire": "Gain matériel" },
+      { "coup": "Difficulté", "commentaire": "Intermédiaire" },
+      { "coup": "Idée", "commentaire": "Exploiter les colonnes et diagonales ouvertes pour attaquer des pièces non protégées." },
+      { "coup": "Défense", "commentaire": "Stabilisez la position avec ...Fe7 avant d'étendre le centre." }
+    ]
+  }
 ]

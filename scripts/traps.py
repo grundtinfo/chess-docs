@@ -15,12 +15,13 @@ import json
 # CHESSBOARD FLOWABLE
 # =====================================================================
 class ChessboardFlowable(Flowable):
-    def __init__(self, fen, size=150, fleches_defense=None, fleches_menace=None):
+    def __init__(self, fen, size=150, fleches_defense=None, fleches_menace=None, orientation=chess.WHITE):
         Flowable.__init__(self)
         self.fen = fen
         self.size = size
         self.fleches_defense = fleches_defense or []
         self.fleches_menace = fleches_menace or []
+        self.orientation = orientation
 
     def wrap(self, availWidth, availHeight):
         return self.size, self.size
@@ -43,7 +44,7 @@ class ChessboardFlowable(Flowable):
                 color="#00AA00"
             ))
 
-        svg = chess.svg.board(board=board, size=self.size, arrows=arrows)
+        svg = chess.svg.board(board=board, size=self.size, arrows=arrows, orientation=self.orientation)
         drawing = svg2rlg(StringIO(svg))
         renderPDF.draw(drawing, self.canv, 0, 0)
 
@@ -88,6 +89,14 @@ def analyze_position(fen):
     if attackers:
         return "Le roi est en danger immédiat."
     return "Position relativement sûre."
+
+
+def get_trap_orientation(piege):
+    defenseur = piege.get("defenseur")
+    if defenseur == "Blancs":
+        return chess.WHITE
+    else:
+        return chess.BLACK
 
 
 # =====================================================================
@@ -175,9 +184,9 @@ def generer_pdf():
     elements.append(Spacer(1, 6))
     legend_data = [
         ["Section", "Description"],
-        ["Diagrammes", Paragraph("1) Alerte : Position finale avec flèches rouges indiquant les menaces.", normal_style)],
-        ["", Paragraph("2) Idée du piège : Position intermédiaire montrant l'idée tactique (flèches rouges pour menaces, vertes pour défenses possibles).", normal_style)],
-        ["", Paragraph("3) Défense correcte : Position après la défense avec flèches vertes pour les coups défensifs.", normal_style)],
+        ["Diagrammes", Paragraph("1) Piégé : Position finale où la menace aboutit (mat ou gain matériel).", normal_style)],
+        ["", Paragraph("2) Detection : Position intermédiaire où la menace est reconnaissable le plus tôt possible, avec flèches rouges pour les menaces.", normal_style)],
+        ["", Paragraph("3) Défense correcte : Position après la défense correcte, avec flèches vertes indiquant les mouvements défensifs (origine = position de départ des pièces).", normal_style)],
         ["Table des coups", Paragraph("Liste des coups avec commentaires pédagogiques pour comprendre la séquence.", normal_style)],
         ["Type/Difficulté", Paragraph("Classification du piège et niveau de difficulté estimé.", normal_style)],
         ["Idée/Défense", Paragraph("Explication de l'idée derrière le piège et la réponse recommandée.", normal_style)]
@@ -228,8 +237,8 @@ def generer_pdf():
             blanc = full_moves[i]
             noir = full_moves[i+1] if i+1 < len(full_moves) else {"coup": "", "commentaire": ""}
             table_data.append([
-                blanc.get("coup", ""), blanc.get("commentaire", ""),
-                noir.get("coup", ""), noir.get("commentaire", "")
+                blanc.get("coup", ""), Paragraph(blanc.get("commentaire", ""), normal_style),
+                noir.get("coup", ""), Paragraph(noir.get("commentaire", ""), normal_style)
             ])
 
         table = Table(table_data, colWidths=[100, 160, 100, 160], repeatRows=1)
@@ -237,7 +246,11 @@ def generer_pdf():
             ('GRID', (0,0), (-1,-1), 0.5, colors.lightgrey),
             ('BACKGROUND', (0,0), (-1,0), colors.lightblue),
             ('BACKGROUND', (0,1), (-1,-1), colors.whitesmoke),
-            ('VALIGN', (0,0), (-1,-1), 'TOP')
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
+            ('LEFTPADDING', (0,0), (-1,-1), 5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 5),
+            ('TOPPADDING', (0,0), (-1,-1), 3),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 3)
         ]))
 
         elements.append(KeepTogether([table, Spacer(1, 10)]))
@@ -246,36 +259,44 @@ def generer_pdf():
         # 🔥 TES 3 DIAGRAMMES RESTAURÉS
         # =========================
 
+        orientation = get_trap_orientation(piege)
+
         fen_inter = piege.get("fen_intermediaire", piege["fen_defense"])
 
         diag_alerte = ChessboardFlowable(
             piege["fen_final"],
             size=130,
-            fleches_menace=piege.get("fleches_menace", [])
+            fleches_menace=piege.get("fleches_menace", []),
+            orientation=orientation
         )
 
         diag_inter = ChessboardFlowable(
             fen_inter,
             size=130,
             fleches_menace=piege.get("fleches_menace", []),
-            fleches_defense=piege.get("fleches_defense", [])
+            orientation=orientation
         )
 
         diag_defense = ChessboardFlowable(
             piege["fen_defense"],
             size=130,
-            fleches_defense=piege.get("fleches_defense", [])
+            fleches_defense=piege.get("fleches_defense", []),
+            orientation=orientation
         )
 
         table_diags = Table([
-            ["1) Alerte", "2) Idée du piège", "3) Défense correcte"],
+            ["1) Position piégée", "2) Détection du piège", "3) Défense correcte"],
             [diag_alerte, diag_inter, diag_defense]
         ], colWidths=[170, 170, 170], repeatRows=1)
         table_diags.setStyle(TableStyle([
             ('ALIGN', (0,0), (-1,-1), 'CENTER'),
             ('VALIGN', (0,0), (-1,-1), 'TOP'),
             ('BACKGROUND', (0,0), (-1,0), colors.lightgreen),
-            ('BOX', (0,0), (-1,-1), 0.5, colors.lightgrey)
+            ('BOX', (0,0), (-1,-1), 0.5, colors.lightgrey),
+            ('LEFTPADDING', (0,0), (-1,-1), 5),
+            ('RIGHTPADDING', (0,0), (-1,-1), 5),
+            ('TOPPADDING', (0,0), (-1,-1), 3),
+            ('BOTTOMPADDING', (0,0), (-1,-1), 3)
         ]))
 
         elements.append(KeepTogether([table_diags, Spacer(1, 10)]))
