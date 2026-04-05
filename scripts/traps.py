@@ -194,24 +194,57 @@ def split_move_options(moves_text):
     return [m.strip() for m in re.split(r'\s+ou\s+|\s*,\s*', moves_text) if m.strip()]
 
 def generate_moves(piege):
-    """Génère la liste des coups avec commentaires pour la table."""
+    """Génère la liste des coups par paire avec mini-diagrammes de fin de coup blanc/noir."""
     coups_str = piege.get("coups", "")
     moves = parse_moves(coups_str)
-    
-    full_moves = []
+
+    rows = []
     board = chess.Board()
+    current_row = None
+
     for move in moves:
-        commentaire = generate_move_comment(move.get("raw", ""), move.get("san", ""), board)
-        full_moves.append({
-            "coup": move.get("raw", ""),
-            "commentaire": commentaire
-        })
+        color = move.get("color")
+        move_raw = move.get("raw", "")
+        move_san = move.get("san", "")
+        move_number = move.get("move_number")
+
         try:
-            board.push(board.parse_san(move.get("san", "")))
+            board.push(board.parse_san(move_san))
         except Exception:
             pass
-    
-    return full_moves
+
+        commentaire = generate_move_comment(move_raw, move_san, board)
+        fen_after = board.fen()
+
+        if color == "white":
+            current_row = {
+                "move_number": move_number,
+                "white": move_raw,
+                "white_comment": commentaire,
+                "white_fen": fen_after,
+                "black": "",
+                "black_comment": "",
+                "black_fen": None
+            }
+            rows.append(current_row)
+        else:
+            if current_row is None or current_row.get("move_number") != move_number:
+                current_row = {
+                    "move_number": move_number,
+                    "white": "",
+                    "white_comment": "",
+                    "white_fen": None,
+                    "black": move_raw,
+                    "black_comment": commentaire,
+                    "black_fen": fen_after
+                }
+                rows.append(current_row)
+            else:
+                current_row["black"] = move_raw
+                current_row["black_comment"] = commentaire
+                current_row["black_fen"] = fen_after
+
+    return rows
 
 def generate_fen_positions(piege):
     """Génère fen_final, fen_intermediaire et fen_defense automatiquement."""
@@ -378,26 +411,29 @@ def generer_pdf():
         elements.append(Spacer(1, 10))
 
         # Table des coups modernisée - générer dynamiquement à partir du champ "coups"
-        full_moves = generate_moves(piege)
+        rows = generate_moves(piege)
+        orientation = get_trap_orientation(piege)
         
         table_data = [[
+            Paragraph("<b>Diag</b>", normal_style), 
             Paragraph("<b>Coup Blanc</b>", normal_style), 
             Paragraph("<b>Commentaire</b>", normal_style), 
             Paragraph("<b>Coup Noir</b>", normal_style), 
             Paragraph("<b>Commentaire</b>", normal_style)
         ]]
         
-        for i in range(0, len(full_moves), 2):
-            blanc = full_moves[i]
-            noir = full_moves[i+1] if i+1 < len(full_moves) else {"coup": "", "commentaire": ""}
+        for row in rows:
+            fen_diag = row.get("black_fen") or row.get("white_fen")
+            diag = ChessboardFlowable(fen_diag, size=90, orientation=orientation) if fen_diag else ""
             table_data.append([
-                Paragraph(blanc.get("coup", ""), bold_style),
-                Paragraph(blanc.get("commentaire", ""), normal_style),
-                Paragraph(noir.get("coup", ""), bold_style),
-                Paragraph(noir.get("commentaire", ""), normal_style)
+                diag,
+                Paragraph(row.get("white", ""), bold_style),
+                Paragraph(row.get("white_comment", ""), normal_style),
+                Paragraph(row.get("black", ""), bold_style),
+                Paragraph(row.get("black_comment", ""), normal_style)
             ])
 
-        table = Table(table_data, colWidths=[80, 190, 80, 190], repeatRows=1)
+        table = Table(table_data, colWidths=[100, 55, 145, 55, 145], repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY),
             ('TEXTCOLOR', (0,0), (-1,0), colors.white),
