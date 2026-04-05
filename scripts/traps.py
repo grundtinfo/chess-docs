@@ -73,6 +73,43 @@ def detect_theme(coup):
         return "Cavalier en avant-poste."
     return ""
 
+
+def generate_move_comment(move_raw, move_san, board):
+    """Génère un commentaire pédagogique simple pour un coup donné."""
+    raw = move_raw.strip()
+    raw_clean = re.sub(r'[?!+#]+', '', raw)
+
+    if "??" in raw:
+        return "Erreur grave de l'adversaire, le piège est déclenché."
+    if "!" in raw and "!!" not in raw:
+        return "Coup fort, bonne découverte tactique."
+    if "#" in raw:
+        return "Mat direct, la combinaison fonctionne."
+    if "+" in raw:
+        return "Donne échec et met la pression sur le roi."
+    if "x" in raw_clean:
+        return "Capture une pièce ou un pion, souvent au cœur du piège."
+    if raw_clean.startswith("D"):
+        return "Développe la Dame pour maintenir l'initiative."
+    if raw_clean.startswith("C"):
+        return "Développe le Cavalier vers une case active."
+    if raw_clean.startswith("F"):
+        return "Développe le Fou et cible le centre ou la faiblesse f7/h7."
+    if raw_clean.startswith("T"):
+        return "Développe la Tour, souvent après l'ouverture du jeu."
+    if raw_clean.startswith("R"):
+        return "Sécurise le Roi ou prépare la défense."
+    if raw_clean in ["e4", "d4", "e5", "d5"]:
+        return "Prend le contrôle du centre."
+    if raw_clean and raw_clean[0] in "abcdefgh":
+        return "Avance un pion pour ouvrir le jeu ou soutenir le centre."
+
+    theme = detect_theme(raw_clean)
+    if theme:
+        return theme
+
+    return "Coup de développement utile dans cette séquence."
+
 def classify_trap(piege):
     coups = piege["coups"]
     if "#" in coups:
@@ -103,52 +140,137 @@ def get_trap_orientation(piege):
     else:
         return chess.BLACK
 
+def convert_french_to_english_notation(move):
+    """Convertit la notation française des pièces vers la notation anglaise SAN."""
+    # Dictionnaire de conversion des pièces
+    piece_map = {
+        'D': 'Q',  # Dame -> Queen
+        'C': 'N',  # Cavalier -> Knight
+        'F': 'B',  # Fou -> Bishop
+        'T': 'R',  # Tour -> Rook
+        'R': 'K',  # Roi -> King
+    }
+    
+    # Gérer les promotions : =C -> =N, etc.
+    if '=' in move:
+        parts = move.split('=')
+        if len(parts) == 2 and parts[1] in piece_map:
+            move = parts[0] + '=' + piece_map[parts[1]]
+    
+    # Remplacer la première lettre si c'est une pièce (mais pas après =)
+    if move and move[0] in piece_map and '=' not in move[:move.find('=') if '=' in move else len(move)]:
+        move = piece_map[move[0]] + move[1:]
+    
+    return move
+
+def parse_moves(coups_str):
+    """Parse la chaîne de coups en liste de coups en français + SAN anglais."""
+    pattern = r'(\d+)\.\s*([^\s]+)(?:\s+([^\s]+))?'
+    matches = re.findall(pattern, coups_str)
+    moves = []
+    for num, white, black in matches:
+        white_raw = white.strip()
+        white_san = convert_french_to_english_notation(re.sub(r'[?!+#x]+', '', white_raw))
+        moves.append({"raw": white_raw, "san": white_san, "move_number": int(num), "color": "white"})
+        if black:
+            black_raw = black.strip()
+            black_san = convert_french_to_english_notation(re.sub(r'[?!+#x]+', '', black_raw))
+            moves.append({"raw": black_raw, "san": black_san, "move_number": int(num), "color": "black"})
+    return moves
+
+
+def normalize_defense_spec(defense_text):
+    """Isoler l'ordre de coup et le texte du coup de défense."""
+    if not defense_text:
+        return None, ""
+    defense_text = defense_text.strip()
+    match = re.match(r'^(\d+)\s*(?:\.{3}|\.)\s*(.+)$', defense_text)
+    if match:
+        return int(match.group(1)), match.group(2).strip()
+    return None, defense_text
+
+
+def split_move_options(moves_text):
+    return [m.strip() for m in re.split(r'\s+ou\s+|\s*,\s*', moves_text) if m.strip()]
+
 def generate_moves(piege):
-    """Génère dynamiquement la liste des coups avec commentaires à partir du champ 'coups'."""
-    raw = piege.get("coups", "")
-    pattern = r"(\d+)\.\s*([^\s]+)(?:\s+([^\s]+))?"
-    matches = re.finditer(pattern, raw)
+    """Génère la liste des coups avec commentaires pour la table."""
+    coups_str = piege.get("coups", "")
+    moves = parse_moves(coups_str)
+    
+    full_moves = []
+    board = chess.Board()
+    for move in moves:
+        commentaire = generate_move_comment(move.get("raw", ""), move.get("san", ""), board)
+        full_moves.append({
+            "coup": move.get("raw", ""),
+            "commentaire": commentaire
+        })
+        try:
+            board.push(board.parse_san(move.get("san", "")))
+        except Exception:
+            pass
+    
+    return full_moves
 
-    lines = []
+def generate_fen_positions(piege):
+    """Génère fen_final, fen_intermediaire et fen_defense automatiquement."""
+    coups_str = piege.get("coups", "")
+    moves = parse_moves(coups_str)
+    
+    board = chess.Board()
+    positions = []
+    
+    # Jouer tous les coups pour obtenir les positions intermédiaires
+    for i, move in enumerate(moves):
+        try:
+            move = board.parse_san(move["san"])
+            board.push(move)
+            positions.append(board.fen())
+        except Exception as e:
+            # Erreur parsing move, skip ce piège
+            return None, None, None
+    
+    if len(positions) < 2:
+        return positions[-1] if positions else None, None, None
+    
+    fen_final = positions[-1]
 
-    def commenter(coup):
-        """Génère un commentaire intelligent pour chaque coup."""
-        if "#" in coup:
-            return "Mat immédiat."
-        if "+" in coup:
-            return "Échec."
-        if "??" in coup:
-            return "Erreur grossière."
-        if "?!" in coup:
-            return "Coup douteux."
-        if "?" in coup and "!" not in coup:
-            return "Coup imprécis."
-        if "!" in coup and "?" not in coup:
-            return "Très bon coup."
-        if coup in ["e4", "d4"]:
-            return "Contrôle du centre."
-        if coup.startswith("C"):
-            return "Développement du cavalier."
-        if coup.startswith("F"):
-            return "Développement du fou."
-        if coup.startswith("D"):
-            return "Sortie de la Dame."
-        if coup.startswith("T"):
-            return "Mouvement de tour."
-        if "x" in coup:
-            return "Capture."
-        if coup.endswith("=D") or coup.endswith("=C") or coup.endswith("=F") or coup.endswith("=T"):
-            return "Promotion."
-        return "Développement."
+    coup_defense = piege.get("coup_defense", "")
+    defense_order, defense_text = normalize_defense_spec(coup_defense)
+    defense_options = split_move_options(defense_text)
 
-    for match in matches:
-        num, w, b = match.groups()
+    if defense_order is not None:
+        if piege.get("defenseur") == "Noirs":
+            # Position juste après le coup blanc du même numéro de demi-coup
+            index = 2 * (defense_order - 1)
+        else:
+            # Position juste après le coup noir précédent
+            index = 2 * defense_order - 3
+        if 0 <= index < len(positions):
+            fen_intermediaire = positions[index]
+        else:
+            fen_intermediaire = positions[-2]
+    else:
+        fen_intermediaire = positions[-3] if len(positions) >= 3 else positions[-2]
 
-        lines.append({"coup": f"{num}. {w}", "commentaire": commenter(w)})
-        if b:
-            lines.append({"coup": f"{num}... {b}", "commentaire": commenter(b)})
+    # Si plusieurs options de défense sont recommandées, fen_intermediaire == fen_defense
+    if len(defense_options) > 1:
+        fen_defense = fen_intermediaire
+    else:
+        fen_defense = fen_intermediaire
+        if defense_options:
+            board_defense = chess.Board(fen_intermediaire)
+            option = defense_options[0]
+            defense_move_clean = convert_french_to_english_notation(re.sub(r'[?!+#x]+', '', option))
+            try:
+                move = board_defense.parse_san(defense_move_clean)
+                board_defense.push(move)
+                fen_defense = board_defense.fen()
+            except Exception:
+                pass
 
-    return lines
+    return fen_final, fen_intermediaire, fen_defense
 
 
 # =====================================================================
@@ -242,8 +364,13 @@ def generer_pdf():
         
         elements.append(Paragraph(f"{idx+1}. {piege['nom']}", trap_heading_style))
 
+        # Générer les FEN automatiquement
+        fen_final, fen_intermediaire, fen_defense = generate_fen_positions(piege)
+        if not fen_final:
+            continue  # Skip si erreur
+
         # Analyse & Métadonnées
-        analyse = analyze_position(piege["fen_final"])
+        analyse = analyze_position(fen_final)
         type_piege = classify_trap(piege)
         difficulte = estimate_difficulty(piege)
 
@@ -291,11 +418,10 @@ def generer_pdf():
 
         # Diagrammes (Configuration conservée mais design du tableau rafraîchi)
         orientation = get_trap_orientation(piege)
-        fen_inter = piege.get("fen_intermediaire", piege["fen_defense"])
 
-        diag_alerte = ChessboardFlowable(piege["fen_final"], size=130, fleches_menace=piege.get("fleches_menace", []), orientation=orientation)
-        diag_inter = ChessboardFlowable(fen_inter, size=130, fleches_menace=piege.get("fleches_menace", []), orientation=orientation)
-        diag_defense = ChessboardFlowable(piege["fen_defense"], size=130, fleches_defense=piege.get("fleches_defense", []), orientation=orientation)
+        diag_alerte = ChessboardFlowable(fen_final, size=130, fleches_menace=piege.get("fleches_menace", []), orientation=orientation)
+        diag_inter = ChessboardFlowable(fen_intermediaire, size=130, fleches_menace=piege.get("fleches_menace", []), orientation=orientation)
+        diag_defense = ChessboardFlowable(fen_defense, size=130, fleches_defense=piege.get("fleches_defense", []), orientation=orientation)
 
         table_diags = Table([
             [Paragraph("<b>1) Position piégée</b>", normal_style), Paragraph("<b>2) Détection du piège</b>", normal_style), Paragraph("<b>3) Défense correcte</b>", normal_style)],
@@ -318,7 +444,7 @@ def generer_pdf():
 
         # Idée & Défense en bas de page
         elements.append(Paragraph(f"<b>Idée :</b> {piege.get('conseil_defense', '')}", normal_style))
-        elements.append(Paragraph(f"<b>Défense :</b> {piege.get('coup_defense', '')}", normal_style))
+        elements.append(Paragraph(f"<b>Défense :</b> {piege.get('coup_defense', '')} - {piege.get('explication_defense', '')}", normal_style))
         elements.append(Spacer(1, 12))
 
     # 4. Conclusion

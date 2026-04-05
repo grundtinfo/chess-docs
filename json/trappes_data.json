@@ -2,10 +2,8 @@
   {
     "nom": "Le Mat du Berger",
     "coups": "1. e4 e5 2. Dh5 Cc6 3. Fc4 Cf6?? 4. Dxf7#",
-    "fen_final": "r1bqkb1r/pppp1Qpp/2n2n2/4p3/2B1P3/8/PPPP1PPP/RNB1K1NR b KQkq - 0 4",
-    "fen_intermediaire": "r1bqkbnr/pppp1ppp/2n5/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 3",
     "conseil_defense": "Ne laissez pas la case f7 sans protection au début de la partie. Évitez de développer le cavalier en f6 si la Dame adverse peut viser f7.",
-    "coup_defense": "3... g6! interpose un pion sur la diagonale et force la Dame à se retirer, tout en préparant le développement du fou-roi.",
+    "coup_defense": "3... g6",
     "fleches_defense": [
       "g7g6"
     ],
@@ -13,16 +11,14 @@
       "h5f7",
       "c4f7"
     ],
-    "fen_defense": "r1bqkbnr/pppp1p1p/2n3p1/4p2Q/2B1P3/8/PPPP1PPP/RNB1K1NR w KQkq - 0 3",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Interposer un pion sur la diagonale pour forcer la Dame à se retirer."
   },
   {
     "nom": "Le Mat du Sot",
     "coups": "1. f4 e5 2. g4?? Dh4#",
-    "fen_final": "rnb1kbnr/pppp1ppp/8/4p3/5PPq/8/PPPPP2P/RNBQKBNR w KQkq - 1 3",
-    "fen_intermediaire": "rnbqkbnr/pppp1ppp/8/4p3/5P2/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1",
     "conseil_defense": "Ne fragilisez pas la diagonale e1-h4 par des poussées de pions inutiles devant le roi.",
-    "coup_defense": "Au lieu de 2. g4??, les Blancs devraient jouer 2. Cf3 ou 2. e4 ; la position après 2. Cf3 neutralise la menace.",
+    "coup_defense": "2. Cf3 ou 2. e4",
     "fleches_defense": [
       "g1f3",
       "e2e4"
@@ -30,16 +26,14 @@
     "fleches_menace": [
       "d8h4"
     ],
-    "fen_defense": "rnbqkbnr/pppp1ppp/8/4p3/5P2/8/PPPPP1PP/RNBQKBNR w KQkq - 0 1",
-    "defenseur": "Blancs"
+    "defenseur": "Blancs",
+    "explication_defense": "Développer le cavalier ou pousser le pion e pour neutraliser la menace."
   },
   {
     "nom": "Le Mat de Légal",
     "coups": "1. e4 e5 2. Cf3 d6 3. Fc4 Fg4 4. Cc3 g6? 5. Cxe5! Fxd1?? 6. Fxf7+ Re7 7. Cd5#",
-    "fen_final": "rn1q1bnr/ppp1kB1p/3p2p1/3NN3/4P3/8/PPPP1PPP/R1BbK2R w KQ - 0 7",
-    "fen_intermediaire": "rn1qkbnr/ppp2p1p/3p2p1/4N3/2B1P1b1/2N5/PPPP1PPP/R1BQK2R w KQkq - 0 4",
     "conseil_defense": "Ne prenez pas la Dame si cela permet une combinaison tactique. Vérifiez les menaces sur f7 et les fourchettes possibles.",
-    "coup_defense": "Après 5. Cxe5, répondez 5... dxe5 ou 5... Cxe5 pour éviter la combinaison gagnante.",
+    "coup_defense": "5... dxe5",
     "fleches_defense": [
       "d6e5",
       "c6e5"
@@ -49,16 +43,14 @@
       "c4f7",
       "c3d5"
     ],
-    "fen_defense": "rn1qkbnr/ppp2p1p/3p2p1/4N3/2B1P1b1/2N5/PPPP1PPP/R1BQK2R w KQkq - 0 4",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Reprendre le cavalier pour éviter la combinaison."
   },
   {
     "nom": "Le Piège de Blackburne Shilling",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cd4?! 4. Cxe5?! Dg5! 5. Cxf7? Dxg2 6. Tf1 Qxe4+ 7. Fe2 Cf3#",
-    "fen_final": "r1b1kbnr/pppp1Npp/8/8/4q3/5n2/PPPPBP1P/RNBQKR2 w Qkq - 2 8",
-    "fen_intermediaire": "r1bqkbnr/pppp1ppp/8/4p3/2BnP3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 3",
     "conseil_defense": "Ne tombez pas dans des captures apparemment gagnantes sans vérifier les menaces tactiques adverses.",
-    "coup_defense": "Au lieu de 4. Cxe5, préférez 4. O-O ou 4. Cxd4 pour éviter les menaces de la Dame noire.",
+    "coup_defense": "4. O-O ou 4. Cxd4",
     "fleches_defense": [
       "e1g1",
       "f3d4"
@@ -69,16 +61,14 @@
       "d4f3",
       "g2e4"
     ],
-    "fen_defense": "r1bqkbnr/pppp1ppp/8/4p3/2BnP3/5N2/PPPP1PPP/RNBQK2R w KQkq - 0 3",
-    "defenseur": "Blancs"
+    "defenseur": "Blancs",
+    "explication_defense": "Roquer ou échanger les cavaliers pour éviter les menaces."
   },
   {
     "nom": "Le Mat Étouffé (Défense Caro-Kann)",
     "coups": "1. e4 c6 2. d4 d5 3. Cc3 dxe4 4. Cxe4 Cd7 5. De2 Cgf6?? 6. Cd6#",
-    "fen_final": "r1bqkb1r/pp1npppp/2p2N2/8/3P4/8/PPP1QPPP/R1B1KBNR w KQkq - 0 6",
-    "fen_intermediaire": "r1bqkbnr/pp1npppp/2p5/8/3PN3/8/PPP1QPPP/R1B1KBNR w KQkq - 0 5",
     "conseil_defense": "Attention aux clouages et aux cases faibles autour du roi. Ne développez pas une pièce en laissant la colonne e ouverte.",
-    "coup_defense": "5... e6 est une réponse solide pour libérer le fou et protéger la case d5 et la colonne e.",
+    "coup_defense": "5... e6",
     "fleches_defense": [
       "e7e6"
     ],
@@ -86,31 +76,27 @@
       "e4d6",
       "e2e7"
     ],
-    "fen_defense": "r1bqkbnr/pp1n1ppp/2p1p3/8/3PN3/8/PPP1QPPP/R1B1KBNR w KQkq - 0 5",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Pousser le pion e pour libérer le fou et protéger la colonne."
   },
   {
     "nom": "Enfermer le Fou (L'Arche de Noé)",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 a6 4. Fa4 d6 5. d4 b5 6. Fb3 Cxd4 7. Cxd4 exd4 8. Dxd4?? c5 9. Dd5 Fe6 10. Dc6+ Fd7 11. Dd5 c4!",
-    "fen_final": "r2qkbnr/3b1ppp/p2p4/1p1Q4/2p1P3/1B6/PPP2PPP/RNB1K2R w KQkq - 0 11",
-    "fen_intermediaire": "r1bqkbnr/2p2ppp/p2p4/1p6/3pP3/1B6/PPP2PPP/RNBQK2R w KQkq - 0 7",
     "conseil_defense": "Ne laissez pas votre fou se retrouver sans cases de repli face à une poussée de pions adverse.",
-    "coup_defense": "Au lieu de 8. Dxd4??, jouez 8. c3 ou 8. Fd5 pour maintenir l'activité et éviter l'enfermement.",
+    "coup_defense": "8. c3 ou 8. Fd5",
     "fleches_defense": [
       "c2c3",
       "b3d5"
     ],
     "fleches_menace": [],
-    "fen_defense": "r1bqkbnr/2p2ppp/p2p4/1p6/3pP3/1B6/PPP2PPP/RNBQK2R w KQkq - 0 7",
-    "defenseur": "Blancs"
+    "defenseur": "Blancs",
+    "explication_defense": "Pousser le pion c ou déplacer le fou pour maintenir l'activité."
   },
   {
     "nom": "Piège de la Canne à Pêche",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 Cf6 4. O-O Cg4!? 5. h3 h5! 6. hxg4? hxg4 7. Ce1 Dh4",
-    "fen_final": "r1b1kb1r/pppp1pp1/2n5/1B2p3/4P1pq/8/PPPP1PP1/RNBQNRK1 w kq - 2 8",
-    "fen_intermediaire": "r1bqkb1r/pppp1pp1/2n5/1B2p2p/4P1n1/5N1P/PPPP1PP1/RNBQ1RK1 w kq - 0 5",
     "conseil_defense": "Ne capturez pas mécaniquement un cavalier en g4 si cela ouvre une colonne vers votre roi.",
-    "coup_defense": "Au lieu de 6. hxg4?, jouez 6. d4 ou 6. Te1 pour garder la structure et éviter l'ouverture de la colonne h.",
+    "coup_defense": "6. d4 ou 6. Te1",
     "fleches_defense": [
       "d2d4",
       "f1e1"
@@ -120,16 +106,14 @@
       "h8h1",
       "d8h4"
     ],
-    "fen_defense": "r1bqkb1r/pppp1pp1/2n5/1B2p2p/4P1n1/5N1P/PPPP1PP1/RNBQ1RK1 w kq - 0 5",
-    "defenseur": "Blancs"
+    "defenseur": "Blancs",
+    "explication_defense": "Pousser le pion d ou roquer la tour pour garder la structure."
   },
   {
     "nom": "Le piège du Gambit Englund",
     "coups": "1. d4 e5 2. dxe5 Cc6 3. Cf3 De7 4. Ff4 Db4+ 5. Fd2 Dxb2 6. Fc3 Fb4 7. Dd2 Fxc3 8. Dxc3 Dc1#",
-    "fen_final": "r1b1k1nr/pppp1ppp/2n5/4P3/8/2Q2N2/P1P1PPPP/RNq1KB1R w KQkq - 0 8",
-    "fen_intermediaire": "r1b1kbnr/pppp1ppp/2n5/4P3/8/5N2/PqPBPPPP/RN1QKB1R w KQkq - 0 5",
     "conseil_defense": "Protégez les pions faibles comme b2 et ne laissez pas la Dame adverse s'infiltrer sur la première rangée.",
-    "coup_defense": "6. Cc3 est une défense simple qui protège b2 tout en développant une pièce.",
+    "coup_defense": "Cc3",
     "fleches_defense": [
       "b1c3"
     ],
@@ -139,16 +123,14 @@
       "b2c1",
       "f1b4"
     ],
-    "fen_defense": "r1b1kbnr/pppp1ppp/2n5/4P3/8/2N2N2/PqPBPPPP/R2QKB1R w KQkq - 0 6",
-    "defenseur": "Blancs"
+    "defenseur": "Blancs",
+    "explication_defense": "Développer le cavalier pour protéger b2."
   },
   {
     "nom": "Piège de Sibérie (Gambit Smith-Morra)",
     "coups": "1. e4 c5 2. d4 cxd4 3. c3 dxc3 4. Cxc3 Cc6 5. Cf3 e6 6. Fc4 Dc7 7. O-O Cf6 8. De2 Cg4! 9. h3?? Cd4! 10. hxg4 Cxe2+",
-    "fen_final": "r1b1kb1r/ppqp1ppp/4p3/8/2B1P1P1/2N2N2/PP2nPP1/R1B2RK1 w kq - 0 10",
-    "fen_intermediaire": "r1b1kb1r/ppqp1ppp/2n1p3/8/2B1P1n1/2N2N2/PP2QPPP/R1B2RK1 w kq - 0 8",
     "conseil_defense": "Ne jouez pas h3 sans vérifier les menaces tactiques sur d4 et g2. La poussée peut être exploitée par des sauts de cavalier.",
-    "coup_defense": "9. Te1 ou 9. Td1 sont des alternatives sûres qui évitent la fourchette sur d4.",
+    "coup_defense": "9. Te1 ou 9. Td1",
     "fleches_defense": [
       "f1e1",
       "f1d1"
@@ -157,16 +139,14 @@
       "c6d4",
       "d4e2"
     ],
-    "fen_defense": "r1b1kb1r/ppqp1ppp/2n1p3/8/2B1P1n1/2N2N2/PP2QPPP/R1BR2K1 w kq - 0 9",
-    "defenseur": "Blancs"
+    "defenseur": "Blancs",
+    "explication_defense": "Déplacer la tour pour éviter la fourchette."
   },
   {
     "nom": "Piège de l'Éléphant",
     "coups": "1. d4 d5 2. c4 e6 3. Cc3 Cf6 4. Fg5 Cbd7 5. cxd5 exd5 6. Cxd5?? Cxd5! 7. Fxd8 Fb4+ 8. Dd2 Fxd2+ 9. Rxd2 Rxd8",
-    "fen_final": "r1bk3r/pppn1ppp/8/3n4/3P4/8/PP1KPPPP/R4BNR w - - 0 9",
-    "fen_intermediaire": "r1bqkb1r/pppn1ppp/5n2/3p2B1/3P4/2N5/PP2PPPP/R2QKBNR w KQkq - 0 5",
     "conseil_defense": "Ne capturez pas mécaniquement si cela permet une contre-attaque tactique. Vérifiez les échecs et les clouages.",
-    "coup_defense": "6. e3 ou 6. Cf3 sont des alternatives plus sûres que 6. Cxd5??.",
+    "coup_defense": "6. e3 ou 6. Cf3",
     "fleches_defense": [
       "e2e3",
       "g1f3"
@@ -175,16 +155,14 @@
       "f8b4",
       "b4d2"
     ],
-    "fen_defense": "r1bqkb1r/pppn1ppp/5n2/3p2B1/3P4/2N5/PP2PPPP/R2QKBNR w KQkq - 0 5",
-    "defenseur": "Blancs"
+    "defenseur": "Blancs",
+    "explication_defense": "Pousser le pion e ou développer le cavalier pour plus de sûreté."
   },
   {
     "nom": "Piège de Lasker",
     "coups": "1. d4 d5 2. c4 e5 3. dxe5 d4 4. e3 Fb4+ 5. Fd2 dxe3! 6. Fxb4 exf2+ 7. Re2 fxg1=C+! 8. Txg1 Fg4+",
-    "fen_final": "rn1qk1nr/ppp2ppp/8/4P3/1BP3b1/8/PP2K1PP/RN1Q1BR1 w kq - 0 8",
-    "fen_intermediaire": "rnbqk1nr/ppp2ppp/8/4P3/1bP5/4p3/PP1B1PPP/RN1QKBNR w KQkq - 0 5",
     "conseil_defense": "La sous-promotion peut être une ressource tactique surprenante. Vérifiez toujours les possibilités de promotion avec échec.",
-    "coup_defense": "6. fxe3 est une alternative qui maintient un équilibre matériel et évite la complication de la sous-promotion. 6. Da4 décloue la dame, provoque un échec tactique pouvant contre-attaquer de façon violente.",
+    "coup_defense": "6. fxe3 ou 6. Da4",
     "fleches_defense": [
       "f2e3",
       "d1a4"
@@ -200,16 +178,14 @@
       "g1e2",
       "c8g4"
     ],
-    "fen_defense": "rnbqk1nr/ppp2ppp/8/4P3/1bP5/4p3/PP1B1PPP/RN1QKBNR w KQkq - 0 6",
-    "defenseur": "Blancs"
+    "defenseur": "Blancs",
+    "explication_defense": "Reprendre le pion ou déplacer la dame pour déclouer."
   },
   {
     "nom": "Vis-à-vis Dame et Roi (Défense Petrov)",
     "coups": "1. e4 e5 2. Cf3 Cf6 3. Cxe5 Cxe4? 4. De2 Cf6?? 5. Cc6+ Fe7 6. Cxd8",
-    "fen_final": "rnbNk2r/ppppbppp/5n2/8/8/8/PPPPQPPP/RNB1KB1R w KQkq - 0 8",
-    "fen_intermediaire": "rnbqkb1r/pppp1ppp/8/4N3/4n3/8/PPPPQPPP/RNB1KB1R w KQkq - 0 4",
     "conseil_defense": "Évitez des retours de pièces qui ouvrent des découvertes sur la colonne e. Vérifiez les échecs et les fourchettes possibles.",
-    "coup_defense": "4... De7 ou 4... d5 sont des réponses plus prudentes pour neutraliser la menace sur e5.",
+    "coup_defense": "4... De7 ou 4... d5",
     "fleches_defense": [
       "d8e7",
       "d7d5"
@@ -218,16 +194,14 @@
       "e5c6",
       "e2e7"
     ],
-    "fen_defense": "rnbqkb1r/pppp1ppp/8/4N3/4n3/8/PPPPQPPP/RNB1KB1R w KQkq - 0 4",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Développer la dame ou pousser le pion d pour neutraliser."
   },
   {
     "nom": "Le Piège de Kieninger (Gambit de Budapest)",
     "coups": "1. d4 Cf6 2. c4 e5 3. dxe5 Cg4 4. Ff4 Cc6 5. Cf3 Fb4+ 6. Cbd2 De7 7. a3 Cgxe5 8. axb4?? Cd3#",
-    "fen_final": "r1b1k2r/ppppqppp/2n5/8/1PP2B2/3n1N2/1P1NPPPP/R2QKB1R w KQkq - 0 8",
-    "fen_intermediaire": "r1b1k2r/ppppqppp/2n5/4n3/1bP2B2/P4N2/1P1NPPPP/R2QKB1R w KQkq - 0 7",
     "conseil_defense": "Dans le Gambit de Budapest, méfiez-vous des mats étouffés sur la case d3 lorsque votre pion e2 est cloué par la Dame adverse.",
-    "coup_defense": "Au lieu de capturer le Fou par 8. axb4??, les Blancs doivent jouer 8. Cxe5 ou 8. e3 pour parer la menace de mat et consolider leur avantage.",
+    "coup_defense": "8. Cxe5 ou 8. e3",
     "fleches_defense": [
       "f3e5",
       "e2e3"
@@ -235,16 +209,14 @@
     "fleches_menace": [
       "e5d3"
     ],
-    "fen_defense": "r1b1k2r/ppppqppp/2n5/4n3/1bP2B2/P4N2/1P1NPPPP/R2QKB1R w KQkq - 0 7",
-    "defenseur": "Blancs"
+    "defenseur": "Blancs",
+    "explication_defense": "Échanger les cavaliers ou pousser le pion e pour parer la menace."
   },
   {
     "nom": "Piège de Monticelli",
     "coups": "1. d4 Cf6 2. c4 e6 3. Cf3 b6 4. g3 Fb7 5. Fg2 Fb4+ 6. Fd2 Fxd2+ 7. Dxd2 O-O 8. Cc3 Ce4 9. Dc2 Cxc3? 10. Cg5!",
-    "fen_final": "rn1q1rk1/pbpp1ppp/1p2p3/6N1/2PP4/2n3P1/PPQ1PPBP/R3K2R b KQ - 1 10",
-    "fen_intermediaire": "rn1q1rk1/pbpp1ppp/1p2p3/8/2PPn3/2N2NP1/PPQ1PPBP/R3K2R w KQ - 0 9",
     "conseil_defense": "Ne capturez pas un cavalier central si cela permet une attaque sur h7 ou une intrusion sur la septième rangée.",
-    "coup_defense": "9... f5 est une alternative qui renforce le cavalier central et évite la perte tactique.",
+    "coup_defense": "9... f5",
     "fleches_defense": [
       "f7f5"
     ],
@@ -253,32 +225,28 @@
       "c2h7",
       "g2b7"
     ],
-    "fen_defense": "rn1q1rk1/pbpp2pp/1p2p3/5p2/2PPn3/2N2NP1/PPQ1PPBP/R3K2R w KQ - 0 9",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Pousser le pion f pour renforcer le cavalier."
   },
   {
     "nom": "Fourchette mortelle en c7",
     "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 e6 5. Cb5 d6 6. Ff4! e5 7. Fe3 a6",
-    "fen_final": "r1bqkbnr/1p3ppp/p1np4/1N2p3/4P3/4B3/PPP2PPP/RN1QKB1R w KQkq - 0 8",
-    "fen_intermediaire": "r1bqkbnr/pp1p1ppp/2n1p3/1N6/4P3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5",
     "conseil_defense": "La case c7 peut devenir une cible pour une fourchette. Évitez de laisser des trous dans la structure centrale.",
-    "coup_defense": "5... Cf6 est préférable pour contester le centre avant d'étendre la structure par d6.",
+    "coup_defense": "5... Cf6",
     "fleches_defense": [
       "g8f6"
     ],
     "fleches_menace": [
       "b5d6"
     ],
-    "fen_defense": "r1bqkb1r/pp1p1ppp/2n1pn2/1N6/4P3/8/PPP2PPP/RNBQKB1R w KQkq - 0 5",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Développer le cavalier pour contester le centre."
   },
   {
     "nom": "L'Attaque Foie de Veau (Fried Liver)",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cxd5?! 6. Cxf7! Kxf7 7. Df3+ Re6",
-    "fen_final": "r1bq1b1r/ppp3pp/2n1k3/3np3/2B5/5Q2/PPPP1PPP/RNB1K2R w KQ - 0 7",
-    "fen_intermediaire": "r1bqkb1r/ppp2ppp/2n2n2/3Pp1N1/2B5/8/PPPP1PPP/RNBQK2R w KQkq - 0 5",
     "conseil_defense": "Ne reprenez pas le pion en d5 avec le Cavalier, car cela permet le redoutable sacrifice en f7.",
-    "coup_defense": "Les Noirs doivent jouer 5... Ca5! pour attaquer le Fou en c4, ou encore 5... b5!.",
+    "coup_defense": "5... Ca5 ou 5... b5",
     "fleches_defense": [
       "c6a5",
       "b7b5"
@@ -289,16 +257,14 @@
       "c4d5",
       "d1f3"
     ],
-    "fen_defense": "r1bqkb1r/ppp2ppp/2n2n2/3Pp1N1/2B5/8/PPPP1PPP/RNBQK2R w KQkq - 0 5",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Développer le cavalier ou pousser le pion b pour attaquer."
   },
   {
     "nom": "L'enfermement de la Tour (Gambit Dame Accepté)",
     "coups": "1. d4 d5 2. c4 dxc4 3. e3 b5 4. a4 c6 5. axb5 cxb5 6. Df3",
-    "fen_final": "rnbqkbnr/p3pppp/8/1p6/2pP4/4PQ2/1P3PPP/RNB1KBNR w KQkq - 0 6",
-    "fen_intermediaire": "rnbqkbnr/ppp1pppp/8/8/2pP4/4P3/PP3PPP/RNBQKBNR w KQkq - 0 3",
     "conseil_defense": "Ne cherchez pas à conserver à tout prix le pion c4 dans le Gambit Dame en le défendant avec b5.",
-    "coup_defense": "Les Noirs doivent plutôt jouer 3... e5! pour contre-attaquer au centre ou développer leurs pièces.",
+    "coup_defense": "3... e5",
     "fleches_defense": [
       "e7e5",
       "g8f6"
@@ -308,16 +274,14 @@
       "f3b7",
       "d1f3"
     ],
-    "fen_defense": "rnbqkbnr/ppp1pppp/8/8/2pP4/4P3/PP3PPP/RNBQKBNR w KQkq - 0 3",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Pousser le pion e pour contre-attaquer."
   },
   {
     "nom": "La découverte mortelle (Défense Française)",
     "coups": "1. e4 e6 2. d4 d5 3. e5 c5 4. c3 Cc6 5. Cf3 Db6 6. Fd3 cxd4 7. cxd4 Cxd4?? 8. Cxd4 Dxd4?? 9. Fb5+",
-    "fen_final": "r1b1kbnr/pp3ppp/4p3/1B1pP3/3q4/8/PP3PPP/RNBQK2R w KQkq - 0 9",
-    "fen_intermediaire": "r1b1kbnr/pp3ppp/1qn1p3/3pP3/3P4/3B1N2/PP3PPP/RNBQK2R w KQkq - 0 7",
     "conseil_defense": "Ne soyez pas gourmand et vérifiez toujours si une capture ne s'expose pas à un échec à la découverte.",
-    "coup_defense": "Les Noirs doivent d'abord jouer 7... Fd7! pour parer toute découverte avant de prendre en d4.",
+    "coup_defense": "7... Fd7",
     "fleches_defense": [
       "c8d7"
     ],
@@ -326,16 +290,14 @@
       "b5e8",
       "d1d4"
     ],
-    "fen_defense": "r3kbnr/pp1b1ppp/1qn1p3/3pP3/3P4/3B1N2/PP3PPP/RNBQK2R w KQkq - 0 7",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Développer le fou pour parer la découverte."
   },
   {
     "nom": "Le Mat Éclair (Défense Hollandaise)",
     "coups": "1. d4 f5 2. Fg5 h6 3. Fh4 g5 4. e3 gxh4?? 5. Dh5#",
-    "fen_final": "rnbqkbnr/ppppp3/7p/5p1Q/3P3p/4P3/PPP2PPP/RN2KBNR w KQkq - 0 5",
-    "fen_intermediaire": "rnbqkbnr/ppppp1pp/8/5pB1/3P4/8/PPP1PPPP/RN1QKBNR w KQkq - 0 2",
     "conseil_defense": "Ne poussez pas vos pions f, g ou h dans l'ouverture sans une excellente raison défensive, sous peine d'ouvrir des courants d'air mortels pour votre Roi.",
-    "coup_defense": "Les Noirs doivent plutôt développer leurs pièces, par exemple 2... Cf6!.",
+    "coup_defense": "2... Cf6",
     "fleches_defense": [
       "g8f6"
     ],
@@ -343,16 +305,14 @@
       "d1h5",
       "h5e8"
     ],
-    "fen_defense": "rnbqkb1r/ppppp1pp/5n2/5pB1/3P4/8/PPP1PPPP/RN1QKBNR w KQkq - 0 2",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Développer le cavalier pour développer les pièces."
   },
   {
     "nom": "Le Piège de Réti (Défense Caro-Kann)",
     "coups": "1. e4 c6 2. d4 d5 3. Cc3 dxe4 4. Cxe4 Cf6 5. Dd3 e5 6. dxe5 Da5+ 7. Fd2 Dxe5 8. 0-0-0 Cxe4?? 9. Dd8+!! Kxd8 10. Fg5+ Re8 11. Td8#",
-    "fen_final": "rnbRkb1r/pp3ppp/2p5/4q1B1/4n3/8/PPP2PPP/2K2BNR w kq - 0 10",
-    "fen_intermediaire": "rnb1kb1r/pp3ppp/2p2n2/4q3/4N3/3Q4/PPPB1PPP/2KR1BNR w kq - 0 8",
     "conseil_defense": "Face à un double échec, l'interposition ou la prise d'une pièce est impossible. Le Roi est toujours forcé de bouger.",
-    "coup_defense": "Les Noirs doivent jouer 8... Fe7! pour préparer leur propre roque au lieu de prendre en e4.",
+    "coup_defense": "8... Fe7",
     "fleches_defense": [
       "f8e7"
     ],
@@ -361,7 +321,7 @@
       "d2g5",
       "d1d8"
     ],
-    "fen_defense": "rn2kb1r/pp3ppp/2p1bn2/4q3/4N3/3Q4/PPPB1PPP/2KR1BNR w kq - 0 8",
-    "defenseur": "Noirs"
+    "defenseur": "Noirs",
+    "explication_defense": "Développer le fou pour préparer le roque."
   }
 ]
