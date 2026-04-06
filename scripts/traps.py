@@ -78,10 +78,18 @@ def generate_move_comment(move_raw, move_san, board):
     """Génère un commentaire pédagogique simple pour un coup donné."""
     raw = move_raw.strip()
     raw_clean = re.sub(r'[?!+#]+', '', raw)
-
+    
     if "??" in raw:
-        return "Erreur grave de l'adversaire, le piège est déclenché."
-    if "!" in raw and "!!" not in raw:
+        return "Erreur grave, c'est une gaffe."
+    if "?!" in raw:
+        return "Coup douteux. Les réponses existent."
+    if "!?" in raw:
+        return "Coup intéressant mais potentiellement risqué, soyez vigilant."
+    if "!!" in raw:
+        return "Coup exceptionnel, une trouvaille brillante."
+    if "?" in raw:
+        return "Coup douteux ou erreur, soyez vigilant."
+    if "!" in raw:
         return "Coup fort, bonne découverte tactique."
     if "#" in raw:
         return "Mat direct, la combinaison fonctionne."
