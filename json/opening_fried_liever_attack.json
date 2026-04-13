@@ -1,0 +1,73 @@
+[
+  {
+    "nom": "fried liever attack",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cxd5?! 6. Cxf7! Rxf7 7. Df3+ Re6",
+    "explications": {
+      "5": "Manque de vigilance de la part des Noirs, qui permettent à leur adversaire de gagner du matériel et d'obtenir une position avantageuse.",
+      "6": "Un coup audacieux qui sacrifie un cavalier pour ouvrir la position du roi noir et créer des menaces immédiates.",
+      "7": "Le roi noir est forcé de se déplacer, ce qui le rend vulnérable aux attaques ultérieures. Les Blancs ont une forte initiative et un avantage positionnel"
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Défense incorrecte de l'attaque par la dame",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 De7?? 5. Cxf7!",
+    "explications": {
+      "4": "Une défense incorrecte qui ne change rien à la capture et le gain matériel."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante prise par le fou",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cd4 6. d6?! Dxd6 7. Fxf7+ Re7 8. 0-0?! h6",
+    "explications": {
+      "5": "Une tentative de contre-attaque de la part des Noirs, qui cherchent à exploiter la position avancée du cavalier blanc en g5.",
+      "6": "Une réponse défensive qui permet aux Noirs de sauver leur dame tout en maintenant une position solide.",
+      "8": "Les blancs chassent le cavalier en g5, pour forcer de laisser le fou en f7."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante de retard d'attaque par les blancs, erreur de reprise du cavalier",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cd4 6. c3 b5! 7. cxd4?! bxc4 8. dxe5 Cxd5?? 9. Dh5!",
+    "explications": {
+      "5": "Une tentative de contre-attaque de la part des Noirs, qui cherchent à exploiter la position avancée du cavalier blanc en g5.",
+      "6": "Les noirs jouent la surprise en déplaçant leur pion de b5, ce qui crée des tensions dans la position blanche.",
+      "8": "Cette erreur permet la dame de menacer mat en 1."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante de retard d'attaque par les blancs, erreur de reprise du cavalier",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cd4 6. c3 b5! 7. cxd4?! bxc4 8. dxe5 Dxe5! 9. exf5 Dxg5 10. 0-0 Fb7 11. g3 0-0-0 12. fxg7 Fxg7 13. Cc3 Df5 14. a3 Ff3 15. De1 Dh3!",
+    "explications": {
+      "5": "Une tentative de contre-attaque de la part des Noirs, qui cherchent à exploiter la position avancée du cavalier blanc en g5.",
+      "6": "Les noirs jouent la surprise en déplaçant leur pion de b5, ce qui crée des tensions dans la position blanche.",
+      "8": "Cette erreur permet la dame de menacer mat en 1. Tout au long des coups qui suivent, garder en tête qu'il y a aussi .. Dd5."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante de retard d'attaque par les blancs, tempo par echec de la tour",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cd4 6. c3 b5! 7. cxd4?! bxc4 8. dxe5 Dxe5! 9. exf5 Dxg5 10. 0-0 Fb7 11. Te1+ Rd7 12. g3 Dd5! 13. f3?? Fc5+! 14. Rg2 Tae8 15. a3 Txe1!! 16. Dxe1?? Dxf3+ 17. Rh3 Dh5#",
+    "explications": {
+      "5": "Une tentative de contre-attaque de la part des Noirs, qui cherchent à exploiter la position avancée du cavalier blanc en g5.",
+      "6": "Les noirs jouent la surprise en déplaçant leur pion de b5, ce qui crée des tensions dans la position blanche.",
+      "8": "Cette erreur permet la dame de menacer mat en 1.",
+      "11": "Les blancs jouent un tempo en mettant en échec la tour, Le roi se retrouve au centre sans grande difficulté.",
+      "14": "Les blancs ne peuvent pas capturer sous peine de limiter leur défense."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Punition de l'attaque suite à la capture de la tour",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cd4 6. d6?! Dxd6 7. Cxf7! Dc6!! 8. Cxh8?? Dxg2! 9. Tf1 De4+ 10. Fe2 Cf3#",
+    "explications": {
+      "5": "Une tentative de contre-attaque de la part des Noirs, qui cherchent à exploiter la position avancée du cavalier blanc en g5.",
+      "6": "Une réponse défensive qui permet aux Noirs de sauver leur dame tout en maintenant une position solide.",
+      "7": "Sacrifice de la tour pour lancer une contre-attaque décisive de la part de la dame noire.",
+      "8": "Les blancs pensent remporter la partie avec un gain matériel mais le mat devient inévitable."
+    },
+    "Orientation": "Noirs"
+  }
+]
