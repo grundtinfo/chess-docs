@@ -217,7 +217,8 @@ def build_pdf(output_path, source_name, data):
     bold_style = ParagraphStyle('CustomBold', parent=normal_style, fontName='Helvetica-Bold')
 
     elements = []
-    elements.append(Paragraph(f"Guide d'Ouvertures : {source_name}", title_style))
+    title_text = data[0].get('nom', source_name) if data else source_name
+    elements.append(Paragraph(f"Guide d'Ouvertures : {title_text}", title_style))
     elements.append(Spacer(1, 10))
     elements.append(Paragraph("Ce document présente chaque position d'ouverture, les coups clés et des commentaires pédagogiques pour comprendre la séquence.", intro_style))
     elements.append(Paragraph("Toutes les données sont extraites du fichier JSON correspondant.", intro_style))
