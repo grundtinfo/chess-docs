@@ -243,7 +243,7 @@
   },
   {
     "nom": "L'Attaque Foie de Veau (Fried Liver)",
-    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cxd5?! 6. Cxf7! Kxf7 7. Df3+ Re6",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cxd5?! 6. Cxf7! Rxf7 7. Df3+ Re6",
     "conseil_defense": "Ne reprenez pas le pion en d5 avec le Cavalier, car cela permet le redoutable sacrifice en f7.",
     "coup_defense": "5... Ca5 ou 5... b5",
     "fleches_defense": [
