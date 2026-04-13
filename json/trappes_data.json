@@ -35,8 +35,7 @@
     "conseil_defense": "Ne prenez pas la Dame si cela permet une combinaison tactique. Vérifiez les menaces sur f7 et les fourchettes possibles.",
     "coup_defense": "5... dxe5",
     "fleches_defense": [
-      "d6e5",
-      "c6e5"
+      "d6e5"
     ],
     "fleches_menace": [
       "f3e5",
@@ -323,5 +322,22 @@
     ],
     "defenseur": "Noirs",
     "explication_defense": "Développer le fou pour préparer le roque."
+  },
+  {
+    "nom": "Piège de Vukovic (Ouverture Ponziani, Contre-attaque Jaenisch)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. c3 Cf6 4. d4 Cxe4 5. d5 Ce7 6. Cxe5 d6 7. Fb5+ c6 8. dxc6 Db6 9. cxb7+ Rd8 10. Cxf7+ Rc7 11. bxa8=C+",
+    "conseil_defense": "Ne vous laissez pas griser par une contre-attaque prématurée. Face à une menace de découverte, la priorité est la sécurité du Roi.",
+    "coup_defense": "8... bxc6",
+    "fleches_defense": [
+      "b7c6"
+    ],
+    "fleches_menace": [
+      "c6b7",
+      "e5f7",
+      "b7a8",
+      "b5c6"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Reprendre le pion avec bxc6 neutralise la menace de découverte et bloque l'action du Fou b5. Bien que les Blancs gardent un léger avantage, la position noire reste jouable contrairement à la variante avec Db6."
   }
 ]

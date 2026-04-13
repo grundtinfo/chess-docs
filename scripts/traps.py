@@ -1,6 +1,7 @@
 import math
 import chess
 import chess.svg
+from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Flowable, KeepTogether, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
@@ -341,7 +342,7 @@ with open('json/trappes_data.json', 'r', encoding='utf-8') as f:
 def generer_pdf():
     # Définition des marges à 36 points (0.5 pouce) pour plus d'espace
     doc = SimpleDocTemplate(
-        "guide_20_pieges_et_defenses.pdf", 
+        "guide_pieges_et_defenses.pdf", 
         pagesize=letter,
         leftMargin=36,
         rightMargin=36,
@@ -364,10 +365,12 @@ def generer_pdf():
     elements = []
 
     # 1. Introduction
-    elements.append(Paragraph("Guide des 20 Pièges d'Ouverture", title_style))
+    elements.append(Paragraph("Guide des Pièges d'Ouverture", title_style))
     elements.append(Spacer(1, 10))
-    elements.append(Paragraph("<b>Niveau :</b> ~650 Elo. Ce guide met l'accent sur la détection des menaces tactiques, la compréhension des plans et l'apprentissage des réponses solides.", intro_style))
+    elements.append(Paragraph("Ce guide met l'accent sur la détection des menaces tactiques, la compréhension des plans et l'apprentissage des réponses solides.", intro_style))
     elements.append(Paragraph("L'objectif est de renforcer la vigilance sur les cases faibles (f7/h7), la sécurité du roi, et la gestion des pièges d'ouverture.", intro_style))
+    elements.append(Paragraph("Ce document sera mis à jour régulièrement en fonction des ouvertures portées à ma connaissance et des pièges que j'aurai rencontré lors de mes parties.", intro_style))
+    elements.append(Paragraph("Dernière mise à jour le " + datetime.now().strftime("%d/%m/%Y à %H:%M"), intro_style))
     elements.append(Spacer(1, 15))
 
     # 2. Légende globale
@@ -403,22 +406,27 @@ def generer_pdf():
         if idx > 0:
             elements.append(PageBreak())
         
-        elements.append(Paragraph(f"{idx+1}. {piege['nom']}", trap_heading_style))
+        # --- CRÉATION D'UN BLOC REGROUPÉ ---
+        bloc_introduction = []
+        
+        # Titre du piège
+        bloc_introduction.append(Paragraph(f"{idx+1}. {piege['nom']}", trap_heading_style))
 
         # Générer les FEN automatiquement
         fen_final, fen_intermediaire, fen_defense = generate_fen_positions(piege)
         if not fen_final:
-            continue  # Skip si erreur
+            continue 
 
         # Analyse & Métadonnées
         analyse = analyze_position(fen_final)
         type_piege = classify_trap(piege)
         difficulte = estimate_difficulty(piege)
+        
+        meta_text = f"<b>Analyse :</b> {analyse} | <b>Type :</b> {type_piege} | <b>Difficulté :</b> {difficulte}"
+        bloc_introduction.append(Paragraph(meta_text, normal_style))
+        bloc_introduction.append(Spacer(1, 10)) # Espace réduit entre intro et tableau
 
-        elements.append(Paragraph(f"<b>Analyse :</b> {analyse} | <b>Type :</b> {type_piege} | <b>Difficulté :</b> {difficulte}", normal_style))
-        elements.append(Spacer(1, 10))
-
-        # Table des coups modernisée - générer dynamiquement à partir du champ "coups"
+        # Génération des données du tableau
         rows = generate_moves(piege)
         orientation = get_trap_orientation(piege)
         
@@ -441,8 +449,9 @@ def generer_pdf():
                 Paragraph(row.get("black_comment", ""), normal_style)
             ])
 
-        table = Table(table_data, colWidths=[100, 55, 145, 55, 145], repeatRows=1)
-        table.setStyle(TableStyle([
+        # Création du tableau
+        table_coups = Table(table_data, colWidths=[100, 55, 145, 55, 145], repeatRows=1)
+        table_coups.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY),
             ('TEXTCOLOR', (0,0), (-1,0), colors.white),
             ('VALIGN', (0,0), (-1,-1), 'MIDDLE'),
@@ -453,12 +462,13 @@ def generer_pdf():
             ('TOPPADDING', (0,0), (-1,-1), 6),
             ('BOTTOMPADDING', (0,0), (-1,-1), 6)
         ]))
-        
-        # Astuce ReportLab pour que les en-têtes noirs du tableau soient blancs sur fond bleu
-        for col in [0, 2]:
-            table.setStyle(TableStyle([('TEXTCOLOR', (col,0), (col,0), colors.white)]))
 
-        elements.append(KeepTogether([table, Spacer(1, 15)]))
+        bloc_introduction.append(table_coups)
+        
+        # On ajoute tout ce bloc d'un coup. ReportLab essaiera de garder 
+        # le titre, l'analyse et le tableau sur la même page.
+        elements.append(KeepTogether(bloc_introduction))
+        elements.append(Spacer(1, 15))
 
         # Diagrammes (Configuration conservée mais design du tableau rafraîchi)
         orientation = get_trap_orientation(piege)
@@ -497,7 +507,7 @@ def generer_pdf():
     elements.append(Spacer(1, 5))
     elements.append(Paragraph("Entraînez-vous à repérer ces schémas dès l'ouverture et analysez les options de défense avant votre prochain coup.", normal_style))
     elements.append(Paragraph("À 650 Elo, l'objectif est d'automatiser l'alerte : si une pièce est menacée ou si un pion faible apparaît, prenez un moment pour vérifier la position complète.", normal_style))
-    elements.append(Paragraph("Révisez ces 20 pièges régulièrement, et vous transformerez ces erreurs adverses en victoire facilement.", normal_style))
+    elements.append(Paragraph("Révisez ces pièges régulièrement, et vous transformerez ces erreurs adverses en victoire facilement.", normal_style))
 
     # Génération du document avec appel du pied de page
     doc.build(elements, onFirstPage=ajouter_pied_page, onLaterPages=ajouter_pied_page)
