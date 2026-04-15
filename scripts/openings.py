@@ -264,16 +264,17 @@ def build_pdf(output_path, source_name, data):
         ]]
         for row in rows:
             fen_row = row.get('black_fen') or row.get('white_fen')
-            diag = ChessboardFlowable(fen_row, size=80, orientation=orientation) if fen_row else ""
-            comment_parts = []
-            if row.get('white_comment'):
-                comment_parts.append(f"<b>Blanc :</b> {row['white_comment']}")
-            if row.get('black_comment'):
-                comment_parts.append(f"<b>Noir :</b> {row['black_comment']}")
+            diag = ChessboardFlowable(fen_row, size=120, orientation=orientation) if fen_row else ""
             explication = explications.get(str(row.get('move_number', '')))
             if explication:
-                comment_parts.append(f"<b>{explication}</b>")
-            comment_text = '<br/>'.join(comment_parts) if comment_parts else ''
+                comment_text = f"<b>{explication}</b>"
+            else:
+                comment_parts = []
+                if row.get('white_comment'):
+                    comment_parts.append(f"<b>Blanc :</b> {row['white_comment']}")
+                if row.get('black_comment'):
+                    comment_parts.append(f"<b>Noir :</b> {row['black_comment']}")
+                comment_text = '<br/>'.join(comment_parts) if comment_parts else ''
             table_data.append([
                 diag,
                 Paragraph(str(row.get('move_number', '')), bold_style),
@@ -281,7 +282,7 @@ def build_pdf(output_path, source_name, data):
                 Paragraph(row.get('black', ''), bold_style),
                 Paragraph(comment_text, normal_style)
             ])
-        table = Table(table_data, colWidths=[90, 30, 100, 100, 220], repeatRows=1)
+        table = Table(table_data, colWidths=[130, 30, 75, 75, 230], repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY),
             ('TEXTCOLOR', (0,0), (-1,0), colors.white),
