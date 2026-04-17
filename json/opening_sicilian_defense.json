@@ -84,8 +84,8 @@
     "coups": "1. e4 c5 2. d4 cxd4 3. c3 d5 4. exd5 Cf6 5. cxd4 Cxd5",
     "explications": {
       "3": "Le coup 3. c3 est une réponse agressive des Blancs qui vise à proposer un gambit en sacrifiant un pion pour obtenir une meilleure activité de leurs pièces et un contrôle accru du centre de l'échiquier. Ici, les Noirs évitent de prendre le pion en c3 pour ne pas voire une reprise par Cxc3 ce qui ouvre au maximum les possibilités des blancs.",
-      "4": "le coup 4.. Cf6 évite d'exposer la dame noire après un coup 4.. Dxd5.",
-      "5": "a partir de là, les noirs doivent viser leur développement"
+      "4": "Le coup 4.. Cf6 évite d'exposer la dame noire après un coup 4.. Dxd5.",
+      "5": "A partir de là, les noirs doivent viser leur développement"
     },
     "Orientation": "Noirs"
   }
