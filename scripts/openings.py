@@ -78,11 +78,11 @@ def parse_moves(coups_str):
     moves = []
     for num, white, black in matches:
         white_raw = white.strip()
-        white_san = convert_french_to_english_notation(re.sub(r'[?!+#x]+', '', white_raw))
+        white_san = convert_french_to_english_notation(re.sub(r'[?!+#]+', '', white_raw))
         moves.append({"raw": white_raw, "san": white_san, "move_number": int(num), "color": "white"})
         if black:
             black_raw = black.strip()
-            black_san = convert_french_to_english_notation(re.sub(r'[?!+#x]+', '', black_raw))
+            black_san = convert_french_to_english_notation(re.sub(r'[?!+#]+', '', black_raw))
             moves.append({"raw": black_raw, "san": black_san, "move_number": int(num), "color": "black"})
     return moves
 
@@ -141,8 +141,14 @@ def generate_moves(item):
     for move in moves:
         move_raw = move.get("raw", "")
         move_san = move.get("san", "")
+        arrow_notation = None
+        arrow_color = None
         try:
-            board.push(board.parse_san(move_san))
+            move_obj = board.parse_san(move_san)
+            is_capture = board.is_capture(move_obj)
+            arrow_notation = chess.square_name(move_obj.from_square) + chess.square_name(move_obj.to_square)
+            arrow_color = "#FF0000" if is_capture else "#00AA00"
+            board.push(move_obj)
             fen_after = board.fen()
         except Exception:
             fen_after = board.fen()
@@ -153,9 +159,13 @@ def generate_moves(item):
                 "white": move_raw,
                 "white_comment": commentaire,
                 "white_fen": fen_after,
+                "white_arrow": arrow_notation,
+                "white_arrow_color": arrow_color,
                 "black": "",
                 "black_comment": "",
-                "black_fen": None
+                "black_fen": None,
+                "black_arrow": None,
+                "black_arrow_color": None
             }
             rows.append(current_row)
         else:
@@ -165,15 +175,21 @@ def generate_moves(item):
                     "white": "",
                     "white_comment": "",
                     "white_fen": None,
+                    "white_arrow": None,
+                    "white_arrow_color": None,
                     "black": move_raw,
                     "black_comment": commentaire,
-                    "black_fen": fen_after
+                    "black_fen": fen_after,
+                    "black_arrow": arrow_notation,
+                    "black_arrow_color": arrow_color
                 }
                 rows.append(current_row)
             else:
                 current_row["black"] = move_raw
                 current_row["black_comment"] = commentaire
                 current_row["black_fen"] = fen_after
+                current_row["black_arrow"] = arrow_notation
+                current_row["black_arrow_color"] = arrow_color
     return rows
 
 
@@ -264,7 +280,18 @@ def build_pdf(output_path, source_name, data):
         ]]
         for row in rows:
             fen_row = row.get('black_fen') or row.get('white_fen')
-            diag = ChessboardFlowable(fen_row, size=120, orientation=orientation) if fen_row else ""
+            fleches_defense = []
+            fleches_menace = []
+            for arrow_notation, arrow_color in [
+                (row.get('white_arrow'), row.get('white_arrow_color')),
+                (row.get('black_arrow'), row.get('black_arrow_color'))
+            ]:
+                if arrow_notation:
+                    if arrow_color == "#FF0000":
+                        fleches_menace.append(arrow_notation)
+                    else:
+                        fleches_defense.append(arrow_notation)
+            diag = ChessboardFlowable(fen_row, size=110, fleches_defense=fleches_defense, fleches_menace=fleches_menace, orientation=orientation) if fen_row else ""
             explication = explications.get(str(row.get('move_number', '')))
             if explication:
                 comment_text = f"<b>{explication}</b>"

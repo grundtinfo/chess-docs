@@ -1,0 +1,92 @@
+[
+  {
+    "nom": "Variante Najdorf",
+    "coups": "1. e4 c5 2. Cf3 d6 3. d4 cxd4 4. Cxd4 Cf6 5. Cc3 a6 7. Fe3 e5 8. Cb3 Fe6 9. f3 Fe7 10. Dd2 O-O 11. O-O-O Cd7",
+    "explications": {
+      "1": "Cette ouverture est l'une des plus populaires et agressives pour les Noirs. En jouant 1...c5, les Noirs cherchent à contrôler le centre de l'échiquier tout en préparant une contre-attaque rapide. Cette ouverture mène souvent à des positions dynamiques et complexes, offrant de nombreuses possibilités pour les deux camps.",
+      "5": "Le coup 5...a6 est une caractéristique de la variante Najdorf de la Sicilienne. Il vise à empêcher les pièces blanches de s'installer sur les cases b5 et c5. Nénamoins, ici, nous resterons sur la variante classique.",
+      "7": "A partir d'ici, l'idée des blancs sera de roquer sur l'aile dame, la variant la plus dangereuse pour les noirs. Ici, les noirs privilégient l'activité.",
+      "11": "La bataille est ouverte et sera rapide. Le blancs vont pousser les pions sur l'aile roi pendant que les noirs feront de même sur l'aile dame. Les blancs ont une meilleure structure de pions, mais les noirs ont plus d'espace et de pièces actives, dont la tour de l'aile dame."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Autre variante Najdorf",
+    "coups": "1. e4 c5 2. Cf3 d6 3. d4 cxd4 4. Cxd4 Cf6 5. Cc3 a6 6. h3 b5",
+    "explications": {
+      "5": "Le coup 5...a6 est une caractéristique de la variante Najdorf de la Sicilienne. Il vise à empêcher les pièces blanches de s'installer sur les cases b5 et c5.",
+      "6": "Le coup 6...b5 est une continuation agressive qui vise à gagner de l'espace sur l'aile dame et protéger la dame lors d'une sortie sur c7"
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Ouverture Sicilienne piège de la dame",
+    "coups": "1. e4 c5 2. Cf3 d6 3. d4 cxd4 4. Cxd4 Cf6 5. Cc3 Cc6 6. Fe3 Cg4 7. Fg5 Db6 8. Cxc6?? Dxf2#",
+    "explications": {
+      "1": "Cette ouverture est l'une des plus populaires et agressives pour les Noirs. En jouant 1...c5, les Noirs cherchent à contrôler le centre de l'échiquier tout en préparant une contre-attaque rapide. Cette ouverture mène souvent à des positions dynamiques et complexes, offrant de nombreuses possibilités pour les deux camps.",
+      "7": "Le coup 7...Db6 est un piège classique dans la Sicilienne. Il attaque le cavalier en c3 et menace de capturer le pion en b2, ce qui peut entraîner une perte de matériel pour les Blancs s'ils ne font pas attention. Les Blancs doivent être prudents et trouver une réponse adéquate pour éviter de tomber dans ce piège."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante du dragon",
+    "coups": "1. e4 c5 2. Cf3 d6 3. d4 cxd4 4. Cxd4 Cf6 5. Cc3 g6 6. Fe3 Fg7 7. f3 Cc6 8. Dd2 O-O 9. O-O-O",
+    "explications": {
+      "6": "Une barricade de pion est constituée sur la digonnale f8a3, cd faisant, il convient de sortir le fou sur une meilleure diagonale, d'où le coup 6...Fg7. Cette variante est appelée la variante du dragon de la Sicilienne, en raison de la structure de pions qui ressemble à une constellation du dragon.",
+      "9": "Cette variante est très populaire parmi les joueurs agressifs, car elle offre de nombreuses possibilités d'attaque pour les Noirs. Cependant, elle peut également être risquée, car les Blancs peuvent lancer une attaque rapide sur l'aile roi des Noirs. Batterie dame fou, poussée du pion h."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante du dragon accélérée",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 g6 5. Cc3 Fg7 6. Fe3 Cf6 7. f3 O-O 8. Dd2 d5! 9. Cxc6 bxc6 10. exd5 Cxd5 11. Cxd5 cxd5 12. O-O-O?! Tb8 13. b3 Dd6! 14. Rb1 Ff5 15. g4 Tb3!! 16. axb3 Da3 17. Fd4 Dxb3!+ 18. Rc1 Da3+ 19. Rb1 T81+ 20. Fb2 Dxb2#",
+    "explications": {
+      "4": "Dans cette variante, les Noirs choisissent de jouer 4...g6 au lieu de 4...Cf6. Cela permet aux Noirs de développer leur fou sur la grande diagonale h8-a1 plus rapidement, ce qui peut être avantageux pour contrôler le centre et préparer une attaque sur l'aile dame. Cependant, cela peut également laisser les Noirs un peu plus vulnérables car ils n'ont pas encore développé leur cavalier en f6 pour défendre contre les menaces potentielles.",
+      "9": "Les blancs démarrent une série d'échanges qui vont conduire à une simplification de la position. Cependant, les noirs ont une meilleure posisition grâce à leur colonne b ouverte et à leur contrôle du centre.",
+      "13": "Activation de la dame noire qui menace de faire mat en quelques coups. Notemment, la position Da3 est très dangereuse pour les blancs, condamnés à défendre.",
+      "15": "Le coup 15...Tb3!! est un sacrifice de tour audacieux qui vise à ouvrir la colonne b pour la dame noire et à créer des menaces de mat contre le roi blanc. Le pion en c2 est cloué par le fou en f5, ce qui rend difficile pour les Blancs de défendre contre les menaces de la dame noire.",
+      "17": "Les blancs tentent de briser la grande diagonale du fou en g7 mais le coup 17...Dxb3!+ est une réponse précise qui maintient la pression sur les Blancs et continue de menacer le mat."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante Sveshnikov",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 Cf6 5. Cc3 e5?! 6. Cb5 d6 7. Fg5 a6 8. Ca3 b5",
+    "explications": {
+      "5": "Le coup 5...e5 est une caractéristique de la variante Sveshnikov de la Sicilienne. Il vise à contrôler le centre de l'échiquier et à limiter les options des Blancs. Cependant, ce coup affaiblit également la case d5. Si 5. Cc6, alors 6...bxc6 qui ouvre la colonne b pour la tour.",
+      "6": "Le coup 6. Cb5 est une réponse agressive des Blancs qui vise à attaquer le pion en e5 et à limiter l'activité du cavalier en f6. Les Noirs doivent être prudents et trouver une réponse adéquate pour éviter de perdre du matériel.",
+      "7": "Les blancs tentent de clouer le cavalier en f6. Le coup 7...a6 est une continuation logique qui vise à repousser le cavalier en b5 et à préparer une contre-attaque sur l'aile dame. Les Noirs cherchent à gagner de l'espace et à créer des menaces contre les pièces blanches.",
+      "8": "Le coup 9...b5 permet de faire une fouchette de pion sur les cavaliers en a3 et c3. Mais avant, les noirs doivent se méfier de la menace de 9. Cd5"
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Vieille variante de la Sicilienne",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. Fc4 e6",
+    "explications": {
+      "4": "La variante classique devrait être 3...e5, mais les noirs choisissent de jouer 3...e6 pour préparer la poussée d5 et chasser le fou blanc en c4."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante fermée",
+    "coups": "1. e4 c5 2. Cc3 Cc6 3. g3 g6 4. Fg2 Fg7 5. d3 d6 6. Fe e5",
+    "explications": {
+      "2": "Le blancs ne comptent pas jouer d4 et préfèrent développer leur cavalier en c3 pour contrôler les cases centrales et préparer une poussée d4 plus tard dans la partie. Les noirs répondent en développant également leur cavalier en c6, ce qui est une réponse classique mais fermée.",
+      "3": "Les blancs envisagent une Caro-Kann et préfèrent développer leur fou en g2 pour ouvrir la grande diagonale pour leur fou.",
+      "4": "Les noirs font de même et développent leur fou en g7 pour contrôler la grande diagonale et préparer une attaque sur l'aile dame.",
+      "6": "Les noirs doivent préparer Ce7 pour faire le petit roque."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Gambit Smith-Morra",
+    "coups": "1. e4 c5 2. d4 cxd4 3. c3 d5 4. exd5 Cf6 5. cxd4 Cxd5",
+    "explications": {
+      "3": "Le coup 3. c3 est une réponse agressive des Blancs qui vise à proposer un gambit en sacrifiant un pion pour obtenir une meilleure activité de leurs pièces et un contrôle accru du centre de l'échiquier. Ici, les Noirs évitent de prendre le pion en c3 pour ne pas voire une reprise par Cxc3 ce qui ouvre au maximum les possibilités des blancs.",
+      "4": "le coup 4.. Cf6 évite d'exposer la dame noire après un coup 4.. Dxd5.",
+      "5": "a partir de là, les noirs doivent viser leur développement"
+    },
+    "Orientation": "Noirs"
+  }
+]
