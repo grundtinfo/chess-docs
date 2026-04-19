@@ -1,5 +1,28 @@
 [
   {
+    "nom": "Sicillienne vs Italienne, tentative attaque du foi de veau (Fried Liver Attack)",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. Fc4 g6 4. Cg5 e6 5. Df3?? Dxg5 6. d4?? Dxc1+",
+    "explications": {
+      "3": "Les blancs ne semblent pas connaitre la Sicilienne et jouent une ouverture italienne. Les noirs répondent en développant leur prion en g6 pour préparer une attaque sur l'aile dame et contrôler la grande diagonale.",
+      "4": "Les blancs tentent de faire une attaque du foi de veau en jouant leur cavalier en g5 qui passe vite en prise sans protection.",
+      "5": "Les blancs persistent dans leur objectif de mat type berger mais oublient leur cavalier.",
+      "6": "Les blancs pensent pousser le développement et menacer la dame noire mais se font prendre le fou et le mat peut survenir très vite"
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Sicillienne vs Italienne, développement cavalier et fou.",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. Fc4 g6 4. Cc3 Fg7 5. 0-0 e6 6. d3 Cge7 7. Fe3 d5! 8. exd5?! exd5! 9. Fb3 d4!",
+    "explications": {
+      "3": "Les blancs ne semblent pas connaitre la Sicilienne et jouent une ouverture italienne. Les noirs répondent en développant leur prion en g6 pour préparer une attaque sur l'aile dame et contrôler la grande diagonale.",
+      "4": "Les blancs ne tentent pas une attaque et préfèrent développer leur cavalier",
+      "5": "Les blancs mettent leur roi en sécurité en faisant le petit roque. Les noirs répondent en jouant 5...e6 pour positionner leur cavalier en e7 et préparer une poussée d5 pour chasser le fou blanc en c4.",
+      "7": "Les blancs développent leur fou en e3 pour contrôler les cases centrales. Les noirs lancent quand même une attaque centrale avec le coup 7...d5! qui vise à ouvrir le centre et à créer des menaces contre les pièces blanches.",
+      "9": "Les blancs choisissent de reculer leur fou en b3 pour éviter de le perdre, mais cela permet aux noirs de jouer 9...d4! qui attaque le cavalier en c3 et gagne de l'espace au centre. Les noirs ont une position plus active et peuvent continuer à mettre la pression sur les pièces blanches."
+    },
+    "Orientation": "Noirs"
+  },
+  {
     "nom": "Variante Najdorf",
     "coups": "1. e4 c5 2. Cf3 d6 3. d4 cxd4 4. Cxd4 Cf6 5. Cc3 a6 7. Fe3 e5 8. Cb3 Fe6 9. f3 Fe7 10. Dd2 O-O 11. O-O-O Cd7",
     "explications": {
@@ -50,6 +73,89 @@
     "Orientation": "Noirs"
   },
   {
+    "nom": "Dragon accélérée, variante moderne. Echange des cavaliers",
+    "coups": "1. e4 c5 2. Cf3 Cc6, 3. d4 cxd4 4. Cxd4 g6 5. Cc3 Fg7 6. Cxc6 bxc6 7. Fc4 d6 8. Df3 Cf6 9. Fg5 O-O 10. 0-0-0?? Fg4! 11. Dg3 Fxd1 12. Txd1 Da5",
+    "explications": {
+      "4": "Les noirs évitent de jouer le coup Cxd4 pour ne pas activer la dame blanche et préfèrent jouer 4...g6 pour préparer le développement du fou en g7 et contrôler la grande diagonale. Cette variante est appelée la variante moderne du dragon accéléré de la Sicilienne.",
+      "5": "Les noirs positionnent une double attaque contre le cavalier en d4. Ca peut encourager la séquence qui suit.",
+      "6": "Les blancs choisissent d'échanger leur cavalier en c3 contre le cavalier en c6. Les noirs ne reprennent pas depuis deux raisons : 1) cela ouvre la colonne b pour la tour noire, 2) évite d'exposer la dame noire pour un échange direct qui les priverait de leur roque.",
+      "7": "Le cavalier g8 ne peut pas se développer à cause du pion en e4. Si ce dernier avance, le cavalier devrait revenir en arrière.",
+      "10": "Les blancs font le choix du gran roque pour prendre complètement le contrôle du centre mais se font surprendre par le coup 10...Fg4! qui attaque la dame blanche.",
+      "11": "Les blancs tentent de sauver leur dame en la déplaçant en g3, mais le coup 11...Fxd1 est une réponse précise qui sacrifie le fou pour gagner la tour blanche en d1.",
+      "12": "Les noirs continuent de mettre la pression sur les blancs avec le coup 12...Da5 qui menace de capturer le pion en a2, la tour peut se placer sur colonne ouverte et le fou en g7 va très vite devenir actif et soutenir l'attaque."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante du dragon accélérée saut du cavalier en g4",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 g6 5. Cc3 Fg7 6. Fe3 Cf6 7. Dd2 O-O 8. 0-0-0 Cg4! 9. Cxc6 bxc6 10. Fd4?! Fh6 11. f4 e5! 12. Fe3 Cxe3 13. Dxe3 Fxf4",
+    "explications": {
+      "4": "Dans cette variante, les Noirs choisissent de jouer 4...g6 au lieu de 4...Cf6. Cela permet aux Noirs de développer leur fou sur la grande diagonale h8-a1 plus rapidement, ce qui peut être avantageux pour contrôler le centre et préparer une attaque sur l'aile dame. Cependant, cela peut également laisser les Noirs un peu plus vulnérables car ils n'ont pas encore développé leur cavalier en f6 pour défendre contre les menaces potentielles.",
+      "8": "Le coup 8...Cg4! est une continuation agressive qui vise à attaquer le fou en e3. S'ils le perdent le cavalier d6 n'aura plus de défense et les noirs pourront lancer une attaque rapide sur l'aile dame.",
+      "10": "Les noirs tentent de sauver leur fou mais permettent le clouage de la dame blanche par le fou en h6.",
+      "11": "Les blancs tentent de défendre leur fou en jouant 11. f4, mais le coup 11...e5 est une réponse précise qui menace complètement le fou en d4. Les noirs gardent le coup Fxf4 en réserve pour faire le clouage de la dame blanche et la gagner ensuite."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante du dragon accélérée, échange des cavaliers plus tardif",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 g6 5. Cc3 Fg7 6. Fe3 Cf6 7. f3 O-O 8. Dd2 d5! 9. exd5 Cxd5 10. Cxc6 bxc6 11. Cxd5 cxd5 12. O-O-O ?! Tb8 13. c3 Dc7 14. Dxd5?! Tb2!! 15. Rxb2 Dxc3+ 16. Rb1 Db2#",
+    "explications": {
+      "4": "Dans cette variante, les Noirs choisissent de jouer 4...g6 au lieu de 4...Cf6. Cela permet aux Noirs de développer leur fou sur la grande diagonale h8-a1 plus rapidement, ce qui peut être avantageux pour contrôler le centre et préparer une attaque sur l'aile dame. Cependant, cela peut également laisser les Noirs un peu plus vulnérables car ils n'ont pas encore développé leur cavalier en f6 pour défendre contre les menaces potentielles.",
+      "7": "Les blancs connaissent la variante du saut du cavalier en g4 et préfèrent jouer 7. f3 pour empêcher ce coup. Les noirs répondent en faisant le petit roque pour mettre leur roi en sécurité et préparer une attaque sur l'aile dame.",
+      "8": "Les noirs pensent au grand roque mais se font prendre de vitesse par le coup 8...d5! C'est une continuation agressive qui vise à attaquer le centre et à ouvrir des lignes. Les menaces pèsent sur le pion e4 et une poussée en e5.",
+      "13": "Les blancs sont conscients de la menace par le four en g7 et tentent de se défendre en jouant 13. c3. Cependant, le coup 13...Tb8 est une réponse précise qui vise à provoquer un mat rapide.",
+      "14": "Les blancs sont gourmands et les noirs peuvent sacrifier le fou en c3 ou sacrifier la tour en b2 pour forcer le mat en deux coups."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante du dragon accélérée, blocage contre-attaque d5.",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 g6 5. Cc3 Fg7 6. Fe3 Cf6 7. f3 O-O 8. Fc4 Db6 9. Fb3 Cxe4!! 10. Cxe4 Fxd4!! 11. Fxd4",
+    "explications": {
+      "4": "Dans cette variante, les Noirs choisissent de jouer 4...g6 au lieu de 4...Cf6. Cela permet aux Noirs de développer leur fou sur la grande diagonale h8-a1 plus rapidement, ce qui peut être avantageux pour contrôler le centre et préparer une attaque sur l'aile dame. Cependant, cela peut également laisser les Noirs un peu plus vulnérables car ils n'ont pas encore développé leur cavalier en f6 pour défendre contre les menaces potentielles.",
+      "7": "Les blancs connaissent la variante du saut du cavalier en g4 et préfèrent jouer 7. f3 pour empêcher ce coup. Les noirs répondent en faisant le petit roque pour mettre leur roi en sécurité et préparer une attaque sur l'aile dame.",
+      "8": "Les noirs bloquent la diagonnale du fou en e3 car il n'est pas défendu.",
+      "9": "Les noirs protègent de la menace de Dxb2",
+      "10": "Les blancs capturent quand même mais risque la réponse Dxd4 ou Cxd4. Les noirs sacrifient du matériel pour une position gagnante."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante moderne fou en c4, petit roque.",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 g6 5. Cc3 Fg7 6. Fe3 Cf6 7. Fc4 0-0 8. 0-0 Cxe4!! 9. Cxe4 d5",
+    "explications": {
+      "4": "Dans cette variante, les Noirs choisissent de jouer 4...g6 au lieu de 4...Cf6. Cela permet aux Noirs de développer leur fou sur la grande diagonale h8-a1 plus rapidement, ce qui peut être avantageux pour contrôler le centre et préparer une attaque sur l'aile dame. Cependant, cela peut également laisser les Noirs un peu plus vulnérables car ils n'ont pas encore développé leur cavalier en f6 pour défendre contre les menaces potentielles.",
+      "7": "Les blancs connaissent la variante du saut du cavalier en g4 et préfèrent jouer 7. f3 pour empêcher ce coup. Les noirs répondent en faisant le petit roque pour mettre leur roi en sécurité et préparer une attaque sur l'aile dame.",
+      "8": "Les blancs connaissent à la foix le saut du cavalier en g4 et la poussée d5. Ils préfèrent jouer 8. Fc4 pour éviter les deux menaces, mais les noirs peuvent quand même jouer 8...Cxe4!!",
+      "9": "Les noirs jouent 9...d5 pour contrer la menace de 8. Fc4 et gardent une position gagnante. Les noirs ont une meilleure structure de pions et un meilleur contrôle du centre, ce qui leur donne un avantage significatif dans la partie."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante moderne fou en c4, Protection b2.",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 g6 5. Cc3 Fg7 6. Fe3 Cf6 7. Fc4 0-0 8. Fb2 d6 9. f3 Fd7 10. Dd2 Cxd4 11. Fxd4 b2 12. 0-0-0 a2",
+    "explications": {
+      "4": "Dans cette variante, les Noirs choisissent de jouer 4...g6 au lieu de 4...Cf6. Cela permet aux Noirs de développer leur fou sur la grande diagonale h8-a1 plus rapidement, ce qui peut être avantageux pour contrôler le centre et préparer une attaque sur l'aile dame. Cependant, cela peut également laisser les Noirs un peu plus vulnérables car ils n'ont pas encore développé leur cavalier en f6 pour défendre contre les menaces potentielles.",
+      "7": "Les blancs connaissent la variante du saut du cavalier en g4 et préfèrent jouer 7. f3 pour empêcher ce coup. Les noirs répondent en faisant le petit roque pour mettre leur roi en sécurité et préparer une attaque sur l'aile dame.",
+      "8": "Les blancs connaissent à la foix le saut du cavalier en g4 et la poussée d5. Ils préfèrent jouer 8. Fc4 pour éviter les deux menaces, mais les noirs jouent donc un développement plus calme",
+      "9": "Les blancs se prémunissent contre le saut du cavalier en g4. Les noirs répondent en développant leur fou en d7 pour préparer une attaque sur l'aile dame.",
+      "11": "Les noirs après avoir simplifié la position montent à l'assaut avec les pions sur l'aile dame. Les blancs ont une meilleure structure de pions et un meilleur contrôle du centre, mais les noirs ont une attaque rapide qui peut être difficile à défendre pour les blancs."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante attaque Nyezhmetdinov-Rossolimo",
+    "coups": "1. e4 c5 2. Cc3 Cc6 3. Fb5 g6 4. Fxc6 bxc6 5. 0-0 Fg7 6. c3 Cf6 7. Te1 0-0 8. d4 cxd4 9. cxd4 d6",
+    "explications": {
+      "3": "Les blancs envisagent de jouer une variante de la sicilienne avec le fou en b5. Les noirs répondent quand même préparant le fianchetto du fou en g6 pour contrôler la grande diagonale et préparer une attaque sur l'aile dame.",
+      "6": "Ici rien n'empêche les noirs de jouer le coup 6..Cf6 pour développer leur cavalier car il conserve la possibilité de jouer le coup 6...d5.",
+      "7": "Les blancs n'ont pas plus d'intérêt de jouer le coup 7. d4. Ils préfèrent jouer 7. Te1 pour préparer une poussée d4 plus tard dans la partie et pour éviter les échanges de pièces prématurés qui pourraient favoriser les noirs.",
+      "9": "Les noirs gardent une bonne position et peuvent continuer à développer leurs pièces. Garder à l'esprit que le coup 9...d5 est une option de contre-attaque pour les noirs."
+    },
+    "Orientation": "Noirs"
+  },
+  {
     "nom": "Variante Sveshnikov",
     "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 Cf6 5. Cc3 e5?! 6. Cb5 d6 7. Fg5 a6 8. Ca3 b5",
     "explications": {
@@ -86,6 +192,16 @@
       "3": "Le coup 3. c3 est une réponse agressive des Blancs qui vise à proposer un gambit en sacrifiant un pion pour obtenir une meilleure activité de leurs pièces et un contrôle accru du centre de l'échiquier. Ici, les Noirs évitent de prendre le pion en c3 pour ne pas voire une reprise par Cxc3 ce qui ouvre au maximum les possibilités des blancs.",
       "4": "Le coup 4.. Cf6 évite d'exposer la dame noire après un coup 4.. Dxd5.",
       "5": "A partir de là, les noirs doivent viser leur développement"
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Variante Alapin",
+    "coups": "1. e4 c5 2. c3 d5 3. exd5 Cf6 4. d4 cxd4",
+    "explications": {
+      "2": "Les noirs ne doivent pas jouer le coup habituel 2..Cc6 pour ne pas permettre aux blancs de jouer 3. d4 et de pousser les pions sur le cavalier en c6.",
+      "3": "Les noirs ne recapturent pas avec la dame pour ne pas l'exposer à une attaque rapide des pièces blanches. Ils préfèrent jouer 3...Cf6 pour développer leur cavalier et préparer une contre-attaque sur le centre de l'échiquier.",
+      "4": "Les possibilités d'attaques et d'échanges sont très nombreuses à partir de ce coup."
     },
     "Orientation": "Noirs"
   }
