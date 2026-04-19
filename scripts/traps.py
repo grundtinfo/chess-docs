@@ -440,7 +440,7 @@ def generer_pdf():
         
         for row in rows:
             fen_diag = row.get("black_fen") or row.get("white_fen")
-            diag = ChessboardFlowable(fen_diag, size=90, orientation=orientation) if fen_diag else ""
+            diag = ChessboardFlowable(fen_diag, size=105, orientation=orientation) if fen_diag else ""
             table_data.append([
                 diag,
                 Paragraph(row.get("white", ""), bold_style),
@@ -450,7 +450,7 @@ def generer_pdf():
             ])
 
         # Création du tableau
-        table_coups = Table(table_data, colWidths=[100, 55, 145, 55, 145], repeatRows=1)
+        table_coups = Table(table_data, colWidths=[120, 45, 145, 45, 145], repeatRows=1)
         table_coups.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY),
             ('TEXTCOLOR', (0,0), (-1,0), colors.white),
