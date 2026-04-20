@@ -339,5 +339,21 @@
     ],
     "defenseur": "Noirs",
     "explication_defense": "Reprendre le pion avec bxc6 neutralise la menace de découverte et bloque l'action du Fou b5. Bien que les Blancs gardent un léger avantage, la position noire reste jouable contrairement à la variante avec Db6."
+  },
+  {
+    "nom": "Piège du gambit de l'aile",
+    "coups": "1. e4 c5 2. b4 cxb4 3. d4 Cc6 4. d5 Ce5 5. Fb2 d6 6. Cf3 Fg4 7. Cxe5! Fxd1?? 8. Fb5+! Dd7 9. Fxd7 Rd8 10. Cxf7+ Rxd7 11. Rxd1",
+    "conseil_defense": "Ne capturez pas la Dame adverse sans avoir vérifié les possibilités d'échec à la découverte ou de mat. Le coup Fb5+ est une menace constante qui exploite le clouage du pion d7.",
+    "coup_defense": "7... dxe5",
+    "fleches_defense": [
+      "d6e5"
+    ],
+    "fleches_menace": [
+      "f3e5",
+      "f1b5",
+      "e5f7"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Reprendre le cavalier en e5 pour éviter de perdre la dame sur un échec en b5 et limiter les dégâts matériels."
   }
 ]
