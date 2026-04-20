@@ -3,7 +3,7 @@
     "nom": "Sicillienne vs Italienne, tentative attaque du foi de veau (Fried Liver Attack)",
     "coups": "1. e4 c5 2. Cf3 Cc6 3. Fc4 g6 4. Cg5 e6 5. Df3?? Dxg5 6. d4?? Dxc1+",
     "explications": {
-      "3": "Les blancs ne semblent pas connaitre la Sicilienne et jouent une ouverture italienne. Les noirs répondent en développant leur prion en g6 pour préparer une attaque sur l'aile dame et contrôler la grande diagonale.",
+      "3": "Les blancs ne semblent pas connaitre la Sicilienne et jouent une ouverture italienne. Les noirs répondent en développant leur pion en g6 pour préparer une attaque sur l'aile dame et contrôler la grande diagonale.",
       "4": "Les blancs tentent de faire une attaque du foi de veau en jouant leur cavalier en g5 qui passe vite en prise sans protection.",
       "5": "Les blancs persistent dans leur objectif de mat type berger mais oublient leur cavalier.",
       "6": "Les blancs pensent pousser le développement et menacer la dame noire mais se font prendre le fou et le mat peut survenir très vite"
@@ -104,7 +104,7 @@
       "4": "Dans cette variante, les Noirs choisissent de jouer 4...g6 au lieu de 4...Cf6. Cela permet aux Noirs de développer leur fou sur la grande diagonale h8-a1 plus rapidement, ce qui peut être avantageux pour contrôler le centre et préparer une attaque sur l'aile dame. Cependant, cela peut également laisser les Noirs un peu plus vulnérables car ils n'ont pas encore développé leur cavalier en f6 pour défendre contre les menaces potentielles.",
       "7": "Les blancs connaissent la variante du saut du cavalier en g4 et préfèrent jouer 7. f3 pour empêcher ce coup. Les noirs répondent en faisant le petit roque pour mettre leur roi en sécurité et préparer une attaque sur l'aile dame.",
       "8": "Les noirs pensent au grand roque mais se font prendre de vitesse par le coup 8...d5! C'est une continuation agressive qui vise à attaquer le centre et à ouvrir des lignes. Les menaces pèsent sur le pion e4 et une poussée en e5.",
-      "13": "Les blancs sont conscients de la menace par le four en g7 et tentent de se défendre en jouant 13. c3. Cependant, le coup 13...Tb8 est une réponse précise qui vise à provoquer un mat rapide.",
+      "13": "Les blancs sont conscients de la menace par le fou en g7 et tentent de se défendre en jouant 13. c3. Cependant, le coup 13...Tb8 est une réponse précise qui vise à provoquer un mat rapide.",
       "14": "Les blancs sont gourmands et les noirs peuvent sacrifier le fou en c3 ou sacrifier la tour en b2 pour forcer le mat en deux coups."
     },
     "Orientation": "Noirs"
@@ -126,7 +126,6 @@
     "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 g6 5. Cc3 Fg7 6. Fe3 Cf6 7. Fc4 0-0 8. 0-0 Cxe4!! 9. Cxe4 d5",
     "explications": {
       "4": "Dans cette variante, les Noirs choisissent de jouer 4...g6 au lieu de 4...Cf6. Cela permet aux Noirs de développer leur fou sur la grande diagonale h8-a1 plus rapidement, ce qui peut être avantageux pour contrôler le centre et préparer une attaque sur l'aile dame. Cependant, cela peut également laisser les Noirs un peu plus vulnérables car ils n'ont pas encore développé leur cavalier en f6 pour défendre contre les menaces potentielles.",
-      "7": "Les blancs connaissent la variante du saut du cavalier en g4 et préfèrent jouer 7. f3 pour empêcher ce coup. Les noirs répondent en faisant le petit roque pour mettre leur roi en sécurité et préparer une attaque sur l'aile dame.",
       "8": "Les blancs connaissent à la foix le saut du cavalier en g4 et la poussée d5. Ils préfèrent jouer 8. Fc4 pour éviter les deux menaces, mais les noirs peuvent quand même jouer 8...Cxe4!!",
       "9": "Les noirs jouent 9...d5 pour contrer la menace de 8. Fc4 et gardent une position gagnante. Les noirs ont une meilleure structure de pions et un meilleur contrôle du centre, ce qui leur donne un avantage significatif dans la partie."
     },
