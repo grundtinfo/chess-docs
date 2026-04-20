@@ -203,5 +203,68 @@
       "4": "Les possibilités d'attaques et d'échanges sont très nombreuses à partir de ce coup."
     },
     "Orientation": "Noirs"
+  },
+  {
+    "nom": "Gambit de l'aile",
+    "coups": "1. e4 c5 2. b4 cxb4 3. d4 d5 4. exd5 Dxd5 5. c4 bxc3 6. Cxc3 Dd8 7. Fb5 Fd7 8. Tb1 e6 9. Cf3 Cf6 10. 0-0 Fe7 11. d5 exd5 12. Cxd5 Cxd5 13. Dxd5 0-0 14. Dxb7 Fxb5 15. Txb5 Dd7!",
+    "explications": {
+      "2": "Le coup 2. b4 est une réponse agressive des Blancs qui vise à proposer un gambit en sacrifiant un pion pour obtenir une meilleure activité de leurs pièces et un contrôle accru du centre de l'échiquier.",
+      "6": "A partir de là, les noirs doivent reculer la dame. Si 6..Da4 7. Fd2",
+      "7": "Les blancs attaquent rapidement pour retrouver la compensation du pion sacrifié.",
+      "8": "Les noirs évitent 8..Fxb5 sous peine d'activer la tour blanche.",
+      "11": "Les blancs ouvrent les lignes et procèdent à quelques échanges.",
+      "13": "Les noirs sont contraints au roque pour mieux se protéger.",
+      "14": "Les blancs récupèrent le pion de retard. Les noirs doivent riposter et tentent de menacer les pièces adverses.",
+      "15": "Ici 15..Cd7 serait une erreur car permet le clouage du cavalier puis la perte de la dame par Td5. 15..Dd7 est le meilleur coup identifié par stockfish."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Piège du gambit de l'aile",
+    "coups": "1. e4 c5 2. b4 cxb4 3. d4 Cc6 4. d5 Ce5 5. Fb2 d6 6. Cf3 Fg4 7. Cxe5! Fxd1?? 8. Fb5! Dd7 9. Fxd7 Rd8 10. Cxf7+ Rxd7 11. Rxd1",
+    "explications": {
+      "2": "Le coup 2. b4 est une réponse agressive des Blancs qui vise à proposer un gambit en sacrifiant un pion pour obtenir une meilleure activité de leurs pièces et un contrôle accru du centre de l'échiquier.",
+      "4": "Les blancs menacent le cavalier et maintiennent la pression. L'échange des cavaliers n'est pas le meilleur choix car il active la dame blanche.",
+      "7": "Une combinaison des blans est déclenchée ce qui va ruiner la défense des noirs."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Gambit de l'aile, réponse 3..e6.",
+    "coups": "1. e4 c5 2. b4 cxb4 3. d4 e6 4. Cf3 d5 5. e5 Cc6 6. a3 bxa3 7. c3 Cge7 8. Fd3 Cg6 9. h4 Fe7 10. Cxa3 Cxh4? 11. Cxh4 Fxh4 12. Dg4 Fe7 13. Dxg7 Tf8 14. Cb5 a6? 15. Txh7 Fd7 16. Dxf7!!+ Txf7 17. Th8+ Ff8 18. Cd6+ Re7 19. Fg5+ Tf6 20. Fxf6#",
+    "explications": {
+      "2": "Le coup 2. b4 est une réponse agressive des Blancs qui vise à proposer un gambit en sacrifiant un pion pour obtenir une meilleure activité de leurs pièces et un contrôle accru du centre de l'échiquier.",
+      "5": "Le coup exd5 est une réponse inutile car les noirs ne sont plus obligés d'exposer leur dame. De fait, e5 est une amélioration de la position et permet de gagner de l'espace au centre et de limiter les options des Noirs.",
+      "6": "Au lieu de capturer immédiatement, les blancs préfèrent chaîner les pions et se laisser le choix des possibilités entre le cavalier et le fou de l'aile dame.",
+      "7": "Les coups suivants libérent le cavalier noir et débloque le fou de l'aile roi.",
+      "9": "9.h4 vise à paralyser le cavalier en g6. Les noirs évitent h5 car le cavalier blanc peut sauter en g5.",
+      "10": "Les noirs jouent 10...Cxh4 pour tenter de se débarrasser du pion en h4, mais cela permet aux Blancs de capturer le cavalier en h4 avec leur propre cavalier, ce qui ouvre la colonne g pour la dame blanche et crée des menaces contre le roi noir.",
+      "12": "Double menace de la dame sur le fou et le pion g7. Les noirs ne peuvent pas défendre les deux menaces en même temps, ce qui leur fait perdre du matériel et les met dans une position très désavantageuse.",
+      "14": "Le coup 14..a6 est inutile à cause du clouage du pion.",
+      "15": "A la fin de cette séquence, mat en 5 pour les blancs.",
+      "17": "Ici, si 17..Tf8 18. Fg6#"
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Gambit de l'aile, réponse 2..e6.",
+    "coups": "1. e4 c5 2. b4 e6 3. bxc5 Fxc5 4. d4 Fb6 5. c3 d5 6. e5 Ce7 7. Fa3 Cbc6 8. Fd3 0-0 9. Dh5 g6 10. Dh6 f6 11. Cf3 fxe5 12. Cg5",
+    "explications": {
+      "2": "Les noirs connaissent la théorie précédente et visent le développement plus rapide.",
+      "9": "Les blancs évitent de sortir le cavalier jusqu'à présent en f6 afin d'éviter de bloquer la dame et visent l'avancée du cavalier pour le mat."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Gambit de l'aile réponse de stockfish.",
+    "coups": "1. e4 c5 2. b4 cxb4 3. d4 d5 4. exd5 Cf6 5. a3 Cxd5 6. axb4 Cxb4 7. c3 Cd5 8. Cf3 e6 9. Fd3 Fe7 10. 0-0 0-0 11. De2 Cc6 12. De4 Cf6 13. Dh4 g6 14. Fg5",
+    "explications": {
+      "2": "Les noirs connaissent la théorie précédente et visent le développement plus rapide.",
+      "5": "Les blancs veulent se débarrasser du pion en b4 car il freine le développement.",
+      "7": "Les blancs chassent le cavalier et gagnent un tempo.",
+      "8": "Les noirs évitent 8..Cc6 car c4 chasse immédiatment les cavalier dans leur propre camp.",
+      "12": "Les blancs mettent la pression et préparent le mat."
+    },
+    "Orientation": "Blancs"
   }
 ]
