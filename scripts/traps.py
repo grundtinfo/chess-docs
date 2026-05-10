@@ -33,31 +33,78 @@ class ChessboardFlowable(Flowable):
         self.fleches_defense = fleches_defense or []
         self.fleches_menace = fleches_menace or []
         self.orientation = orientation
+        self.error_message = None
 
     def wrap(self, availWidth, availHeight):
         return self.size, self.size
 
     def draw(self):
-        board = chess.Board(self.fen)
+        try:
+            # Valider le FEN
+            if not self.fen:
+                self.error_message = "❌ Erreur: FEN vide"
+                print(f"[ERREUR] ChessboardFlowable: FEN vide")
+                return
+            
+            try:
+                board = chess.Board(self.fen)
+            except ValueError as e:
+                self.error_message = f"❌ FEN invalide: {str(e)[:50]}"
+                print(f"[ERREUR] FEN invalide: {self.fen[:40]}... - {e}")
+                return
 
-        arrows = []
-        for notation in self.fleches_menace:
-            arrows.append(chess.svg.Arrow(
-                chess.parse_square(notation[:2]),
-                chess.parse_square(notation[2:]),
-                color="#FF0000"
-            ))
+            arrows = []
+            
+            # Valider les flèches de menace
+            for notation in self.fleches_menace:
+                try:
+                    if len(notation) != 4:
+                        print(f"[AVERTISSEMENT] Flèche menace mal formatée: {notation} (attendu: 4 caractères)")
+                        continue
+                    arrows.append(chess.svg.Arrow(
+                        chess.parse_square(notation[:2]),
+                        chess.parse_square(notation[2:]),
+                        color="#FF0000"
+                    ))
+                except ValueError as e:
+                    print(f"[AVERTISSEMENT] Flèche menace invalide: {notation} - {e}")
 
-        for notation in self.fleches_defense:
-            arrows.append(chess.svg.Arrow(
-                chess.parse_square(notation[:2]),
-                chess.parse_square(notation[2:]),
-                color="#00AA00"
-            ))
+            # Valider les flèches de défense
+            for notation in self.fleches_defense:
+                try:
+                    if len(notation) != 4:
+                        print(f"[AVERTISSEMENT] Flèche défense mal formatée: {notation} (attendu: 4 caractères)")
+                        continue
+                    arrows.append(chess.svg.Arrow(
+                        chess.parse_square(notation[:2]),
+                        chess.parse_square(notation[2:]),
+                        color="#00AA00"
+                    ))
+                except ValueError as e:
+                    print(f"[AVERTISSEMENT] Flèche défense invalide: {notation} - {e}")
 
-        svg = chess.svg.board(board=board, size=self.size, arrows=arrows, orientation=self.orientation)
-        drawing = svg2rlg(StringIO(svg))
-        renderPDF.draw(drawing, self.canv, 0, 0)
+            try:
+                svg = chess.svg.board(board=board, size=self.size, arrows=arrows, orientation=self.orientation)
+            except Exception as e:
+                self.error_message = f"❌ Erreur SVG: {str(e)[:40]}"
+                print(f"[ERREUR] Impossible de créer le SVG: {e}")
+                return
+
+            try:
+                drawing = svg2rlg(StringIO(svg))
+                if drawing is None:
+                    self.error_message = "❌ SVG non convertible"
+                    print(f"[ERREUR] svg2rlg a retourné None")
+                    return
+                renderPDF.draw(drawing, self.canv, 0, 0)
+            except Exception as e:
+                self.error_message = f"❌ Erreur rendu PDF: {str(e)[:40]}"
+                print(f"[ERREUR] Impossible de rendre le PDF: {e}")
+                return
+
+        except Exception as e:
+            self.error_message = f"❌ Erreur inconnue: {str(e)[:40]}"
+            print(f"[ERREUR] Erreur inattendue dans ChessboardFlowable.draw(): {e}")
 
 
 # =====================================================================
@@ -148,6 +195,19 @@ def get_trap_orientation(piege):
         return chess.WHITE
     else:
         return chess.BLACK
+
+def validate_fen(fen, trap_name=""):
+    """Valide un FEN et retourne True/False avec un message d'erreur."""
+    if not fen:
+        print(f"[ERREUR] {trap_name}: FEN vide")
+        return False
+    try:
+        board = chess.Board(fen)
+        return True
+    except ValueError as e:
+        print(f"[ERREUR] {trap_name}: FEN invalide - {e}")
+        print(f"         FEN: {fen[:60]}...")
+        return False
 
 def convert_french_to_english_notation(move):
     """Convertit la notation française des pièces vers la notation anglaise SAN."""
@@ -258,6 +318,7 @@ def generate_moves(piege):
 def generate_fen_positions(piege):
     """Génère fen_final, fen_intermediaire et fen_defense automatiquement."""
     coups_str = piege.get("coups", "")
+    nom_piege = piege.get("nom", "Piège inconnu")
     moves = parse_moves(coups_str)
     
     board = chess.Board()
@@ -266,14 +327,20 @@ def generate_fen_positions(piege):
     # Jouer tous les coups pour obtenir les positions intermédiaires
     for i, move in enumerate(moves):
         try:
-            move = board.parse_san(move["san"])
-            board.push(move)
+            parsed_move = board.parse_san(move["san"])
+            board.push(parsed_move)
             positions.append(board.fen())
         except Exception as e:
             # Erreur parsing move, skip ce piège
+            print(f"[ERREUR] {nom_piege}: Impossible de parser le coup #{i+1}")
+            print(f"         Coup original: {move['raw']}")
+            print(f"         Coup converti: {move['san']}")
+            print(f"         Erreur: {e}")
+            print(f"         FEN avant le coup: {board.fen()}\n")
             return None, None, None
     
     if len(positions) < 2:
+        print(f"[AVERTISSEMENT] {nom_piege}: Séquence trop courte ({len(positions)} positions)")
         return positions[-1] if positions else None, None, None
     
     fen_final = positions[-1]
@@ -309,8 +376,9 @@ def generate_fen_positions(piege):
                 move = board_defense.parse_san(defense_move_clean)
                 board_defense.push(move)
                 fen_defense = board_defense.fen()
-            except Exception:
-                pass
+            except Exception as e:
+                print(f"[AVERTISSEMENT] {nom_piege}: Impossible de jouer le coup de défense: {option} → {defense_move_clean}")
+                print(f"                 Erreur: {e}\n")
 
     return fen_final, fen_intermediaire, fen_defense
 
@@ -340,6 +408,11 @@ with open('json/trappes_data.json', 'r', encoding='utf-8') as f:
 # PDF
 # =====================================================================
 def generer_pdf():
+    print("="*70)
+    print("🔄 Génération du guide des pièges d'ouverture...")
+    print("="*70)
+    print("[INFO] Les erreurs détectées seront affichées ci-dessous\n")
+    
     # Définition des marges à 36 points (0.5 pouce) pour plus d'espace
     doc = SimpleDocTemplate(
         "guide_pieges_et_defenses.pdf", 
@@ -415,6 +488,16 @@ def generer_pdf():
         # Générer les FEN automatiquement
         fen_final, fen_intermediaire, fen_defense = generate_fen_positions(piege)
         if not fen_final:
+            print(f"[ERREUR] {piege['nom']}: FEN invalides générées - PIÈGE IGNORÉ\n")
+            continue
+        
+        # Valider les FEN avant utilisation
+        trap_name = piege['nom']
+        if not validate_fen(fen_final, f"{trap_name} (fen_final)"):
+            continue
+        if not validate_fen(fen_intermediaire, f"{trap_name} (fen_intermediaire)"):
+            continue
+        if not validate_fen(fen_defense, f"{trap_name} (fen_defense)"):
             continue 
 
         # Analyse & Métadonnées
@@ -511,6 +594,10 @@ def generer_pdf():
 
     # Génération du document avec appel du pied de page
     doc.build(elements, onFirstPage=ajouter_pied_page, onLaterPages=ajouter_pied_page)
+    
+    print("\n" + "="*70)
+    print("✅ PDF généré avec succès: guide_pieges_et_defenses.pdf")
+    print("="*70)
 
 if __name__ == "__main__":
     generer_pdf()
