@@ -355,5 +355,21 @@
     ],
     "defenseur": "Noirs",
     "explication_defense": "Reprendre le cavalier en e5 pour éviter de perdre la dame sur un échec en b5 et limiter les dégâts matériels."
+  },
+  {
+    "nom": "Piège d'ouverture Alapin",
+    "coups": "1. e4 e5 2. Ce2 Cf6 3. f4 exf4 4. Cxf4 Cxe4 5. De2 Dd7?? 6. Cd5 De5 7. Cc3 c6 8. d4! Dxd4 9. Cxe4 cxd5?? 10. Cd6+ Rd8 11. De8+ Rc7 12. Cb5+ Rb6 13. Dd8+ Ra6 14. Cxd4+ b5 15. Dc7 Cc6 16. Fxb5#",
+    "conseil_defense": "Évitez de placer votre Dame sur une case qui bloque le développement de vos pièces (comme d7). Soyez extrêmement vigilant face aux échecs à la découverte et aux fourchettes de cavalier lorsque votre Roi est coincé au centre sur une colonne ouverte.",
+    "coup_defense": "5... De7",
+    "fleches_defense": [
+      "d8e7"
+    ],
+    "fleches_menace": [
+      "e2e7",
+      "d6b5",
+      "d4b5"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Jouer 5... De7 permet de neutraliser le clouage sur la colonne e tout en laissant le Fou f8 libre de se développer. Le coup 5... Dd7?? est une erreur majeure qui paralyse l'aile Roi et expose les Noirs à une attaque dévastatrice."
   }
 ]
