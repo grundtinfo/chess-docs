@@ -13,3 +13,4 @@ pyvenv.cfg
 *.swp
 # ignore pdf files
 *.pdf
+scripts/stockfish

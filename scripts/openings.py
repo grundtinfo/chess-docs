@@ -11,6 +11,124 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
+try:
+    from stockfish import Stockfish
+    STOCKFISH_AVAILABLE = True
+except ImportError:
+    STOCKFISH_AVAILABLE = False
+    print("[AVERTISSEMENT] Stockfish non disponible. Les commentaires seront générés sans analyse.")
+
+# =====================================================================
+# GESTIONNAIRE STOCKFISH
+# =====================================================================
+class StockfishAnalyzer:
+    _instance = None
+    _initialized = False
+    
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super().__new__(cls)
+            cls._instance.engine = None
+            cls._instance._init_attempted = False
+        return cls._instance
+    
+    def get_engine(self):
+        if not STOCKFISH_AVAILABLE:
+            return None
+        
+        if self._init_attempted:
+            return self.engine
+        
+        self._init_attempted = True
+        try:
+            # Chercher Stockfish dans les chemins courants
+            stockfish_path = None
+            
+            # 1. Chercher dans le répertoire local
+            local_sf = os.path.join(os.path.dirname(__file__), "stockfish", "stockfish", "stockfish-ubuntu-x86-64-avx2")
+            if os.path.exists(local_sf):
+                stockfish_path = local_sf
+            
+            # 2. Chercher dans le PATH système
+            if not stockfish_path:
+                import shutil
+                stockfish_path = shutil.which("stockfish")
+            
+            # Initialiser avec le chemin trouvé ou sans (essai auto)
+            if stockfish_path:
+                self.engine = Stockfish(path=stockfish_path, depth=15, parameters={"Threads": 4, "Hash": 512})
+            else:
+                self.engine = Stockfish(depth=15, parameters={"Threads": 4, "Hash": 512})
+            
+            print("[INFO] Stockfish initialisé avec succès pour l'analyse")
+        except Exception as e:
+            print(f"[AVERTISSEMENT] Impossible d'initialiser Stockfish: {e}")
+            print("[INFO] Les commentaires seront générés sans analyse Stockfish")
+            self.engine = None
+        
+        return self.engine
+    
+    def analyze_move(self, board, move_san, depth=15):
+        """Analyse un coup et retourne l'évaluation avant et après."""
+        engine = self.get_engine()
+        if not engine:
+            return None, None, None
+        
+        try:
+            # Évaluation avant le coup
+            fen_before = board.fen()
+            engine.set_fen_position(fen_before)
+            eval_before = engine.get_evaluation()
+            
+            # Jouer le coup
+            move_obj = board.parse_san(move_san)
+            board.push(move_obj)
+            
+            # Évaluation après le coup
+            fen_after = board.fen()
+            engine.set_fen_position(fen_after)
+            eval_after = engine.get_evaluation()
+            
+            # Revenir en arrière
+            board.pop()
+            
+            return eval_before, eval_after, move_obj
+        except Exception as e:
+            print(f"[AVERTISSEMENT] Erreur lors de l'analyse du coup {move_san}: {e}")
+            return None, None, None
+    
+    def get_best_move_with_eval(self, board):
+        """Récupère le meilleur coup et l'évaluation de la position."""
+        engine = self.get_engine()
+        if not engine:
+            return None, None
+        
+        try:
+            fen = board.fen()
+            engine.set_fen_position(fen)
+            best_move = engine.get_best_move()
+            
+            # Jouer le meilleur coup
+            board_copy = board.copy()
+            move_obj = board_copy.parse_san(best_move)
+            board_copy.push(move_obj)
+            
+            # Évaluation après le meilleur coup
+            engine.set_fen_position(board_copy.fen())
+            best_eval = engine.get_evaluation()
+            
+            return best_move, best_eval
+        except Exception as e:
+            print(f"[DEBUG] Erreur lors de la recherche du meilleur coup: {e}")
+            return None, None
+    
+    def close(self):
+        if self.engine:
+            try:
+                self.engine.__del__()
+            except:
+                pass
+            self.engine = None
 
 # =====================================================================
 # COULEURS
@@ -87,15 +205,19 @@ def parse_moves(coups_str):
     return moves
 
 
-def generate_move_comment(move_raw, move_san, board):
+def generate_move_comment(move_raw, move_san, board_state):
+    """Génère un commentaire basé sur l'analyse Stockfish ou sur les annotations du coup."""
     raw = move_raw.strip()
-    raw_clean = re.sub(r'[?!+#]+', '', raw)
+    raw_clean = re.sub(r'[?!+#x]+', '', raw).strip()
+    board = chess.Board(board_state.fen())
+    
+    # Vérifier les annotations d'abord
     if "??" in raw:
         return "Erreur grave, c'est une gaffe."
     if "?!" in raw:
         return "Coup douteux. Les réponses existent."
     if "!?" in raw:
-        return "Coup intéressant mais potentiellement risqué."
+        return "Coup intéressant mais potentiellement risqué, soyez vigilant."
     if "!!" in raw:
         return "Coup exceptionnel, une trouvaille brillante."
     if "?" in raw:
@@ -106,6 +228,96 @@ def generate_move_comment(move_raw, move_san, board):
         return "Mat direct, la combinaison fonctionne."
     if "+" in raw:
         return "Donne échec et met la pression sur le roi."
+    
+    # Analyser avec Stockfish
+    analyzer = StockfishAnalyzer()
+    if analyzer.get_engine():
+        eval_before, eval_after, move_obj = analyzer.analyze_move(board, move_san)
+        
+        if eval_before and eval_after:
+            try:
+                # Extraire les valeurs d'évaluation
+                if hasattr(eval_before, 'value'):
+                    val_before = eval_before.value if eval_before.value is not None else 0
+                elif isinstance(eval_before, dict):
+                    val_before = eval_before.get('value', 0)
+                else:
+                    val_before = 0
+                
+                if hasattr(eval_after, 'value'):
+                    val_after = eval_after.value if eval_after.value is not None else 0
+                elif isinstance(eval_after, dict):
+                    val_after = eval_after.get('value', 0)
+                else:
+                    val_after = 0
+                
+                # Calculer le changement d'évaluation
+                delta = val_after - val_before
+                
+                if board.turn == chess.BLACK:
+                    delta = -delta
+                
+                # Générer un commentaire basé sur l'évaluation
+                if abs(delta) < 20:
+                    comment = f"Coup égal. Évaluation stable (~{val_after/100:.1f})."
+                elif delta > 50:
+                    comment = f"Coup excellent ! Améliore la position (+{delta/100:.1f})."
+                elif delta > 20:
+                    comment = f"Coup solide et améliorant. Gain de {delta/100:.1f} de point."
+                elif delta < -50:
+                    # Coup faible : chercher le meilleur coup
+                    board_copy = chess.Board(board_state.fen())
+                    best_move, best_eval = analyzer.get_best_move_with_eval(board_copy)
+                    
+                    if best_move and best_eval:
+                        try:
+                            if hasattr(best_eval, 'value'):
+                                best_val = best_eval.value if best_eval.value is not None else 0
+                            elif isinstance(best_eval, dict):
+                                best_val = best_eval.get('value', 0)
+                            else:
+                                best_val = 0
+                            
+                            best_delta = best_val - val_before
+                            if board.turn == chess.BLACK:
+                                best_delta = -best_delta
+                            
+                            comment = f"Coup faible qui détériore la position (-{abs(delta)/100:.1f}). Préférez {best_move} qui améliore de +{best_delta/100:.1f}."
+                        except:
+                            comment = f"Coup faible qui détériore la position (-{abs(delta)/100:.1f}). Meilleur coup suggéré : {best_move}."
+                    else:
+                        comment = f"Coup faible qui détériore la position (-{abs(delta)/100:.1f})."
+                elif delta < -20:
+                    # Coup questionnable : chercher le meilleur coup
+                    board_copy = chess.Board(board_state.fen())
+                    best_move, best_eval = analyzer.get_best_move_with_eval(board_copy)
+                    
+                    if best_move and best_eval:
+                        try:
+                            if hasattr(best_eval, 'value'):
+                                best_val = best_eval.value if best_eval.value is not None else 0
+                            elif isinstance(best_eval, dict):
+                                best_val = best_eval.get('value', 0)
+                            else:
+                                best_val = 0
+                            
+                            best_delta = best_val - val_before
+                            if board.turn == chess.BLACK:
+                                best_delta = -best_delta
+                            
+                            comment = f"Coup questionnable (perte de {abs(delta)/100:.1f}). Meilleur : {best_move} (+{best_delta/100:.1f})."
+                        except:
+                            comment = f"Coup questionnable. Perte de {abs(delta)/100:.1f} de point. Préférez {best_move}."
+                    else:
+                        comment = f"Coup questionnable. Perte de {abs(delta)/100:.1f} de point."
+                else:
+                    comment = f"Coup égal. Évaluation stable (~{val_after/100:.1f})."
+                
+                return comment
+            except Exception as e:
+                print(f"[DEBUG] Erreur lors du traitement de l'évaluation: {e}")
+    
+    # Fallback sur l'analyse textuelle
     if "x" in raw_clean:
         return "Capture une pièce ou un pion, souvent au cœur de la lutte."
     if raw_clean.startswith("D"):
@@ -124,6 +336,7 @@ def generate_move_comment(move_raw, move_san, board):
         return "Avance un pion pour ouvrir le jeu ou soutenir le centre."
     if board.is_check():
         return "Ce coup donne échec et met la pression sur l'adversaire."
+    
     return "Coup de développement utile dans cette position."
 
 
@@ -143,6 +356,11 @@ def generate_moves(item):
         move_san = move.get("san", "")
         arrow_notation = None
         arrow_color = None
+        
+        # Générer le commentaire AVANT de jouer le coup
+        commentaire = generate_move_comment(move_raw, move_san, board)
+        
+        # Ensuite, jouer le coup pour la suite
         try:
             move_obj = board.parse_san(move_san)
             is_capture = board.is_capture(move_obj)
@@ -152,7 +370,7 @@ def generate_moves(item):
             fen_after = board.fen()
         except Exception:
             fen_after = board.fen()
-        commentaire = generate_move_comment(move_raw, move_san, board)
+        
         if move["color"] == "white":
             current_row = {
                 "move_number": move["move_number"],
