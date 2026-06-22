@@ -7,8 +7,8 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from chess_lib import OllamaManager
 
-# Import depuis notre librairie commune
 from chess_lib import (
     COLOR_PRIMARY, COLOR_SECONDARY, COLOR_TEXT, COLOR_BG_LIGHT, COLOR_BORDER, COLOR_MINT,
     ChessboardFlowable, parse_moves, generate_move_comment, convert_french_to_english_notation
@@ -35,7 +35,7 @@ def analyze_position(fen):
 def get_trap_orientation(piege):
     return chess.WHITE if piege.get("defenseur") == "Blancs" else chess.BLACK
 
-def validate_fen(fen, trap_name=""):
+def validate_fen(fen):
     if not fen: return False
     try:
         chess.Board(fen)
@@ -115,70 +115,78 @@ def ajouter_pied_page(canvas, doc):
 
 def generer_pdf():
     print("="*70)
-    print("🔄 Génération du guide des pièges d'ouverture...")
+    print("🔄 Génération du guide des pièges d'ouverture assistée par IA...")
     
-    with open('../json/trappes_data.json', 'r', encoding='utf-8') as f: trappes_data = json.load(f)
-        
-    doc = SimpleDocTemplate("../guide_pieges_et_defenses.pdf", pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
-    styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, leading=26, textColor=COLOR_PRIMARY, spaceAfter=15)
-    intro_style = ParagraphStyle('Intro', parent=styles['Normal'], fontSize=11, leading=16, textColor=COLOR_TEXT, spaceAfter=8)
-    legend_heading = ParagraphStyle('LegendHeading', parent=styles['Heading2'], fontSize=14, leading=18, textColor=COLOR_MINT, spaceAfter=10)
-    trap_heading = ParagraphStyle('TrapHeading', parent=styles['Heading2'], fontSize=16, leading=20, textColor=COLOR_PRIMARY, spaceAfter=8)
-    normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, leading=14, textColor=COLOR_TEXT)
-    bold_style = ParagraphStyle('CustomBold', parent=normal_style, fontName='Helvetica-Bold')
-
-    elements = [
-        Paragraph("Guide des Pièges d'Ouverture", title_style), Spacer(1, 10),
-        Paragraph("Ce guide met l'accent sur la détection des menaces tactiques.", intro_style),
-        Paragraph("Dernière mise à jour le " + datetime.now().strftime("%d/%m/%Y à %H:%M"), intro_style), Spacer(1, 15),
-        Paragraph("Légende Globale", legend_heading), Spacer(1, 5)
-    ]
+    # --- Démarrage d'Ollama ---
+    ollama = OllamaManager()
+    ollama.start()
     
-    legend_table = Table([
-        [Paragraph("<b>Section</b>", normal_style), Paragraph("<b>Description</b>", normal_style)],
-        [Paragraph("Diagrammes", bold_style), Paragraph("Position finale, intermédiaire de détection, et défense.", normal_style)],
-        [Paragraph("Table des coups", bold_style), Paragraph("Coups avec commentaires analytiques.", normal_style)]
-    ], colWidths=[120, 420])
-    legend_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), COLOR_BG_LIGHT), ('LINEBELOW', (0,0), (-1,0), 1, COLOR_PRIMARY), ('PADDING', (0,0), (-1,-1), 6)]))
-    elements.extend([legend_table, PageBreak()])
+    try:
+        with open('../json/trappes_data.json', 'r', encoding='utf-8') as f: trappes_data = json.load(f)
+            
+        doc = SimpleDocTemplate("../guide_pieges_et_defenses.pdf", pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, leading=26, textColor=COLOR_PRIMARY, spaceAfter=15)
+        intro_style = ParagraphStyle('Intro', parent=styles['Normal'], fontSize=11, leading=16, textColor=COLOR_TEXT, spaceAfter=8)
+        legend_heading = ParagraphStyle('LegendHeading', parent=styles['Heading2'], fontSize=14, leading=18, textColor=COLOR_MINT, spaceAfter=10)
+        trap_heading = ParagraphStyle('TrapHeading', parent=styles['Heading2'], fontSize=16, leading=20, textColor=COLOR_PRIMARY, spaceAfter=8)
+        normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, leading=14, textColor=COLOR_TEXT)
+        bold_style = ParagraphStyle('CustomBold', parent=normal_style, fontName='Helvetica-Bold')
 
-    for idx, piege in enumerate(trappes_data):
-        if idx > 0: elements.append(PageBreak())
+        elements = [
+            Paragraph("Guide des Pièges d'Ouverture", title_style), Spacer(1, 10),
+            Paragraph("Ce guide met l'accent sur la détection des menaces tactiques expliquées par l'Intelligence Artificielle.", intro_style),
+            Paragraph("Dernière mise à jour le " + datetime.now().strftime("%d/%m/%Y à %H:%M"), intro_style), Spacer(1, 15),
+            Paragraph("Légende Globale", legend_heading), Spacer(1, 5)
+        ]
         
-        # Le log ajouté ici pour le suivi dans la console !
-        print(f"[INFO] Analyse du piège d'ouverture {idx+1}/{len(trappes_data)} : {piege.get('nom', 'Sans nom')}")
-        
-        bloc = [Paragraph(f"{idx+1}. {piege['nom']}", trap_heading)]
-        fen_final, fen_inter, fen_def = generate_fen_positions(piege)
-        
-        if not fen_final or not validate_fen(fen_final): continue
-        
-        meta = f"<b>Analyse :</b> {analyze_position(fen_final)} | <b>Type :</b> {classify_trap(piege)} | <b>Difficulté :</b> {estimate_difficulty(piege)}"
-        bloc.extend([Paragraph(meta, normal_style), Spacer(1, 10)])
+        legend_table = Table([
+            [Paragraph("<b>Section</b>", normal_style), Paragraph("<b>Description</b>", normal_style)],
+            [Paragraph("Diagrammes", bold_style), Paragraph("Position finale, intermédiaire de détection, et défense.", normal_style)],
+            [Paragraph("Table des coups", bold_style), Paragraph("Coups avec commentaires analytiques.", normal_style)]
+        ], colWidths=[120, 420])
+        legend_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), COLOR_BG_LIGHT), ('LINEBELOW', (0,0), (-1,0), 1, COLOR_PRIMARY), ('PADDING', (0,0), (-1,-1), 6)]))
+        elements.extend([legend_table, PageBreak()])
 
-        table_data = [[Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Commentaire</b>", normal_style), Paragraph("<b>Noir</b>", normal_style), Paragraph("<b>Commentaire</b>", normal_style)]]
-        orient = get_trap_orientation(piege)
-        
-        for row in generate_moves_table(piege):
-            fen = row.get("black_fen") or row.get("white_fen")
-            diag = ChessboardFlowable(fen, size=105, orientation=orient) if fen else ""
-            table_data.append([diag, Paragraph(row.get("white",""), bold_style), Paragraph(row.get("white_comment",""), normal_style), Paragraph(row.get("black",""), bold_style), Paragraph(row.get("black_comment",""), normal_style)])
+        for idx, piege in enumerate(trappes_data):
+            if idx > 0: elements.append(PageBreak())
+            
+            print(f"\n[INFO] Analyse du piège {idx+1}/{len(trappes_data)} : {piege.get('nom', 'Sans nom')}")
+            
+            bloc = [Paragraph(f"{idx+1}. {piege['nom']}", trap_heading)]
+            fen_final, fen_inter, fen_def = generate_fen_positions(piege)
+            
+            if not fen_final or not validate_fen(fen_final): continue
+            
+            meta = f"<b>Analyse :</b> {analyze_position(fen_final)} | <b>Type :</b> {classify_trap(piege)} | <b>Difficulté :</b> {estimate_difficulty(piege)}"
+            bloc.extend([Paragraph(meta, normal_style), Spacer(1, 10)])
 
-        t_coups = Table(table_data, colWidths=[120, 45, 145, 45, 145], repeatRows=1)
-        t_coups.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 6), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
-        bloc.append(t_coups)
-        elements.extend([KeepTogether(bloc), Spacer(1, 15)])
+            table_data = [[Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style), Paragraph("<b>Noir</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style)]]
+            orient = get_trap_orientation(piege)
+            
+            for row in generate_moves_table(piege):
+                fen = row.get("black_fen") or row.get("white_fen")
+                diag = ChessboardFlowable(fen, size=105, orientation=orient) if fen else ""
+                table_data.append([diag, Paragraph(row.get("white",""), bold_style), Paragraph(row.get("white_comment",""), normal_style), Paragraph(row.get("black",""), bold_style), Paragraph(row.get("black_comment",""), normal_style)])
 
-        t_diags = Table([[Paragraph("<b>1) Piège</b>", normal_style), Paragraph("<b>2) Détection</b>", normal_style), Paragraph("<b>3) Défense</b>", normal_style)],
-                         [ChessboardFlowable(fen_final, 130, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
-                          ChessboardFlowable(fen_inter, 130, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
-                          ChessboardFlowable(fen_def, 130, fleches_defense=piege.get("fleches_defense",[]), orientation=orient)]], colWidths=[180, 180, 180])
-        t_diags.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('BACKGROUND', (0,0), (-1,0), COLOR_BG_LIGHT), ('BOX', (0,0), (-1,-1), 1, COLOR_BORDER)]))
-        elements.extend([KeepTogether([t_diags, Spacer(1, 15)]), Paragraph(f"<b>Idée :</b> {piege.get('conseil_defense', '')}", normal_style), Paragraph(f"<b>Défense :</b> {piege.get('coup_defense', '')} - {piege.get('explication_defense', '')}", normal_style)])
+            t_coups = Table(table_data, colWidths=[120, 45, 145, 45, 145], repeatRows=1)
+            t_coups.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 6), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
+            bloc.append(t_coups)
+            elements.extend([KeepTogether(bloc), Spacer(1, 15)])
 
-    doc.build(elements, onFirstPage=ajouter_pied_page, onLaterPages=ajouter_pied_page)
-    print("✅ PDF généré avec succès")
+            t_diags = Table([[Paragraph("<b>1) Piège</b>", normal_style), Paragraph("<b>2) Détection</b>", normal_style), Paragraph("<b>3) Défense</b>", normal_style)],
+                             [ChessboardFlowable(fen_final, 130, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
+                              ChessboardFlowable(fen_inter, 130, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
+                              ChessboardFlowable(fen_def, 130, fleches_defense=piege.get("fleches_defense",[]), orientation=orient)]], colWidths=[180, 180, 180])
+            t_diags.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('BACKGROUND', (0,0), (-1,0), COLOR_BG_LIGHT), ('BOX', (0,0), (-1,-1), 1, COLOR_BORDER)]))
+            elements.extend([KeepTogether([t_diags, Spacer(1, 15)]), Paragraph(f"<b>Idée :</b> {piege.get('conseil_defense', '')}", normal_style), Paragraph(f"<b>Défense :</b> {piege.get('coup_defense', '')} - {piege.get('explication_defense', '')}", normal_style)])
+
+        doc.build(elements, onFirstPage=ajouter_pied_page, onLaterPages=ajouter_pied_page)
+        print("✅ PDF généré avec succès")
+    
+    finally:
+        # --- Extinction garantie d'Ollama ---
+        ollama.stop()
 
 if __name__ == "__main__":
     generer_pdf()

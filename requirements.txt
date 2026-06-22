@@ -4,3 +4,5 @@ reportlab
 requests
 svglib
 stockfish
+ollama
+requests

@@ -6,8 +6,8 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
+from chess_lib import OllamaManager
 
-# Import depuis notre librairie commune
 from chess_lib import (
     COLOR_PRIMARY, COLOR_SECONDARY, COLOR_TEXT, COLOR_BG_LIGHT, COLOR_BORDER,
     ChessboardFlowable, parse_moves, generate_move_comment
@@ -87,13 +87,13 @@ def build_pdf(output_path, source_name, data):
     title_text = data[0].get('nom', source_name) if data else source_name
     elements.extend([
         Paragraph(f"Guide d'Ouvertures : {title_text}", title_style), Spacer(1, 10),
-        Paragraph("Ce document présente chaque position d'ouverture, les coups clés et des commentaires pédagogiques.", intro_style),
+        Paragraph("Ce document présente chaque position d'ouverture, les coups clés et des commentaires pédagogiques générés par IA.", intro_style),
         Paragraph("Dernière mise à jour le " + datetime.now().strftime("%d/%m/%Y à %H:%M"), intro_style), Spacer(1, 15)
     ])
 
     for idx, item in enumerate(data):
         if idx > 0: elements.append(PageBreak())
-        print(f"[INFO] Analyse de la variante d'ouverture {idx+1}/{len(data)} : {item.get('nom', 'Sans titre')}")
+        print(f"\n[INFO] Analyse de la variante {idx+1}/{len(data)} : {item.get('nom', 'Sans titre')}")
         elements.append(Paragraph(f"{idx + 1}. {item.get('nom', 'Sans titre')}", section_style))
 
         orientation = get_orientation(item)
@@ -113,8 +113,6 @@ def build_pdf(output_path, source_name, data):
             diag = ChessboardFlowable(fen_row, size=110, fleches_defense=fleches_defense, fleches_menace=fleches_menace, orientation=orientation) if fen_row else ""
             
             explication = explications.get(str(row.get('move_number', '')))
-            
-            # Correction du bug des commentaires automatiques
             parts = []
             if row.get('white_comment'): parts.append(f"<b>Blanc :</b> {row['white_comment']}")
             if row.get('black_comment'): parts.append(f"<b>Noir :</b> {row['black_comment']}")
@@ -123,9 +121,9 @@ def build_pdf(output_path, source_name, data):
             if explication:
                 comment_text = f"<b>{explication}</b>"
                 if auto_comment:
-                    comment_text += f"<br/><br/><i>Analyse auto :</i><br/>{auto_comment}"
+                    comment_text += f"<br/><br/><i>Analyse IA :</i><br/>{auto_comment}"
             else:
-                comment_text = auto_comment
+                comment_text = f"<i>Analyse IA :</i><br/>{auto_comment}"
 
             table_data.append([diag, Paragraph(str(row.get('move_number', '')), bold_style), Paragraph(row.get('white', ''), bold_style), Paragraph(row.get('black', ''), bold_style), Paragraph(comment_text, normal_style)])
             
@@ -152,17 +150,27 @@ def main():
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sources = collect_source_files(base_dir)
     if not sources:
-        print('Aucun fichier JSON trouvé à traiter.')
+        print('Aucun fichier JSON trouvé.')
         return
-    for source_path in sources:
-        try:
-            with open(source_path, 'r', encoding='utf-8') as f: data = json.load(f)
-            if not isinstance(data, list): continue
-            output_path = os.path.join(base_dir, f"guide_{os.path.splitext(os.path.basename(source_path))[0]}.pdf")
-            print(f"Génération de {output_path}")
-            build_pdf(output_path, os.path.basename(source_path), data)
-        except Exception as exc: print(f"Impossible de traiter {source_path}: {exc}")
-    print('Génération terminée.')
+        
+    # --- Démarrage d'Ollama ---
+    ollama = OllamaManager()
+    ollama.start()
+    
+    try:
+        for source_path in sources:
+            try:
+                with open(source_path, 'r', encoding='utf-8') as f: data = json.load(f)
+                if not isinstance(data, list): continue
+                output_path = os.path.join(base_dir, f"guide_{os.path.splitext(os.path.basename(source_path))[0]}.pdf")
+                print(f"==== Génération de {output_path} ====")
+                build_pdf(output_path, os.path.basename(source_path), data)
+            except Exception as exc: 
+                print(f"Impossible de traiter {source_path}: {exc}")
+        print('Génération terminée.')
+    finally:
+        # --- Extinction garantie d'Ollama ---
+        ollama.stop()
 
 if __name__ == '__main__':
     main()
