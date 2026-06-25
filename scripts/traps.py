@@ -169,7 +169,7 @@ def generer_pdf():
                 diag = ChessboardFlowable(fen, size=105, orientation=orient) if fen else ""
                 table_data.append([diag, Paragraph(row.get("white",""), bold_style), Paragraph(row.get("white_comment",""), normal_style), Paragraph(row.get("black",""), bold_style), Paragraph(row.get("black_comment",""), normal_style)])
 
-            t_coups = Table(table_data, colWidths=[120, 45, 145, 45, 145], repeatRows=1)
+            t_coups = Table(table_data, colWidths=[120, 30, 160, 30, 160], repeatRows=1)
             t_coups.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 6), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
             bloc.append(t_coups)
             elements.extend([KeepTogether(bloc), Spacer(1, 15)])

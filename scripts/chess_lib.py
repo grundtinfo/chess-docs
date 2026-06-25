@@ -3,9 +3,10 @@ import re
 import json
 import chess
 import chess.svg
-import requests
 import subprocess
 import time
+import ollama
+import requests
 from io import StringIO
 from reportlab.platypus import Flowable
 from reportlab.lib import colors
@@ -23,7 +24,7 @@ except ImportError:
 # CONFIGURATION OLLAMA (LLM Local)
 # =====================================================================
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "qwen2.5:3b"  # Modèle recommandé : qwen2.5:3b, llama3.2, ou mistral
+OLLAMA_MODEL = "granite3.2:8b"  # Modèle recommandé : qwen2.5:7b, granite3.2:8b
 
 # =====================================================================
 # GESTIONNAIRE OLLAMA (Démarrage / Extinction automatique)
@@ -41,52 +42,37 @@ class OllamaManager:
     def start(self):
         try:
             # Vérifie si le serveur tourne déjà (ex: lancé via systemd)
-            if requests.get("http://localhost:11434/").status_code == 200:
-                print("[INFO] Serveur Ollama détecté (déjà actif).")
-                return True
-        except requests.ConnectionError:
-            pass # Le serveur ne tourne pas, on va le lancer
-            
+            if ollama.list_models():
+                print("[INFO] Le serveur Ollama est déjà en cours d'exécution.")
+                return
+        except Exception as e:
+            print(f"[ERROR] Erreur lors de la vérification du serveur Ollama: {e}")
+            return
+
         print("[INFO] Démarrage du serveur Ollama en arrière-plan...")
         try:
-            self.process = subprocess.Popen(
-                ["ollama", "serve"], 
-                stdout=subprocess.DEVNULL, 
-                stderr=subprocess.DEVNULL
-            )
+            # Démarrage du serveur Ollama via la librairie
+            self.process = ollama.run()
             self.is_managed_by_us = True
-            
-            # Polling : on attend que l'API réponde (max 15 secondes)
-            for _ in range(15):
-                time.sleep(1)
-                try:
-                    if requests.get("http://localhost:11434/").status_code == 200:
-                        print("[INFO] Serveur Ollama prêt et connecté !")
-                        return True
-                except requests.ConnectionError:
-                    continue
-            print("[AVERTISSEMENT] Le serveur Ollama ne répond pas après 15 secondes.")
-            return False
         except FileNotFoundError:
-            print("[ERREUR] La commande 'ollama' est introuvable. Vérifiez votre PATH WSL.")
-            return False
+            print("[ERROR] Ollama n'est pas installé ou non trouvé dans le PATH.")
+            return
+
 
     def stop(self):
         # 1. Forcer le déchargement immédiat du modèle de la VRAM
         print(f"\n[INFO] Nettoyage : Déchargement du modèle {OLLAMA_MODEL} de la VRAM...")
         try:
-            requests.post(OLLAMA_URL, json={"model": OLLAMA_MODEL, "keep_alive": 0}, timeout=5)
-        except Exception:
-            pass
-            
+            ollama.stop()
+        except Exception as e:
+            print(f"[ERROR] Erreur lors du déchargement du modèle: {e}")
+        
         # 2. Tuer le processus serveur uniquement si notre script l'a démarré
         if self.is_managed_by_us and self.process:
-            print("[INFO] Extinction du processus serveur Ollama...")
-            self.process.terminate()
-            self.process.wait()
-            self.process = None
-            self.is_managed_by_us = False
-            print("[INFO] Ollama éteint avec succès.")
+            try:
+                self.process.kill()
+            except Exception as e:
+                print(f"[ERROR] Erreur lors de la fermeture du processus: {e}")
 
 # =====================================================================
 # COULEURS (Charte Graphique Commune)
@@ -262,31 +248,58 @@ class ChessboardFlowable(Flowable):
 # ANALYSE TACTIQUE ET APPEL LLM
 # =====================================================================
 def detect_tactics(board_before, move_obj):
-    """Analyse le plateau pour extraire le vocabulaire technique (Fourchette, Clouage...)."""
+    """Analyse le plateau pour extraire le vocabulaire technique (Fourchette, Clouage, etc.)."""
     tactics = []
+    
     if board_before.is_capture(move_obj):
         tactics.append("Capture")
     
     board_after = board_before.copy()
     board_after.push(move_obj)
     
+    # --- Détection des Échecs et du Mat ---
     if board_after.is_checkmate():
         tactics.append("Mat")
     elif board_after.is_check():
-        tactics.append("Échec")
+        defender_color = board_after.turn
+        attacker_color = not defender_color
+        king_sq = board_after.king(defender_color)
         
-    # Détection simplifiée de fourchette (attaque plusieurs pièces de valeur)
+        checkers = board_after.attackers(attacker_color, king_sq)
+        
+        if move_obj.to_square not in checkers and len(checkers) > 0:
+            tactics.append("Échec à la découverte")
+        elif len(checkers) > 1:
+            tactics.append("Échec double")
+        else:
+            tactics.append("Échec")
+        
+    # --- Détection de Fourchette ---
     if not board_after.is_checkmate():
         attacks = board_after.attacks(move_obj.to_square)
         valuable_targets = 0
         for sq in attacks:
             piece = board_after.piece_at(sq)
-            if piece and piece.color != board_after.turn and piece.piece_type != chess.PAWN:
+            if piece and piece.color == board_after.turn and piece.piece_type != chess.PAWN:
                 valuable_targets += 1
         if valuable_targets > 1:
             tactics.append("Fourchette")
-            
+
+    # --- Détection de Clouage (Pin) ---
+    defender_color = board_after.turn
+    has_new_pin = False
+    for sq in chess.SQUARES:
+        piece = board_after.piece_at(sq)
+        if piece and piece.color == defender_color:
+            if board_after.is_pinned(defender_color, sq):
+                if not board_before.is_pinned(defender_color, sq):
+                    has_new_pin = True
+                    break
+    if has_new_pin:
+        tactics.append("Clouage")
+
     return ", ".join(tactics) if tactics else "Positionnel/Développement"
+
 
 def format_eval(val, is_mate):
     if is_mate: return f"Mat en {abs(val)}"
@@ -302,68 +315,102 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False):
     engine = analyzer.get_engine()
     
     if engine:
-        eval_before, eval_after, move_obj = analyzer.analyze_move(board, move_san)
-        best_move_fr, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
-        
-        if eval_before and eval_after and best_move_fr:
-            val_before = get_eval_value(eval_before)
-            val_after = get_eval_value(eval_after)
+        try:
+            eval_before, eval_after, move_obj = analyzer.analyze_move(board, move_san)
+            best_move_fr, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
             
-            # Évaluations absolues pour faciliter la compréhension du LLM
-            abs_before = val_before if board.turn == chess.WHITE else -val_before
-            abs_after = val_after if board.turn == chess.BLACK else -val_after
-            
-            is_mate_before = eval_before.get('type') == 'mate' if isinstance(eval_before, dict) else getattr(eval_before, 'type', '') == 'mate'
-            is_mate_after = eval_after.get('type') == 'mate' if isinstance(eval_after, dict) else getattr(eval_after, 'type', '') == 'mate'
-            
-            str_before = format_eval(abs_before, is_mate_before)
-            str_after = format_eval(abs_after, is_mate_after)
-            
-            tactics = detect_tactics(board, move_obj)
-            
-            # Détection Gaffe / Bon coup pour orienter le LLM
-            delta = -(val_after + val_before) # Delta relatif au joueur
-            status = "Coup neutre"
-            if delta < -150: status = "Gaffe majeure (Grosse perte d'évaluation)"
-            elif delta < -50: status = "Erreur stratégique"
-            elif delta > 50: status = "Excellent coup"
-            
-            # Prompt dynamique envoyé à Ollama
-            prompt = f"""Tu es un Grand Maître International d'échecs pédagogue.
-Explique le coup '{raw}' joué par les {turn_color} de manière concise (1 ou 2 phrases très claires).
-
-Données mathématiques de Stockfish :
-- Évaluation avant le coup : {str_before}
-- Évaluation après le coup : {str_after}
-- Le meilleur coup conseillé était : {best_move_fr}
-- Catégorie du coup : {status}
-- Éléments tactiques détectés sur l'échiquier : {tactics}
-
-Instructions strictes :
-Si c'est une gaffe, explique la menace (ex: laisse une pièce en prise, rate une fourchette). 
-Utilise le vocabulaire technique avec parcimonie. Ne mentionne pas littéralement "l'évaluation est de +1.5", traduis-le en mots ("avantage blanc", "position égale"). Ne justifie pas ta réponse, donne uniquement l'explication finale du coup."""
-
-            # Appel à Ollama
-            try:
-                print(f"  [LLM] Analyse du coup {raw}...")
-                response = requests.post(OLLAMA_URL, json={
-                    "model": OLLAMA_MODEL,
-                    "prompt": prompt,
-                    "stream": False
-                }, timeout=10)
-                if response.status_code == 200:
-                    comment = response.json().get("response", "").strip()
-                    # Sécurité pour éviter que le LLM ne bavarde trop
-                    return comment.replace("\n", " ")
-            except requests.exceptions.RequestException:
-                print(f"  [AVERTISSEMENT] Ollama injoignable sur {OLLAMA_URL}. Passage au fallback classique.")
+            if eval_before and eval_after and best_move_fr:
+                val_before = get_eval_value(eval_before)
+                val_after = get_eval_value(eval_after)
                 
-            # FALLBACK CLASSIQUE (Si Ollama n'est pas lancé)
-            if delta < -50: return f"Coup faible. Préférez {best_move_fr}."
-            elif delta > 50: return "Coup excellent ! Améliore la position."
-            else: return "Coup égal. Évaluation stable."
+                # Évaluations absolues pour faciliter la compréhension du LLM
+                abs_before = val_before if board.turn == chess.WHITE else -val_before
+                abs_after = val_after if board.turn == chess.BLACK else -val_after
+                
+                is_mate_before = eval_before.get('type') == 'mate' if isinstance(eval_before, dict) else getattr(eval_before, 'type', '') == 'mate'
+                is_mate_after = eval_after.get('type') == 'mate' if isinstance(eval_after, dict) else getattr(eval_after, 'type', '') == 'mate'
+                
+                str_before = format_eval(abs_before, is_mate_before)
+                str_after = format_eval(abs_after, is_mate_after)
+                
+                tactics = detect_tactics(board, move_obj)
+                
+                # --- CALCUL DU DELTA ET VERDICT AFFINÉ ---
+                # val_before et val_after sont du point de vue des Blancs (positif = avantage Blanc)
+                # On calcule la différence du point de vue du joueur au trait
+                if board.turn == chess.WHITE:
+                    delta = val_after - val_before
+                else:
+                    delta = val_before - val_after
+                
+                # Catégorisation détaillée pour guider le LLM
+                if delta <= -300:
+                    status = "Gaffe majeure (Perte catastrophique, souvent matérielle ou donne un mat)"
+                elif delta <= -150:
+                    status = "Gaffe (Grosse erreur, perdant un avantage significatif)"
+                elif delta <= -80:
+                    status = "Erreur (Coup qui dégrade la position, rate une tactique évidente)"
+                elif delta <= -30:
+                    status = "Imprécision (Coup sous-optimal, donne une légère opportunité à l'adversaire)"
+                elif delta > 50:
+                    status = "Coup brillant / Excellent coup (Trouve une ressource inattendue ou punit l'adversaire)"
+                else:
+                    status = "Bon coup (Développement logique, solide ou positionnel)"
+                
+                # Prompt dynamique optimisé pour Qwen2.5:7b
+                prompt = f"""Tu es un Grand Maître International d'échecs expert en pédagogie.
+Ton but est de commenter le coup suivant.
 
+CONTEXTE DE LA POSITION :
+- Coup joué : {raw}
+- Joué par : {turn_color}
+- Évaluation avant : {str_before}
+- Évaluation après : {str_after}
+- Meilleur coup alternatif : {best_move_fr}
+- Verdict : {status}
+- Tactique(s) impliquée(s) : {tactics}
+
+INSTRUCTIONS STRICTES :
+1. FORMAT : Rédige uniquement le commentaire final. Aucune formule de politesse, d'introduction (ne dis pas "Voici l'explication") ou de conclusion.
+2. LONGUEUR : 1 ou 2 phrases maximum. Sois percutant et va à l'essentiel.
+3. CHIFFRES : Ne mentionne JAMAIS les scores numériques d'évaluation (comme {str_before} ou {str_after}). Traduis-les obligatoirement en mots (ex: "avantage décisif", "position égale", "retournement de situation").
+4. ANALYSE : Si le verdict est une erreur ou une gaffe, explique brièvement pourquoi la position est dégradée, et mentionne l'alternative conseillée ({best_move_fr}).
+5. TACTIQUE : Intègre les éléments tactiques ({tactics}) de façon fluide dans ton explication sans faire de liste.
+6. REPETITIONS : si le Meilleur coup alternatif est le même que le Coup joué, NE MENTIONE PAS cette alternative."""
+                
+                # Appel à Ollama avec gestion des erreurs
+                try:
+                    print(f"  [LLM] Analyse du coup {raw}...")
+                    result = ollama.generate(
+                        model=OLLAMA_MODEL,
+                        prompt=prompt
+                    )
+                    if result and hasattr(result, 'response'):
+                        comment = result['response'].strip()
+                        # Sécurité pour éviter que le LLM ne bavarde trop
+                        return comment.replace("\n", " ")
+                except requests.exceptions.RequestException as e:
+                    print(f"  [AVERTISSEMENT] Ollama injoignable sur {OLLAMA_URL}: {str(e)}. Passage au fallback classique.")
+                    
+                # FALLBACK CLASSIQUE (Si Ollama n'est pas disponible)
+                if delta < -50:
+                    return "Coup très mauvais : menace grave non évitée."
+                elif delta > 50:
+                    return "Coup excellent : avantage significatif."
+                else:
+                    return "Coup neutre : pas de menace immédiate."
+            
+            # Gestion des cas où l'analyse ne retourne pas de données
+            return "Analyse incomplète : données manquantes."
+        
+        except Exception as e:
+            print(f"  [ERREUR] Analyse Stockfish échouée : {str(e)}. Passage au fallback.")
+            return "Analyse impossible : erreur de calcul."
+    
     # FALLBACK SANS STOCKFISH
-    if "x" in raw: return "Capture de pièce."
-    if "+" in raw: return "Donne échec."
-    return "Coup de développement."
+    if "x" in raw:
+        return "Coup de prise : attention à la position des pièces."
+    elif "+" in raw:
+        return "Coup de mat : menace immédiate."
+    else:
+        return "Coup neutre : pas de menace immédiate."
