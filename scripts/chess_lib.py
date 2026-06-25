@@ -25,7 +25,11 @@ except ImportError:
 # CONFIGURATION OLLAMA (LLM Local)
 # =====================================================================
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "granite3.2:8b"  # Modèle recommandé : qwen2.5:7b, granite3.2:8b
+OLLAMA_MODEL = "mistral:7b"
+# Modèles testés :
+# - granite3.2:8b quleques hallucinations et ne respecte pas toujours les consignes
+# - mistral:7b français impecable, comprends et applique les consignes mais pas toujours très rapide
+# - qwen2.5:7b le fançais n'est pas toujours très bon mais rigoureux et bons temps de réponse
 
 # =====================================================================
 # GESTIONNAIRE OLLAMA (Démarrage / Extinction automatique)
@@ -335,7 +339,7 @@ def detect_tactics(board_before, move_obj):
     if pinned_pieces:
         tactics.append(f"Clouage imposé sur : {', '.join(pinned_pieces)}")
 
-    return " | ".join(tactics) if tactics else "Positionnel/Développement"
+    return " | ".join(tactics) if tactics else "Développement"
 
 
 def format_eval_string(eval_dict, is_white_turn):
@@ -397,8 +401,6 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False):
                 if move_obj and best_uci and move_obj.uci() == best_uci:
                     delta = 0
                 
-                print(f"\n  [DEBUG] Delta (Perte Centipion) pour {raw} : {delta}")
-                
                 tactics = detect_tactics(board, move_obj)
                 
                 # --- NOUVEAUX SEUILS OPTIMISÉS ---
@@ -424,7 +426,7 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False):
                 # --- GESTION CONDITIONNELLE DE L'ALTERNATIVE ---
                 if raw != best_move_fr and delta < -20: # On n'affiche l'alternative que si l'erreur est réelle
                     alt_context = f"- Meilleure alternative : {best_move_fr}\n"
-                    alt_rule = "4. Mentionne brièvement la 'Meilleure alternative'.\n"
+                    alt_rule = "5. Mentionne brièvement la 'Meilleure alternative'.\n"
                 else:
                     alt_context = ""
                     alt_rule = ""
@@ -435,12 +437,12 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False):
                 RÈGLES D'OR :
                 1. N'utilise QUE les informations fournies dans la section FAITS.
                 2. NE PAS inventer de stratégies, de menaces ou de justifications qui ne sont pas explicitement listées.
-                3. Si un fait est "Positionnel/Développement", ne cherche pas à justifier une attaque inexistante.
-                4. Rédige en français, 1 à 2 phrases max.
+                3. Si une tactique est "Développement", ne cherche pas à justifier une attaque inexistante.
+                4. Rédige en français, 1 à 2 phrases max.{alt_rule}
 
                 EXEMPLES DE RÉPONSE :
-                - FAITS : Coup: e4, Qualité: Excellent, Tactique: Positionnel.
-                RÉPONSE : e4 est un excellent coup qui favorise le contrôle central et le développement.
+                - FAITS : Coup: e4, Qualité: Excellent, Tactique: Positionnel/Développement.
+                RÉPONSE : e4 est un excellent coup qui favorise une bonne position et le développement.
                 - FAITS : Coup: Cxf7, Qualité: Bon, Tactique: Fourchette sur Dame et Tour.
                 RÉPONSE : Cxf7 est un bon coup tactique créant une fourchette menaçant la dame et la tour adverses.
 

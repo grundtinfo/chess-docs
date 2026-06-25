@@ -84,7 +84,7 @@ python scripts/openings.py
 Les fichiers PDF générés contiennent :
 - 📊 Diagrammes des positions clés
 - 🔍 Analyse complète des coups (par Stockfish si installé)
-- 💡 Commentaires pédagogiques
+- 💡 Commentaires pédagogiques via LLM
 - 🎯 Notifications des pièges et tactiques
 
 ---
@@ -398,10 +398,11 @@ Vérifiez :
 ## 📝 Notes importantes
 
 - **Stockfish est optionnel** : Les scripts fonctionnent immédiatement, avec ou sans le moteur
-- **Performance** : La génération peut prendre quelques secondes (selon le nombre de positions)
+- **Performance** : La génération peut prendre quelques minutes (selon le nombre de positions)
 - **Virtualenv obligatoire** : Toujours activer avec `source bin/activate` avant de lancer les scripts
 - **Connexion Internet** : Requise uniquement pour télécharger le binaire Stockfish (une fois)
 - **Mise à jour** : Pour mettre à jour les dépendances : `pip install -r requirements.txt --upgrade`
+- **LLM** : attention au refroidissement, c'est régulier qu'en cas de chauffe du matétriel le LLM manque de rigeur
 
 ---
 
@@ -439,7 +440,7 @@ Moteur : Stockfish 17.1 | Profondeur : 15 | Threads : 2
 
 Ce projet est fourni à titre informatif pour l'étude des stratégies d'échecs.
 
-**Dernière mise à jour :** Mai 2026
+**Dernière mise à jour :** Juin 2026
 
 ---
 
@@ -449,5 +450,6 @@ Développé avec ❤️ pour l'analyse d'échecs
 
 **Composants utilisés :**
 - Stockfish : Moteur d'échecs open-source (AGPL-3.0)
+- Ollama : Hebergeur local de LLM (Apache2)
 - python-chess : Logique d'échecs (GPL-3.0)
 - ReportLab : Génération PDF (BSD)
