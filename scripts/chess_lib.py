@@ -7,6 +7,7 @@ import subprocess
 import time
 import ollama
 import requests
+import string
 from io import StringIO
 from reportlab.platypus import Flowable
 from reportlab.lib import colors
@@ -41,8 +42,8 @@ class OllamaManager:
         
     def start(self):
         try:
-            # Vérifie si le serveur tourne déjà (ex: lancé via systemd)
-            if ollama.list_models():
+            # Vérifie si le serveur tourne déjà (remplacer list_models par list)
+            if ollama.list():
                 print("[INFO] Le serveur Ollama est déjà en cours d'exécution.")
                 return
         except Exception as e:
@@ -57,7 +58,6 @@ class OllamaManager:
         except FileNotFoundError:
             print("[ERROR] Ollama n'est pas installé ou non trouvé dans le PATH.")
             return
-
 
     def stop(self):
         # 1. Forcer le déchargement immédiat du modèle de la VRAM
@@ -123,9 +123,13 @@ def parse_moves(coups_str):
             moves.append({"raw": black_raw, "san": black_san, "move_number": int(num), "color": "black"})
     return moves
 
-def get_eval_value(eval_dict):
-    """Extrait la valeur d'évaluation absolue du point de vue des Blancs."""
+def get_eval_value(eval_dict, current_board=None):
+    """Extrait la valeur mathématique absolue (perspective Blancs) avec lissage des mats."""
+    if current_board and current_board.is_checkmate():
+        return 10000 if current_board.turn == chess.BLACK else -10000
+
     if not eval_dict: return 0
+    
     if hasattr(eval_dict, 'value'):
         val = eval_dict.value if eval_dict.value is not None else 0
         t = getattr(eval_dict, 'type', 'cp')
@@ -134,8 +138,19 @@ def get_eval_value(eval_dict):
         t = eval_dict.get('type', 'cp') if isinstance(eval_dict, dict) else 'cp'
     
     if t == 'mate':
-        return 10000 if val > 0 else -10000
+        if val > 0:
+            return 10000 - val
+        elif val < 0:
+            return -10000 - val
+        else:
+            return 0
+            
     return val
+
+def remove_special_chars(input_string):
+    translator = str.maketrans('', '', string.punctuation.replace('-', ''))
+    no_special_chars = input_string.translate(translator)
+    return no_special_chars
 
 # =====================================================================
 # GESTIONNAIRE STOCKFISH
@@ -247,67 +262,109 @@ class ChessboardFlowable(Flowable):
 # =====================================================================
 # ANALYSE TACTIQUE ET APPEL LLM
 # =====================================================================
+
+def get_piece_name_fr(piece):
+    if not piece:
+        return "Pièce"
+    names = {
+        chess.PAWN: "Pion",
+        chess.KNIGHT: "Cavalier",
+        chess.BISHOP: "Fou",
+        chess.ROOK: "Tour",
+        chess.QUEEN: "Dame",
+        chess.KING: "Roi"
+    }
+    return names.get(piece.piece_type, "Pièce")
+
 def detect_tactics(board_before, move_obj):
-    """Analyse le plateau pour extraire le vocabulaire technique (Fourchette, Clouage, etc.)."""
     tactics = []
+    moving_piece = board_before.piece_at(move_obj.from_square)
+    moving_piece_name = get_piece_name_fr(moving_piece)
+    to_square_name = chess.square_name(move_obj.to_square)
     
     if board_before.is_capture(move_obj):
-        tactics.append("Capture")
+        captured_piece = board_before.piece_at(move_obj.to_square)
+        if captured_piece:
+            captured_name = get_piece_name_fr(captured_piece)
+            tactics.append(f"Capture de {captured_name} par {moving_piece_name} en {to_square_name}")
+        else:
+            tactics.append(f"Capture en passant par {moving_piece_name} en {to_square_name}")
     
     board_after = board_before.copy()
     board_after.push(move_obj)
     
-    # --- Détection des Échecs et du Mat ---
     if board_after.is_checkmate():
-        tactics.append("Mat")
+        tactics.append(f"Mat par {moving_piece_name} en {to_square_name}")
     elif board_after.is_check():
         defender_color = board_after.turn
         attacker_color = not defender_color
         king_sq = board_after.king(defender_color)
-        
         checkers = board_after.attackers(attacker_color, king_sq)
         
         if move_obj.to_square not in checkers and len(checkers) > 0:
-            tactics.append("Échec à la découverte")
+            checker_sq = list(checkers)[0]
+            checker_piece = board_after.piece_at(checker_sq)
+            checker_name = get_piece_name_fr(checker_piece)
+            tactics.append(f"Échec à la découverte par {checker_name} (démasqué par {moving_piece_name})")
         elif len(checkers) > 1:
-            tactics.append("Échec double")
+            tactics.append(f"Échec double impliquant {moving_piece_name} en {to_square_name}")
         else:
-            tactics.append("Échec")
+            tactics.append(f"Échec par {moving_piece_name} en {to_square_name}")
         
-    # --- Détection de Fourchette ---
     if not board_after.is_checkmate():
         attacks = board_after.attacks(move_obj.to_square)
-        valuable_targets = 0
+        targets = []
         for sq in attacks:
             piece = board_after.piece_at(sq)
             if piece and piece.color == board_after.turn and piece.piece_type != chess.PAWN:
-                valuable_targets += 1
-        if valuable_targets > 1:
-            tactics.append("Fourchette")
+                targets.append(f"{get_piece_name_fr(piece)} en {chess.square_name(sq)}")
+        
+        if len(targets) > 1:
+            targets_str = ", ".join(targets)
+            tactics.append(f"Fourchette par {moving_piece_name} en {to_square_name} sur : {targets_str}")
 
-    # --- Détection de Clouage (Pin) ---
     defender_color = board_after.turn
-    has_new_pin = False
+    pinned_pieces = []
     for sq in chess.SQUARES:
         piece = board_after.piece_at(sq)
         if piece and piece.color == defender_color:
             if board_after.is_pinned(defender_color, sq):
                 if not board_before.is_pinned(defender_color, sq):
-                    has_new_pin = True
-                    break
-    if has_new_pin:
-        tactics.append("Clouage")
+                    pinned_pieces.append(f"{get_piece_name_fr(piece)} en {chess.square_name(sq)}")
+                    
+    if pinned_pieces:
+        tactics.append(f"Clouage imposé sur : {', '.join(pinned_pieces)}")
 
-    return ", ".join(tactics) if tactics else "Positionnel/Développement"
+    return " | ".join(tactics) if tactics else "Positionnel/Développement"
 
 
-def format_eval(val, is_mate):
-    if is_mate: return f"Mat en {abs(val)}"
-    return f"{val/100:+.1f}"
+def format_eval_string(eval_dict, is_white_turn):
+    if not eval_dict: return "0.0"
+    
+    if hasattr(eval_dict, 'value'):
+        val = eval_dict.value if eval_dict.value is not None else 0
+        t = getattr(eval_dict, 'type', 'cp')
+    else:
+        val = eval_dict.get('value', 0) if isinstance(eval_dict, dict) else 0
+        t = eval_dict.get('type', 'cp') if isinstance(eval_dict, dict) else 'cp'
+        
+    player_multiplier = 1 if is_white_turn else -1
+    
+    if t == 'mate':
+        mate_in = val * player_multiplier
+        if mate_in > 0:
+            return f"Mat en {mate_in} en votre faveur"
+        elif mate_in < 0:
+            return f"Mat en {abs(mate_in)} contre vous"
+        else:
+            return "Échec et Mat"
+    else:
+        cp_val = (val * player_multiplier) / 100.0
+        return f"{cp_val:+.1f}"
 
 def generate_move_comment(move_raw, move_san, board_state, is_trap=False):
     """Orchestre l'analyse Stockfish, la détection tactique et la rédaction par Ollama."""
-    raw = move_raw.strip()
+    raw = remove_special_chars(move_raw.strip())
     board = chess.Board(board_state.fen())
     turn_color = "Blancs" if board.turn == chess.WHITE else "Noirs"
     
@@ -320,96 +377,109 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False):
             best_move_fr, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
             
             if eval_before and eval_after and best_move_fr:
-                val_before = get_eval_value(eval_before)
-                val_after = get_eval_value(eval_after)
+                board_after = board.copy()
+                board_after.push(move_obj)
                 
-                # Évaluations absolues pour faciliter la compréhension du LLM
-                abs_before = val_before if board.turn == chess.WHITE else -val_before
-                abs_after = val_after if board.turn == chess.BLACK else -val_after
+                board_best = board.copy()
+                if best_uci:
+                    board_best.push(chess.Move.from_uci(best_uci))
                 
-                is_mate_before = eval_before.get('type') == 'mate' if isinstance(eval_before, dict) else getattr(eval_before, 'type', '') == 'mate'
-                is_mate_after = eval_after.get('type') == 'mate' if isinstance(eval_after, dict) else getattr(eval_after, 'type', '') == 'mate'
+                # --- CALCUL MATHÉMATIQUE SÉCURISÉ ---
+                val_after = get_eval_value(eval_after, board_after)
+                val_best = get_eval_value(best_eval, board_best)
                 
-                str_before = format_eval(abs_before, is_mate_before)
-                str_after = format_eval(abs_after, is_mate_after)
+                player_multiplier = 1 if board.turn == chess.WHITE else -1
+                eval_player_after = val_after * player_multiplier
+                eval_player_best = val_best * player_multiplier
+                
+                delta = eval_player_after - eval_player_best
+                
+                if move_obj and best_uci and move_obj.uci() == best_uci:
+                    delta = 0
+                
+                print(f"\n  [DEBUG] Delta (Perte Centipion) pour {raw} : {delta}")
                 
                 tactics = detect_tactics(board, move_obj)
                 
-                # --- CALCUL DU DELTA ET VERDICT AFFINÉ ---
-                # val_before et val_after sont du point de vue des Blancs (positif = avantage Blanc)
-                # On calcule la différence du point de vue du joueur au trait
-                if board.turn == chess.WHITE:
-                    delta = val_after - val_before
-                else:
-                    delta = val_before - val_after
-                
-                # Catégorisation détaillée pour guider le LLM
-                if delta <= -300:
-                    status = "Gaffe majeure (Perte catastrophique, souvent matérielle ou donne un mat)"
+                # --- NOUVEAUX SEUILS OPTIMISÉS ---
+                if delta > -10:  # Tolérance de 0.1 pion (négligeable)
+                    status = "C'est un excellent coup, le plus précis pour maintenir l'avantage."
+                elif delta <= -300:
+                    status = "C'est une gaffe majeure entraînant une perte catastrophique."
                 elif delta <= -150:
-                    status = "Gaffe (Grosse erreur, perdant un avantage significatif)"
+                    status = "C'est une erreur sérieuse qui fait perdre un avantage significatif."
                 elif delta <= -80:
-                    status = "Erreur (Coup qui dégrade la position, rate une tactique évidente)"
+                    status = "C'est une imprécision qui dégrade légèrement la position."
                 elif delta <= -30:
-                    status = "Imprécision (Coup sous-optimal, donne une légère opportunité à l'adversaire)"
-                elif delta > 50:
-                    status = "Coup brillant / Excellent coup (Trouve une ressource inattendue ou punit l'adversaire)"
+                    status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
                 else:
-                    status = "Bon coup (Développement logique, solide ou positionnel)"
+                    status = "C'est un coup solide et tout à fait correct."
                 
-                # Prompt dynamique optimisé pour Qwen2.5:7b
-                prompt = f"""Tu es un Grand Maître International d'échecs expert en pédagogie.
-Ton but est de commenter le coup suivant.
+                # Formatage du coup alternatif de manière plus naturelle
+                if raw != best_move_fr and delta != 0:
+                    better_move_comment = f" (L'alternative conseillée était {best_move_fr})"
+                else:
+                    better_move_comment = ""
+                    
+                # --- GESTION CONDITIONNELLE DE L'ALTERNATIVE ---
+                if raw != best_move_fr and delta < -20: # On n'affiche l'alternative que si l'erreur est réelle
+                    alt_context = f"- Meilleure alternative : {best_move_fr}\n"
+                    alt_rule = "4. Mentionne brièvement la 'Meilleure alternative'.\n"
+                else:
+                    alt_context = ""
+                    alt_rule = ""
 
-CONTEXTE DE LA POSITION :
-- Coup joué : {raw}
-- Joué par : {turn_color}
-- Évaluation avant : {str_before}
-- Évaluation après : {str_after}
-- Meilleur coup alternatif : {best_move_fr}
-- Verdict : {status}
-- Tactique(s) impliquée(s) : {tactics}
+                # --- PROMPT STRICT AVEC EXEMPLES (FEW-SHOT) ---
+                prompt = f"""Tu es une IA de résumé factuel. Ton rôle est de traduire les faits fournis en une phrase pédagogique simple.
 
-INSTRUCTIONS STRICTES :
-1. FORMAT : Rédige uniquement le commentaire final. Aucune formule de politesse, d'introduction (ne dis pas "Voici l'explication") ou de conclusion.
-2. LANGUE : Rédige en français, avec un style clair, concis et pédagogique. Utilise des phrases simples et directes.
-2. REPETITIONS : NE METIONE PAS le Meilleur coup alternatif si c'est le même que le Coup joué.
-3. LONGUEUR : 1 ou 2 phrases maximum. Sois percutant et va à l'essentiel.
-4. CHIFFRES : Ne mentionne JAMAIS les scores numériques d'évaluation (comme {str_before} ou {str_after}). Traduis-les obligatoirement en mots (ex: "avantage décisif", "position égale", "retournement de situation").
-5. ANALYSE : Si le verdict est une erreur ou une gaffe, explique brièvement pourquoi la position est dégradée, et mentionne l'alternative conseillée ({best_move_fr})
-6.TACTIQUE : Intègre les éléments tactiques ({tactics}) de façon fluide dans ton explication sans faire de liste.
-"""
+                RÈGLES D'OR :
+                1. N'utilise QUE les informations fournies dans la section FAITS.
+                2. NE PAS inventer de stratégies, de menaces ou de justifications qui ne sont pas explicitement listées.
+                3. Si un fait est "Positionnel/Développement", ne cherche pas à justifier une attaque inexistante.
+                4. Rédige en français, 1 à 2 phrases max.
+
+                EXEMPLES DE RÉPONSE :
+                - FAITS : Coup: e4, Qualité: Excellent, Tactique: Positionnel.
+                RÉPONSE : e4 est un excellent coup qui favorise le contrôle central et le développement.
+                - FAITS : Coup: Cxf7, Qualité: Bon, Tactique: Fourchette sur Dame et Tour.
+                RÉPONSE : Cxf7 est un bon coup tactique créant une fourchette menaçant la dame et la tour adverses.
+
+                FAITS SUR LA POSITION :
+                - Joueur : {turn_color}
+                - Coup joué : {raw}
+                {alt_context}- Qualité du coup : {status}
+                - Événement tactique : {tactics}
+
+                RÉPONSE :
+                """
                 
-                # Appel à Ollama avec gestion des erreurs
                 try:
-                    print(f"  [LLM] Analyse du coup {raw}...")
+                    print(f"  [LLM] Analyse du coup {raw} à l'aide du prompt optimisé...")
                     result = ollama.generate(
                         model=OLLAMA_MODEL,
                         prompt=prompt
                     )
                     if result and hasattr(result, 'response'):
                         comment = result['response'].strip()
-                        # Sécurité pour éviter que le LLM ne bavarde trop
-                        return comment.replace("\n", " ")
+                        comment = comment.replace("\n", " ")
+                        print(f"  [LLM] Commentaire généré :\n    {comment}")
+                        return comment
                 except requests.exceptions.RequestException as e:
-                    print(f"  [AVERTISSEMENT] Ollama injoignable sur {OLLAMA_URL}: {str(e)}. Passage au fallback classique.")
+                    print(f"  [AVERTISSEMENT] Ollama injoignable sur {OLLAMA_URL}: {str(e)}. Passage au fallback.")
                     
-                # FALLBACK CLASSIQUE (Si Ollama n'est pas disponible)
                 if delta < -50:
                     return "Coup très mauvais : menace grave non évitée."
-                elif delta > 50:
-                    return "Coup excellent : avantage significatif."
+                elif delta == 0 or delta > -10:
+                    return "Coup excellent : maintient la pression."
                 else:
                     return "Coup neutre : pas de menace immédiate."
             
-            # Gestion des cas où l'analyse ne retourne pas de données
             return "Analyse incomplète : données manquantes."
         
         except Exception as e:
             print(f"  [ERREUR] Analyse Stockfish échouée : {str(e)}. Passage au fallback.")
             return "Analyse impossible : erreur de calcul."
     
-    # FALLBACK SANS STOCKFISH
     if "x" in raw:
         return "Coup de prise : attention à la position des pièces."
     elif "+" in raw:
