@@ -372,11 +372,13 @@ CONTEXTE DE LA POSITION :
 
 INSTRUCTIONS STRICTES :
 1. FORMAT : Rédige uniquement le commentaire final. Aucune formule de politesse, d'introduction (ne dis pas "Voici l'explication") ou de conclusion.
-2. LONGUEUR : 1 ou 2 phrases maximum. Sois percutant et va à l'essentiel.
-3. CHIFFRES : Ne mentionne JAMAIS les scores numériques d'évaluation (comme {str_before} ou {str_after}). Traduis-les obligatoirement en mots (ex: "avantage décisif", "position égale", "retournement de situation").
-4. ANALYSE : Si le verdict est une erreur ou une gaffe, explique brièvement pourquoi la position est dégradée, et mentionne l'alternative conseillée ({best_move_fr}).
-5. TACTIQUE : Intègre les éléments tactiques ({tactics}) de façon fluide dans ton explication sans faire de liste.
-6. REPETITIONS : si le Meilleur coup alternatif est le même que le Coup joué, NE MENTIONE PAS cette alternative."""
+2. LANGUE : Rédige en français, avec un style clair, concis et pédagogique. Utilise des phrases simples et directes.
+2. REPETITIONS : NE METIONE PAS le Meilleur coup alternatif si c'est le même que le Coup joué.
+3. LONGUEUR : 1 ou 2 phrases maximum. Sois percutant et va à l'essentiel.
+4. CHIFFRES : Ne mentionne JAMAIS les scores numériques d'évaluation (comme {str_before} ou {str_after}). Traduis-les obligatoirement en mots (ex: "avantage décisif", "position égale", "retournement de situation").
+5. ANALYSE : Si le verdict est une erreur ou une gaffe, explique brièvement pourquoi la position est dégradée, et mentionne l'alternative conseillée ({best_move_fr})
+6.TACTIQUE : Intègre les éléments tactiques ({tactics}) de façon fluide dans ton explication sans faire de liste.
+"""
                 
                 # Appel à Ollama avec gestion des erreurs
                 try:
