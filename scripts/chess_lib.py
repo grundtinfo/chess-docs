@@ -185,9 +185,9 @@ class StockfishAnalyzer:
                 stockfish_path = shutil.which("stockfish")
             
             if stockfish_path:
-                self.engine = Stockfish(path=stockfish_path, depth=15, parameters={"Threads": 4, "Hash": 512})
+                self.engine = Stockfish(path=stockfish_path, depth=18, parameters={"Threads": 12, "Hash": 4096})
             else:
-                self.engine = Stockfish(depth=15, parameters={"Threads": 4, "Hash": 512})
+                self.engine = Stockfish(depth=18, parameters={"Threads": 12, "Hash": 4096})
         except Exception as e:
             self.engine = None
         return self.engine
@@ -280,12 +280,15 @@ def get_piece_name_fr(piece):
     }
     return names.get(piece.piece_type, "Pièce")
 
-def detect_tactics(board_before, move_obj):
+def detect_tactics(board_before, move_obj, eval_after=None):
     tactics = []
     moving_piece = board_before.piece_at(move_obj.from_square)
     moving_piece_name = get_piece_name_fr(moving_piece)
     to_square_name = chess.square_name(move_obj.to_square)
     
+    # ==========================================
+    # 1. ANALYSE STATIQUE (python-chess)
+    # ==========================================
     if board_before.is_capture(move_obj):
         captured_piece = board_before.piece_at(move_obj.to_square)
         if captured_piece:
@@ -320,6 +323,7 @@ def detect_tactics(board_before, move_obj):
         targets = []
         for sq in attacks:
             piece = board_after.piece_at(sq)
+            # On cherche les pièces adverses attaquées (hors pions pour de vraies fourchettes)
             if piece and piece.color == board_after.turn and piece.piece_type != chess.PAWN:
                 targets.append(f"{get_piece_name_fr(piece)} en {chess.square_name(sq)}")
         
@@ -338,6 +342,38 @@ def detect_tactics(board_before, move_obj):
                     
     if pinned_pieces:
         tactics.append(f"Clouage imposé sur : {', '.join(pinned_pieces)}")
+
+    # ==========================================
+    # 2. ANALYSE PROFONDE (Stockfish)
+    # ==========================================
+    if eval_after and not board_after.is_checkmate():
+        # Normalisation du dictionnaire/objet d'évaluation Stockfish
+        if hasattr(eval_after, 'value'):
+            val = eval_after.value if eval_after.value is not None else 0
+            t = getattr(eval_after, 'type', 'cp')
+        else:
+            val = eval_after.get('value', 0) if isinstance(eval_after, dict) else 0
+            t = eval_after.get('type', 'cp') if isinstance(eval_after, dict) else 'cp'
+
+        # Définition de la perspective (positif = bon pour celui qui vient de jouer)
+        player_multiplier = 1 if board_before.turn == chess.WHITE else -1
+
+        if t == 'mate':
+            mate_in = val * player_multiplier
+            # On cible les mats forcés à très court terme (1 ou 2 coups max)
+            if 0 < mate_in <= 2:
+                tactics.append(f"Rend un mat inévitable en {mate_in} coup(s)")
+            elif -2 <= mate_in < 0:
+                tactics.append(f"Gaffe autorisant un mat adverse en {abs(mate_in)} coup(s)")
+        
+        elif t == 'cp':
+            cp_val = val * player_multiplier
+            # Un différentiel de +300 cp équivaut au gain forcé d'une pièce mineure (Fou/Cavalier)
+            # On ne l'ajoute que si ce n'est pas déjà une capture explicite sur l'échiquier
+            if cp_val >= 300 and "Capture" not in " ".join(tactics):
+                tactics.append("Prépare un gain matériel décisif imminent")
+            elif cp_val <= -300:
+                tactics.append("Expose le joueur à une lourde perte matérielle (gaffe stratégique)")
 
     return " | ".join(tactics) if tactics else "Développement"
 
@@ -377,7 +413,10 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False):
     
     if engine:
         try:
+            print("  [Stockfish] Analyse du coup")
+            print("    Evaluation position")
             eval_before, eval_after, move_obj = analyzer.analyze_move(board, move_san)
+            print("    Evaluation meilleur coup")
             best_move_fr, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
             
             if eval_before and eval_after and best_move_fr:
@@ -401,7 +440,8 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False):
                 if move_obj and best_uci and move_obj.uci() == best_uci:
                     delta = 0
                 
-                tactics = detect_tactics(board, move_obj)
+                print("    [INFO] analyse tactique")
+                tactics = detect_tactics(board, move_obj, eval_after)
                 
                 # --- NOUVEAUX SEUILS OPTIMISÉS ---
                 if delta > -10:  # Tolérance de 0.1 pion (négligeable)
@@ -435,16 +475,30 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False):
                 prompt = f"""Tu es une IA de résumé factuel. Ton rôle est de traduire les faits fournis en une phrase pédagogique simple.
 
                 RÈGLES D'OR :
-                1. N'utilise QUE les informations fournies dans la section FAITS.
-                2. NE PAS inventer de stratégies, de menaces ou de justifications qui ne sont pas explicitement listées.
-                3. Si une tactique est "Développement", ne cherche pas à justifier une attaque inexistante.
-                4. Rédige en français, 1 à 2 phrases max.{alt_rule}
+                1. RÈGLE ABSOLUE : Si le "Coup joué" contient le symbole '#', ta réponse doit STRICTEMENT se limiter à la phrase : "Échec et mat. La partie est terminée." Interdiction de faire d'autres commentaires.
+                2. N'utilise QUE les informations fournies dans la section FAITS.
+                3. NE PAS inventer de stratégies, de menaces ou de justifications qui ne sont pas explicitement listées.
+                4. Si une tactique est "Développement", ne cherche pas à justifier une attaque inexistante.
+                5. Rédige en français, 1 à 2 phrases max.{alt_rule}
 
                 EXEMPLES DE RÉPONSE :
-                - FAITS : Coup: e4, Qualité: Excellent, Tactique: Positionnel/Développement.
-                RÉPONSE : e4 est un excellent coup qui favorise une bonne position et le développement.
-                - FAITS : Coup: Cxf7, Qualité: Bon, Tactique: Fourchette sur Dame et Tour.
-                RÉPONSE : Cxf7 est un bon coup tactique créant une fourchette menaçant la dame et la tour adverses.
+                - FAITS : 
+                  Coup joué : e4
+                  Qualité du coup : C'est un excellent coup, le plus précis pour maintenir l'avantage.
+                  Événement tactique : Développement
+                RÉPONSE : e4 est un excellent coup qui permet de maintenir l'avantage et favorise le développement.
+                
+                - FAITS : 
+                  Coup joué : Cxf7
+                  Qualité du coup : C'est un excellent coup, le plus précis pour maintenir l'avantage.
+                  Événement tactique : Capture de Pion par Cavalier en f7 | Fourchette par Cavalier en f7 sur : Dame en d8, Tour en h8
+                RÉPONSE : Cxf7 est un excellent coup tactique capturant un pion et créant une fourchette sur la Dame en d8 et la Tour en h8.
+                
+                - FAITS : 
+                  Coup joué : Dxb7#
+                  Qualité du coup : C'est un excellent coup, le plus précis pour maintenir l'avantage.
+                  Événement tactique : Capture de Pion par Dame en b7 | Mat par Dame en b7
+                RÉPONSE : Échec et mat. La partie est terminée.
 
                 FAITS SUR LA POSITION :
                 - Joueur : {turn_color}
