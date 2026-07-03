@@ -10,7 +10,7 @@ from chess_lib import OllamaManager
 
 from chess_lib import (
     COLOR_PRIMARY, COLOR_SECONDARY, COLOR_TEXT, COLOR_BG_LIGHT, COLOR_BORDER,
-    ChessboardFlowable, parse_moves, generate_move_comment
+    ChessboardFlowable, parse_moves, generate_move_comment, resolve_stockfish_depth, debug_log, set_debug_enabled
 )
 
 def get_orientation(item):
@@ -24,13 +24,14 @@ def generate_moves_table(item):
     board = chess.Board()
     current_row = None
     
-    for move in moves:
+    for i, move in enumerate(moves):
         move_raw = move.get("raw", "")
         move_san = move.get("san", "")
+        future_moves = [m.get("san", "") for m in moves[i+1:]]
         arrow_notation = None
         arrow_color = None
         
-        commentaire = generate_move_comment(move_raw, move_san, board, is_trap=False)
+        commentaire = generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
         
         try:
             move_obj = board.parse_san(move_san)
@@ -75,6 +76,7 @@ def ajouter_pied_page(canvas, doc):
     canvas.restoreState()
 
 def build_pdf(output_path, source_name, data):
+    debug_log(f"Début génération PDF ouvertures: {output_path}", "INFO")
     doc = SimpleDocTemplate(output_path, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
     styles = getSampleStyleSheet()
     title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, leading=26, textColor=COLOR_PRIMARY, spaceAfter=15)
@@ -93,11 +95,12 @@ def build_pdf(output_path, source_name, data):
 
     for idx, item in enumerate(data):
         if idx > 0: elements.append(PageBreak())
-        print(f"\n[INFO] Analyse de la variante {idx+1}/{len(data)} : {item.get('nom', 'Sans titre')}")
+        debug_log(f"Analyse de la variante {idx+1}/{len(data)} : {item.get('nom', 'Sans titre')}", "ESSENTIAL")
         elements.append(Paragraph(f"{idx + 1}. {item.get('nom', 'Sans titre')}", section_style))
 
         orientation = get_orientation(item)
         explications = item.get('explications', {})
+        debug_log(f"Génération de la table de coups pour la variante {idx+1}", "INFO")
         rows = generate_moves_table(item)
         
         table_data = [[Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>N°</b>", normal_style), Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Noir</b>", normal_style), Paragraph("<b>Commentaire</b>", normal_style)]]
@@ -127,7 +130,7 @@ def build_pdf(output_path, source_name, data):
 
             table_data.append([diag, Paragraph(str(row.get('move_number', '')), bold_style), Paragraph(row.get('white', ''), bold_style), Paragraph(row.get('black', ''), bold_style), Paragraph(comment_text, normal_style)])
             
-        table = Table(table_data, colWidths=[130, 25, 45, 45, 295], repeatRows=1)
+        table = Table(table_data, colWidths=[130, 25, 47, 47, 291], repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
             ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]),
@@ -146,11 +149,16 @@ def collect_source_files(base_dir):
                 files.add(os.path.join(json_dir, filename))
     return sorted(files)
 
-def main():
+def main(stockfish_depth=18, verbose=1):
+    enabled, level = (True, max(int(verbose), 1)) if verbose else (False, 0)
+    set_debug_enabled(enabled, level=level)
+    debug_log("=== Début de la génération des guides d'ouvertures ===", "ESSENTIAL")
+    debug_log(f"Profondeur Stockfish retenue : {resolve_stockfish_depth(stockfish_depth)}", "ESSENTIAL")
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sources = collect_source_files(base_dir)
+    debug_log(f"Sources JSON découvertes: {len(sources)}", "INFO")
     if not sources:
-        print('Aucun fichier JSON trouvé.')
+        debug_log("Aucun fichier JSON trouvé.", "ERROR")
         return
         
     # --- Démarrage d'Ollama ---
@@ -163,14 +171,21 @@ def main():
                 with open(source_path, 'r', encoding='utf-8') as f: data = json.load(f)
                 if not isinstance(data, list): continue
                 output_path = os.path.join(base_dir, f"guide_{os.path.splitext(os.path.basename(source_path))[0]}.pdf")
-                print(f"==== Génération de {output_path} ====")
+                debug_log(f"Traitement du fichier source {source_path}", "INFO")
+                debug_log(f"==== Génération de {output_path} ====", "ESSENTIAL")
                 build_pdf(output_path, os.path.basename(source_path), data)
             except Exception as exc: 
-                print(f"Impossible de traiter {source_path}: {exc}")
-        print('Génération terminée.')
+                debug_log(f"Impossible de traiter {source_path}: {exc}", "ERROR")
+        debug_log("Génération terminée.", "ESSENTIAL")
     finally:
         # --- Extinction garantie d'Ollama ---
         ollama.stop()
 
 if __name__ == '__main__':
-    main()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Génère les guides d'ouvertures en PDF")
+    parser.add_argument("--stockfish-depth", type=int, default=18, help="Profondeur Stockfish à utiliser")
+    parser.add_argument("--verbose", nargs="?", const=1, default=0, type=int, help="Active les logs de debug détaillés avec un niveau optionnel (1 par défaut)")
+    args = parser.parse_args()
+    main(stockfish_depth=args.stockfish_depth, verbose=args.verbose)

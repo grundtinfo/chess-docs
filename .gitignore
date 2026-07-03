@@ -15,3 +15,5 @@ pyvenv.cfg
 *.pdf
 scripts/stockfish
 *.log
+# ignore players data
+json/player_*.json

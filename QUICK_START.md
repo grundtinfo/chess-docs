@@ -1,77 +1,72 @@
-# Démarrage rapide - Stockfish pour Chess-Docs
+# Démarrage rapide - Chess-Docs
 
-## 🎯 En 3 étapes
+## 🎯 En 4 étapes
 
-### Étape 1: Installer Stockfish (optionnel mais recommandé)
-```bash
-cd scripts
-python3 setup_stockfish.py
-```
-
-### Étape 2: Générer les PDFs
-```bash
-cd scripts
-python3 openings.py   # Génère guide_opening_*.pdf
-python3 traps.py      # Génère guide_pieges_et_defenses.pdf
-```
-
-### Étape 3: Ouvrir les PDFs
-Les fichiers PDF générés contiennent maintenant:
-- Analyse complète des coups par Stockfish (si installé)
-- Diagrammes des positions
-- Commentaires pédagogiques
-
----
-
-## 📦 Dépendances
-
-Déjà installées:
-- `python-chess` - Manipulation des positions
-- `reportlab` - Génération PDF
-- `stockfish` - Interface avec le moteur (binaire optionnel)
-
----
-
-## 🔍 Vérifier l'installation
+### Étape 1 : Activer le venv local
 
 ```bash
-# Vérifier que Stockfish package est installé
-python3 -c "import stockfish; print('✓ Stockfish package OK')"
-
-# Vérifier que le binaire Stockfish fonctionne
-python3 -c "from stockfish import Stockfish; Stockfish(depth=10); print('✓ Stockfish binaire OK')"
+source bin/activate
 ```
 
----
+### Étape 2 : Installer les dépendances Python
 
-## 🆘 Troubleshooting
-
-### Les commentaires sont génériques
-→ Stockfish binaire n'est pas installé, c'est normal. Le fallback fonctionne.
-
-### "ImportError: stockfish"
 ```bash
-pip install stockfish
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
 ```
 
-### Stockfish trop lent
-Réduisez la profondeur dans les scripts (ligne ~30):
-```python
-Stockfish(depth=10, ...)  # Au lieu de 15
+### Étape 3 : Installer et préparer Ollama
+
+Si Ollama n'est pas encore installé :
+
+```bash
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+Puis démarrez le serveur :
+
+```bash
+ollama serve
+```
+
+Et téléchargez le modèle utilisé par le projet :
+
+```bash
+ollama pull mistral:7b
+```
+
+### Étape 4 : Générer les PDFs
+
+```bash
+python scripts/setup_stockfish.py
+python scripts/traps.py
+python scripts/openings.py
 ```
 
 ---
 
-## 💡 Résumé des changements
+## ✅ Vérifications rapides
 
-| Fichier | Changement |
-|---------|-----------|
-| `openings.py` | Analyse Stockfish + fallback |
-| `traps.py` | Analyse Stockfish + fallback |
-| `requirements.txt` | Ajout `stockfish` |
-| `setup_stockfish.py` | **NOUVEAU** - Installation Stockfish |
-| `STOCKFISH_GUIDE.md` | **NOUVEAU** - Documentation complète |
+```bash
+python -c "import chess, reportlab, stockfish; print('Python deps OK')"
+ollama list
+```
 
 ---
 
-✅ **C'est prêt!** Les scripts utilisent maintenant Stockfish pour analyser les coups.
+## 🆘 En cas de problème
+
+### Les commentaires IA sont génériques
+- Vérifiez que Ollama est lancé
+- Vérifiez que le modèle `mistral:7b` est téléchargé
+
+### Stockfish n'est pas utilisé
+- Vérifiez que `python scripts/setup_stockfish.py` a bien fini
+- Les scripts fonctionnent tout de même avec un fallback
+
+### ImportError sur une dépendance
+
+```bash
+source bin/activate
+python -m pip install -r requirements.txt
+```

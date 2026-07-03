@@ -11,7 +11,8 @@ from chess_lib import OllamaManager
 
 from chess_lib import (
     COLOR_PRIMARY, COLOR_SECONDARY, COLOR_TEXT, COLOR_BG_LIGHT, COLOR_BORDER, COLOR_MINT,
-    ChessboardFlowable, parse_moves, generate_move_comment, convert_french_to_english_notation
+    ChessboardFlowable, parse_moves, generate_move_comment, convert_french_to_english_notation,
+    resolve_stockfish_depth, debug_log, set_debug_enabled
 )
 
 def classify_trap(piege):
@@ -53,12 +54,14 @@ def split_move_options(moves_text):
     return [m.strip() for m in re.split(r'\s+ou\s+|\s*,\s*', moves_text) if m.strip()]
 
 def generate_moves_table(piege):
+    debug_log(f"Génération table des coups pour le piège {piege.get('nom', 'sans nom')}", "INFO")
     moves = parse_moves(piege.get("coups", ""))
     rows, board, current_row = [], chess.Board(), None
 
-    for move in moves:
+    for i, move in enumerate(moves):
         move_san = move.get("san", "")
-        commentaire = generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True)
+        future_moves = [m.get("san", "") for m in moves[i+1:]]
+        commentaire = generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves)
         try: board.push(board.parse_san(move_san))
         except Exception: pass
         fen_after = board.fen()
@@ -113,9 +116,13 @@ def ajouter_pied_page(canvas, doc):
     canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
     canvas.restoreState()
 
-def generer_pdf():
-    print("="*70)
-    print("🔄 Génération du guide des pièges d'ouverture assistée par IA...")
+def generer_pdf(stockfish_depth=18, verbose=1):
+    enabled, level = (True, max(int(verbose), 1)) if verbose else (False, 0)
+    set_debug_enabled(enabled, level=level)
+    debug_log("=== Début de la génération des guides de pièges ===", "ESSENTIAL")
+    debug_log("="*70, "ESSENTIAL")
+    debug_log("🔄 Génération du guide des pièges d'ouverture assistée par IA...", "ESSENTIAL")
+    debug_log(f"Profondeur Stockfish retenue : {resolve_stockfish_depth(stockfish_depth)}", "ESSENTIAL")
     
     # --- Démarrage d'Ollama ---
     ollama = OllamaManager()
@@ -123,6 +130,7 @@ def generer_pdf():
     
     try:
         with open('../json/trappes_data.json', 'r', encoding='utf-8') as f: trappes_data = json.load(f)
+        debug_log(f"{len(trappes_data)} pièges chargés depuis le fichier JSON", "INFO")
             
         doc = SimpleDocTemplate("../guide_pieges_et_defenses.pdf", pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
         styles = getSampleStyleSheet()
@@ -151,7 +159,7 @@ def generer_pdf():
         for idx, piege in enumerate(trappes_data):
             if idx > 0: elements.append(PageBreak())
             
-            print(f"\n[INFO] Analyse du piège {idx+1}/{len(trappes_data)} : {piege.get('nom', 'Sans nom')}")
+            debug_log(f"Analyse du piège {idx+1}/{len(trappes_data)} : {piege.get('nom', 'Sans nom')}", "ESSENTIAL")
             
             bloc = [Paragraph(f"{idx+1}. {piege['nom']}", trap_heading)]
             fen_final, fen_inter, fen_def = generate_fen_positions(piege)
@@ -169,7 +177,7 @@ def generer_pdf():
                 diag = ChessboardFlowable(fen, size=105, orientation=orient) if fen else ""
                 table_data.append([diag, Paragraph(row.get("white",""), bold_style), Paragraph(row.get("white_comment",""), normal_style), Paragraph(row.get("black",""), bold_style), Paragraph(row.get("black_comment",""), normal_style)])
 
-            t_coups = Table(table_data, colWidths=[120, 45, 145, 45, 145], repeatRows=1)
+            t_coups = Table(table_data, colWidths=[120, 47, 143, 47, 143], repeatRows=1)
             t_coups.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 6), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
             bloc.append(t_coups)
             elements.extend([KeepTogether(bloc), Spacer(1, 15)])
@@ -182,11 +190,17 @@ def generer_pdf():
             elements.extend([KeepTogether([t_diags, Spacer(1, 15)]), Paragraph(f"<b>Idée :</b> {piege.get('conseil_defense', '')}", normal_style), Paragraph(f"<b>Défense :</b> {piege.get('coup_defense', '')} - {piege.get('explication_defense', '')}", normal_style)])
 
         doc.build(elements, onFirstPage=ajouter_pied_page, onLaterPages=ajouter_pied_page)
-        print("✅ PDF généré avec succès")
+        debug_log("PDF généré avec succès", "ESSENTIAL")
     
     finally:
         # --- Extinction garantie d'Ollama ---
         ollama.stop()
 
 if __name__ == "__main__":
-    generer_pdf()
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Génère le guide des pièges et défenses en PDF")
+    parser.add_argument("--stockfish-depth", type=int, default=18, help="Profondeur Stockfish à utiliser")
+    parser.add_argument("--verbose", nargs="?", const=1, default=0, type=int, help="Active les logs de debug détaillés avec un niveau optionnel (1 par défaut)")
+    args = parser.parse_args()
+    generer_pdf(stockfish_depth=args.stockfish_depth, verbose=args.verbose)
