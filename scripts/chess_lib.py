@@ -182,7 +182,7 @@ def get_eval_value(eval_dict, current_board=None):
     return val
 
 def remove_special_chars(input_string):
-    translator = str.maketrans('', '', string.punctuation.replace('-', ''))
+    translator = str.maketrans('', '', string.punctuation.replace('-', '').replace('#', ''))
     return input_string.translate(translator)
 
 # =====================================================================
@@ -318,6 +318,7 @@ def get_piece_name_fr(piece):
     return names.get(piece.piece_type, "Pièce")
 
 def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
+    debug_log(f"Détection des tactiques pour le coup {move_obj.uci()}...", "INFO")
     tactics = []
     moving_piece = board_before.piece_at(move_obj.from_square)
     moving_piece_name = get_piece_name_fr(moving_piece)
@@ -349,9 +350,9 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
             checker_sq = list(checkers)[0]
             checker_piece = board_after.piece_at(checker_sq)
             checker_name = get_piece_name_fr(checker_piece)
-            tactics.append(f"Échec à la découverte par {checker_name} (démasqué par {moving_piece_name})")
+            tactics.append(f"Tactique : Échec à la découverte par {checker_name} (démasqué par {moving_piece_name})")
         elif len(checkers) > 1:
-            tactics.append(f"Échec double impliquant {moving_piece_name} en {to_square_name}")
+            tactics.append(f"Tactique : Échec double impliquant {moving_piece_name} en {to_square_name}")
         else:
             tactics.append(f"Échec par {moving_piece_name} en {to_square_name}")
         
@@ -366,7 +367,7 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
         
         if len(targets) > 1:
             targets_str = ", ".join(targets)
-            tactics.append(f"Fourchette par {moving_piece_name} en {to_square_name} sur : {targets_str}")
+            tactics.append(f"Tactique : Fourchette par {moving_piece_name} en {to_square_name} sur : {targets_str}")
 
     defender_color = board_after.turn
     pinned_pieces = []
@@ -378,10 +379,10 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
                     pinned_pieces.append(f"{get_piece_name_fr(piece)} en {chess.square_name(sq)}")
                     
     if pinned_pieces:
-        tactics.append(f"Clouage imposé sur : {', '.join(pinned_pieces)}")
+        tactics.append(f"Tactique : Clouage imposé sur : {', '.join(pinned_pieces)}")
 
     # ==========================================
-    # 2. ANALYSE PROFONDE (Stockfish)
+    # 2. ANALYSE PROFONDE (Stockfish) - Ajout évaluation Fous et Cavaliers
     # ==========================================
     if eval_after and not board_after.is_checkmate():
         # Normalisation du dictionnaire/objet d'évaluation Stockfish
@@ -405,39 +406,45 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
             if cp_val >= 300 and "Capture" not in " ".join(tactics):
                 tactics.append("Prépare un gain matériel décisif imminent")
             elif cp_val <= -300:
-                queen_lost = False
+                piece_lost = None
                 seq_eng = []
                 seq_fr = []
                 
-                # S'il y a un différentiel proche de la valeur d'une Dame
-                if cp_val <= -700:
-                    sim_board = board_after.copy()
-                    analyzer = StockfishAnalyzer()
-                    sf = analyzer.get_engine()
-                    original_color = board_after.turn 
-                    
-                    if sf:
-                        # Simulation des 4 prochains demi-coups (2 coups)
-                        for _ in range(4):
-                            if sim_board.is_game_over(): break
-                            sf.set_fen_position(sim_board.fen())
-                            best_uci = sf.get_best_move()
-                            if not best_uci: break
-                            
-                            move_obj_sim = sim_board.parse_uci(best_uci)
-                            target_piece = sim_board.piece_at(move_obj_sim.to_square)
-                            
-                            if target_piece and target_piece.piece_type == chess.QUEEN and target_piece.color != original_color:
-                                queen_lost = True
+                sim_board = board_after.copy()
+                analyzer = StockfishAnalyzer()
+                sf = analyzer.get_engine()
+                original_color = board_after.turn 
+                
+                if sf:
+                    # Simulation des 6 prochains demi-coups (3 coups) pour identifier la pièce perdue
+                    for _ in range(6):
+                        if sim_board.is_game_over(): break
+                        sf.set_fen_position(sim_board.fen())
+                        best_uci = sf.get_best_move()
+                        if not best_uci: break
+                        
+                        move_obj_sim = sim_board.parse_uci(best_uci)
+                        target_piece = sim_board.piece_at(move_obj_sim.to_square)
+                        
+                        if target_piece and target_piece.color != original_color:
+                            pt = target_piece.piece_type
+                            if pt == chess.QUEEN:
+                                piece_lost = "Dame"
+                            elif pt == chess.ROOK and piece_lost != "Dame":
+                                piece_lost = "Tour"
+                            elif pt == chess.BISHOP and piece_lost not in ["Dame", "Tour"]:
+                                piece_lost = "Fou"
+                            elif pt == chess.KNIGHT and piece_lost not in ["Dame", "Tour", "Fou"]:
+                                piece_lost = "Cavalier"
                                 
-                            san_eng = sim_board.san(move_obj_sim)
-                            seq_eng.append(san_eng)
-                            seq_fr.append(convert_english_to_french_notation(san_eng))
-                            sim_board.push(move_obj_sim)
-                            
-                            if queen_lost: break
-                            
-                if queen_lost:
+                        san_eng = sim_board.san(move_obj_sim)
+                        seq_eng.append(san_eng)
+                        seq_fr.append(convert_english_to_french_notation(san_eng))
+                        sim_board.push(move_obj_sim)
+                        
+                        if piece_lost == "Dame": break
+                        
+                if piece_lost:
                     is_in_trap = False
                     if future_moves:
                         match_len = min(len(future_moves), len(seq_eng))
@@ -446,13 +453,14 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
                             is_in_trap = True
                             
                     if is_in_trap:
-                        tactics.append("Expose la Dame à une perte matérielle forcée en 2 coups (suite illustrée dans le piège)")
+                        tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups (suite illustrée)")
                     else:
-                        tactics.append(f"Expose la Dame à une perte matérielle forcée en 2 coups via : {' '.join(seq_fr)}")
+                        tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups via : {' '.join(seq_fr)}")
                 else:
                     tactics.append("Expose le joueur à une lourde perte matérielle (gaffe stratégique)")
-
-    return " | ".join(tactics) if tactics else "Développement"
+    tactics_comment = " | ".join(tactics) if tactics else "Continuité"
+    debug_log(f"Événement détecté pour le coup : {tactics_comment}", "INFO")
+    return tactics_comment
 
 def format_eval_string(eval_dict, is_white_turn):
     if not eval_dict: return "0.0"
@@ -509,54 +517,54 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False, future
                 debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                 tactics = detect_tactics(board, move_obj, eval_after, future_moves)
                 
-                if delta > -10: status = "C'est un bon coup, le plus précis pour maintenir l'avantage."
+                if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
                 elif delta <= -300: status = "C'est une gaffe majeure entraînant une perte catastrophique."
                 elif delta <= -150: status = "C'est une erreur sérieuse qui fait perdre un avantage significatif."
                 elif delta <= -80: status = "C'est une imprécision qui dégrade légèrement la position."
                 elif delta <= -30: status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
                 else: status = "C'est un coup solide et tout à fait correct."
-                
+                rules_text = ""
                 if raw != best_move_fr and delta < -20: 
-                    alt_context = f"- Meilleure alternative : {best_move_fr}\n"
-                    alt_rule = "6. Mentionne brièvement la 'Meilleure alternative'.\n"
+                    alt_context = f"- Meilleure alternative : {best_move_fr}\n                "
+                    rules_text = "\n                6. Mentionne brièvement la 'Meilleure alternative'.\n"
                 else:
                     alt_context = ""
-                    alt_rule = ""
 
-                # --- PROMPT STRICT AVEC EXEMPLES (FEW-SHOT) ---
                 prompt = f"""Tu es une IA de résumé factuel. Ton rôle est de traduire les faits fournis en une phrase pédagogique simple.
 
                 RÈGLES D'OR :
-                1. RÈGLE ABSOLUE : Si le "Coup joué" contient le symbole '#', ta réponse doit STRICTEMENT se limiter à la phrase : "Échec et mat. La partie est terminée." Interdiction de faire d'autres commentaires.
-                2. N'utilise QUE les informations fournies dans la section FAITS.
-                3. NE PAS inventer de stratégies, de menaces ou de justifications qui ne sont pas explicitement listées.
-                4. Si une tactique est "Développement", ne cherche pas à justifier une attaque inexistante.
-                5. Rédige en français, 1 à 2 phrases max.{alt_rule}
+                1. RÈGLE ABSOLUE : Si le "Coup joué" se termine par le symbole '#', ta réponse doit STRICTEMENT se limiter à la phrase : "Échec et mat. La partie est terminée." INTERDICTION FORMELLE de faire d'autres commentaires.
+                2. N'utilise QUE les informations fournies dans la section FAITS SUR LA POSITION.
+                3. NE PAS GENERER de commentaires supplémentaires.
+                4. Si un Événement est "Continuité", NE cherche PAS à justifier une attaque inexistante.
+                5. Rédige en français, 1 à 2 phrases max.{rules_text}
 
                 EXEMPLES DE RÉPONSE :
-                - FAITS : 
+                - FAITS SUR LA POSITION :
+                  Joueur : Blancs
                   Coup joué : e4
-                  Qualité du coup : C'est un bon coup, le plus précis pour maintenir l'avantage.
-                  Événement tactique : Développement
-                RÉPONSE : e4 est un bon coup qui permet de maintenir l'avantage et favorise le développement.
+                  Qualité du coup : C'est un bon coup, le plus précis actuellement.
+                  Événement : Continuité
+                RÉPONSE : e4 est un bon coup qui permet de maintenir une position solide.
                 
-                - FAITS : 
+                - FAITS SUR LA POSITION :
+                  Joueur : Blancs
                   Coup joué : Cxf7
-                  Qualité du coup : C'est un bon coup, le plus précis pour maintenir l'avantage.
-                  Événement tactique : Capture de Pion par Cavalier en f7 | Fourchette par Cavalier en f7 sur : Dame en d8, Tour en h8
-                RÉPONSE : Cxf7 est un bon coup tactique capturant un pion et créant une fourchette sur la Dame en d8 et la Tour en h8.
+                  Qualité du coup : C'est un bon coup, le plus précis actuellement.
+                  Événement : Capture de Pion par Cavalier en f7 | Tactique : Fourchette par Cavalier en f7 sur : Dame en d8, Tour en h8
+                RÉPONSE : Cxf7 est un bon coup capturant un pion et créant une fourchette sur la Dame en d8 et la Tour en h8.
                 
-                - FAITS : 
+                - FAITS SUR LA POSITION :
                   Coup joué : Dxb7#
-                  Qualité du coup : C'est un bon coup, le plus précis pour maintenir l'avantage.
-                  Événement tactique : Capture de Pion par Dame en b7 | Mat par Dame en b7
+                  Qualité du coup : C'est un bon coup, le plus précis actuellement.
+                  Événement : Capture de Pion par Dame en b7 | Mat par Dame en b7
                 RÉPONSE : Échec et mat. La partie est terminée.
 
                 FAITS SUR LA POSITION :
                 - Joueur : {turn_color}
                 - Coup joué : {raw}
                 {alt_context}- Qualité du coup : {status}
-                - Événement tactique : {tactics}
+                - Événement : {tactics}
 
                 RÉPONSE :
                 """
@@ -565,7 +573,6 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False, future
                     debug_log(f"Prompt envoyé au LLM pour le coup {raw} :\n{prompt}", "DEBUG")
                     debug_log(f"Appel d'Ollama ({OLLAMA_MODEL}) pour rédiger le commentaire de {raw}...", "INFO")
                     result = ollama.generate(model=OLLAMA_MODEL, prompt=prompt)
-                    debug_log(f"Retour brut d'Ollama : {result}", "DEBUG")
                     
                     if result and hasattr(result, 'response'):
                         comment = result['response'].strip().replace("\n", " ")

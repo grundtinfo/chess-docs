@@ -20,21 +20,13 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate
 
 # Import from existing shared module
 from chess_lib import (
-    COLOR_BG_LIGHT,
-    COLOR_BORDER,
-    COLOR_PRIMARY,
-    COLOR_TEXT,
-    StockfishAnalyzer,
-    debug_log,
-    get_eval_value,
-    resolve_stockfish_depth,
-    set_debug_enabled,
+    COLOR_BG_LIGHT, COLOR_BORDER, COLOR_PRIMARY, COLOR_TEXT,
+    StockfishAnalyzer, debug_log, get_eval_value,
+    resolve_stockfish_depth, set_debug_enabled, OllamaManager, detect_tactics
 )
-
 
 DEFAULT_STATE_FILENAME = "chesscom_report_state.json"
 DEFAULT_PDF_FILENAME = "player_report.pdf"
-
 
 class SimpleLineChart(Flowable):
     def __init__(self, values, labels=None, width=420, height=180):
@@ -72,8 +64,6 @@ class SimpleLineChart(Flowable):
             y = y0 + ((max_value - value) / span) * (y1 - y0)
             points.append((x, y))
 
-        # CORRECTION ICI :
-        # On crée des segments reliant les points consécutifs
         segments = []
         for i in range(len(points) - 1):
             p1 = points[i]
@@ -97,7 +87,6 @@ class SimpleLineChart(Flowable):
                 x = x0 + (idx / max(len(self.values) - 1, 1)) * (x1 - x0)
                 self.canv.drawString(x - 10, y0 - 8, label[:8])
 
-
 def classify_opponent_type(username):
     if not username:
         return "humain"
@@ -106,34 +95,23 @@ def classify_opponent_type(username):
         return "autre"
     return "humain"
 
-
 def infer_move_suffix(is_check=False, is_checkmate=False, delta=None):
-    if is_checkmate:
-        return "#"
-    if is_check:
-        return "+"
-    if delta is None:
-        return ""
-    if delta <= -400:
-        return "??"
-    if delta <= -120:
-        return "?"
-    if delta >= 400:
-        return "!!"
-    if delta >= 160:
-        return "!"
+    if is_checkmate: return "#"
+    if is_check: return "+"
+    if delta is None: return ""
+    if delta <= -400: return "??"
+    if delta <= -120: return "?"
+    if delta >= 400: return "!!"
+    if delta >= 160: return "!"
     return ""
-
 
 def build_player_state_path(base_dir, player_name):
     safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", player_name).strip("_") or "player"
     return os.path.join(base_dir, "json", f"player_{safe_name}.json")
 
-
 def resolve_project_base_dir():
     script_dir = Path(__file__).resolve().parent
     return script_dir.parent
-
 
 def load_state(path):
     if not path or not os.path.exists(path):
@@ -142,7 +120,6 @@ def load_state(path):
         with open(path, "r", encoding="utf-8") as handle:
             data = json.load(handle)
         if isinstance(data, dict):
-            # Rétrocompatibilité : si les parties sont encore sous forme de liste, on convertit en dictionnaire indexé par 'id'
             if isinstance(data.get("games"), list):
                 debug_log("Conversion des parties (Liste -> Dictionnaire) pour rétrocompatibilité.", "INFO")
                 data["games"] = {g["id"]: g for g in data["games"] if "id" in g}
@@ -153,12 +130,10 @@ def load_state(path):
         pass
     return {"player": None, "games": {}}
 
-
 def save_state(path, state):
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(state, handle, ensure_ascii=False, separators=(",", ":"))
-
 
 def fetch_player_games(username, months=6):
     headers = {"User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0 Safari/537.36"}
@@ -189,8 +164,7 @@ def fetch_player_games(username, months=6):
     data = response.json()
     archives = data.get("archives", [])
     debug_log(f"Nombre d'archives trouvées: {len(archives)}", "INFO")
-    if not archives:
-        return []
+    if not archives: return []
 
     recent_archives = archives[-months:] if months and months > 0 else archives
     games = []
@@ -204,21 +178,17 @@ def fetch_player_games(username, months=6):
     debug_log(f"Total de parties récupérées: {len(games)}", "INFO")
     return games
 
-
 def parse_game_record(game, username):
     game_url = game.get("url")
     debug_log(f"Analyse d'une partie: {game_url or game.get('end_time') or 'inconnue'}", "INFO")
     pgn_text = game.get("pgn") or ""
-    if not pgn_text:
-        return None
+    if not pgn_text: return None
 
     try:
         game_obj = chess.pgn.read_game(StringIO(pgn_text))
-    except Exception:
-        return None
+    except Exception: return None
 
-    if not game_obj:
-        return None
+    if not game_obj: return None
 
     white = game.get("white", {}) or {}
     black = game.get("black", {}) or {}
@@ -226,23 +196,16 @@ def parse_game_record(game, username):
     black_name = black.get("username") or game.get("black", {}).get("username") or ""
 
     result = game.get("result") or "*"
-    if result == "win" and white_name == username:
-        result_text = "1-0"
-    elif result == "win" and black_name == username:
-        result_text = "0-1"
-    else:
-        result_text = "1/2-1/2" if result == "draw" else "*"
+    if result == "win" and white_name == username: result_text = "1-0"
+    elif result == "win" and black_name == username: result_text = "0-1"
+    else: result_text = "1/2-1/2" if result == "draw" else "*"
 
     board = game_obj.board()
     moves = list(game_obj.mainline_moves())
     debug_log(f"Partie parsée avec {len(moves)} coups", "DEBUG")
-    details = []
-    notable_moves = []
-    blunders = 0
-    good_moves = 0
-    opening_phase = []
-    middlegame_phase = []
-    endgame_phase = []
+    details, notable_moves = [], []
+    blunders, good_moves = 0, 0
+    opening_phase, middlegame_phase, endgame_phase = [], [], []
     board_before = game_obj.board()
 
     analyzer = StockfishAnalyzer()
@@ -254,8 +217,7 @@ def parse_game_record(game, username):
         move_san = board_before.san(move)
         is_check = board_before.is_check()
         is_checkmate = False
-        maybe_eval = None
-        best_move = None
+        best_move, eval_after = None, None
         delta = 0
 
         if engine:
@@ -278,31 +240,32 @@ def parse_game_record(game, username):
         suffix = infer_move_suffix(is_check=is_check, is_checkmate=is_checkmate, delta=delta)
         move_label = f"{move_san}{suffix}" if suffix else move_san
 
+        # Intégration de detect_tactics pour enrichir le rapport
         if delta <= -300:
             blunders += 1
+            tactics = detect_tactics(board_before, move, eval_after) if eval_after else ""
+            detail_str = tactics if tactics and tactics != "Développement" else "Gaffe majeure (évaluation Stockfish chutant drastiquement)"
             entry = {
                 "ply": idx,
                 "move": move_label,
-                "detail": "Coup très faible selon l'analyse Stockfish",
+                "detail": detail_str,
                 "alternative": best_move,
             }
             notable_moves.append(entry)
         elif delta >= 180:
             good_moves += 1
+            tactics = detect_tactics(board_before, move, eval_after) if eval_after else ""
+            detail_str = tactics if tactics and tactics != "Développement" else "Coup de qualité selon l'analyse Stockfish"
             entry = {
                 "ply": idx,
                 "move": move_label,
-                "detail": "Coup de qualité selon l'analyse Stockfish",
+                "detail": detail_str,
                 "alternative": best_move,
             }
             notable_moves.append(entry)
 
         phase = "opening" if idx <= 12 else "middlegame" if idx <= 30 else "endgame"
-        phase_bucket = {
-            "opening": opening_phase,
-            "middlegame": middlegame_phase,
-            "endgame": endgame_phase,
-        }[phase]
+        phase_bucket = {"opening": opening_phase, "middlegame": middlegame_phase, "endgame": endgame_phase}[phase]
         phase_bucket.append({"move": move_label, "delta": delta})
 
         details.append({
@@ -354,21 +317,17 @@ def parse_game_record(game, username):
         },
     }
 
-
 def merge_games(existing_games_dict, new_games_dict):
-    # Les entrées fusionnent naturellement. Les nouvelles remplacent/s'ajoutent par ID.
     merged = dict(existing_games_dict)
     for game_id, game_data in new_games_dict.items():
         if game_id not in merged:
             merged[game_id] = game_data
     return merged
 
-
 def merge_state_with_incremental_games(existing_state, new_state):
     existing_games = (existing_state or {}).get("games", {})
     incoming_games = (new_state or {}).get("games", {})
     
-    # Conversion si nécessaire (au cas où d'autres scripts envoient des listes)
     if isinstance(existing_games, list):
         existing_games = {g["id"]: g for g in existing_games if "id" in g}
     if isinstance(incoming_games, list):
@@ -380,7 +339,6 @@ def merge_state_with_incremental_games(existing_state, new_state):
     merged_state["games"] = merged_games
     merged_state["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
     return merged_state
-
 
 def refresh_state_with_player_games(existing_state, player_name, months=6, state_path=None):
     state = dict(existing_state or {"player": None, "games": {}})
@@ -396,17 +354,13 @@ def refresh_state_with_player_games(existing_state, player_name, months=6, state
         
         for index, game in enumerate(fetched_games, start=1):
             game_id = game.get("url")
-            
-            # Recherche en O(1) ultra rapide via le dictionnaire
-            if game_id and game_id in existing_games:
-                continue
+            if game_id and game_id in existing_games: continue
 
             parsed = parse_game_record(game, player_name)
             if parsed:
                 debug_log(f"Partie intégrée au state: {parsed['id']}", "INFO")
-                existing_games[parsed["id"]] = parsed  # Stockage clé=valeur
+                existing_games[parsed["id"]] = parsed
                 
-                # Mise à jour et sauvegarde immédiate après chaque analyse
                 state["player"] = player_name
                 state["games"] = existing_games
                 state["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -427,7 +381,6 @@ def refresh_state_with_player_games(existing_state, player_name, months=6, state
         debug_log(f"Aucune donnée sauvegardée disponible après erreur: {exc}", "WARNING")
         return {"player": player_name, "games": {}}, False, f"Aucune donnée sauvegardée disponible : {exc}"
 
-
 def summarize_games(games):
     if not games:
         return {"games_count": 0, "results": {}, "average_elo": None, "top_openings": []}
@@ -439,13 +392,10 @@ def summarize_games(games):
         results[game.get("result", "*")] = results.get(game.get("result", "*"), 0) + 1
         white_elo = game.get("white", {}).get("elo")
         black_elo = game.get("black", {}).get("elo")
-        if isinstance(white_elo, int) and white_elo > 0:
-            elos.append(white_elo)
-        if isinstance(black_elo, int) and black_elo > 0:
-            elos.append(black_elo)
+        if isinstance(white_elo, int) and white_elo > 0: elos.append(white_elo)
+        if isinstance(black_elo, int) and black_elo > 0: elos.append(black_elo)
         opening = game.get("opening") or ""
-        if opening:
-            openings[opening] = openings.get(opening, 0) + 1
+        if opening: openings[opening] = openings.get(opening, 0) + 1
 
     top_openings = sorted(openings.items(), key=lambda item: item[1], reverse=True)[:5]
     return {
@@ -455,16 +405,11 @@ def summarize_games(games):
         "top_openings": top_openings,
     }
 
-
 def build_report_payload(player_name, state):
     games_data = state.get("games", {})
-    # Récupération des parties sous forme de liste pour construire le rapport PDF
-    if isinstance(games_data, dict):
-        games = list(games_data.values())
-    else:
-        games = games_data
+    if isinstance(games_data, dict): games = list(games_data.values())
+    else: games = games_data
 
-    # Tri des jeux par date (optionnel, pour l'affichage séquentiel de l'historique dans le PDF)
     games = sorted(games, key=lambda g: g.get("end_time") or 0)
 
     summary = summarize_games(games)
@@ -479,10 +424,8 @@ def build_report_payload(player_name, state):
         opponent_type = classify_opponent_type(black_name if white_name == player_name else white_name)
         opponent_types[opponent_type] = opponent_types.get(opponent_type, 0) + 1
         if game.get("white", {}).get("elo") and game.get("black", {}).get("elo"):
-            if white_name == player_name:
-                elo_history.append((game.get("date"), game.get("white", {}).get("elo")))
-            else:
-                elo_history.append((game.get("date"), game.get("black", {}).get("elo")))
+            if white_name == player_name: elo_history.append((game.get("date"), game.get("white", {}).get("elo")))
+            else: elo_history.append((game.get("date"), game.get("black", {}).get("elo")))
 
         opening = game.get("opening") or ""
         if opening:
@@ -522,7 +465,6 @@ def build_report_payload(player_name, state):
         "opening_focus": opening_focus,
         "games": games,
     }
-
 
 def build_pdf(output_path, payload):
     debug_log(f"Début génération PDF: {output_path}", "INFO")
@@ -608,7 +550,6 @@ def build_pdf(output_path, payload):
         elements.append(Spacer(1, 8))
 
     elements.extend([Paragraph("6. Coups notables", section_style)])
-    # Inversion ici pour afficher les parties les plus récentes en premier
     for game in list(reversed(payload.get("games", [])))[:8]:
         analysis = game.get("analysis", {}) or {}
         notable_moves = analysis.get("notable_moves", [])
@@ -624,7 +565,6 @@ def build_pdf(output_path, payload):
     doc.build(elements)
     debug_log("PDF généré avec succès", "INFO")
 
-
 def main():
     parser = argparse.ArgumentParser(description="Génère un rapport PDF à partir des parties publiques d'un joueur Chess.com")
     parser.add_argument("player", nargs="?", help="Nom d'utilisateur Chess.com")
@@ -639,42 +579,48 @@ def main():
 
     enabled, level = (True, max(int(args.verbose), 1)) if args.verbose else (False, 0)
     set_debug_enabled(enabled, level=level)
-    debug_log("=== Début du traitement du rapport joueur ===", "ESSENTIAL")
-    debug_log(f"Joueur demandé: {args.player}", "INFO")
-    debug_log(f"Paramètres: months={args.months}, state_file={args.state_file}, output={args.output}", "DEBUG")
-    base_dir = resolve_project_base_dir()
-    state_path = Path(args.state_file or build_player_state_path(str(base_dir), args.player))
-    safe_player_name = re.sub(r'[^a-zA-Z0-9._-]+', '_', args.player).strip('_') or 'player'
-    output_path = Path(args.output or str(base_dir / f"{safe_player_name}_report.pdf"))
-    output_path.parent.mkdir(parents=True, exist_ok=True)
-
-    state = load_state(str(state_path))
-    debug_log(f"État chargé depuis {state_path} (joueur={state.get('player')}, parties={len(state.get('games', {}))})", "INFO")
     
-    if state.get("player") and state.get("player") != args.player:
-        state = {"player": None, "games": {}}
-
-    # Passage du state_path pour permettre l'écriture incrémentale
-    state, refreshed, message = refresh_state_with_player_games(state, args.player, months=args.months, state_path=str(state_path))
-    if not state.get("last_updated"):
-        state["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-    save_state(str(state_path), state)
+    # Intégration globale du cycle de vie du LLM
+    ollama = OllamaManager()
+    ollama.start()
     
-    if refreshed:
-        debug_log(message, "ESSENTIAL")
-    else:
-        debug_log(message, "WARNING")
+    try:
+        debug_log("=== Début du traitement du rapport joueur ===", "ESSENTIAL")
+        debug_log(f"Joueur demandé: {args.player}", "INFO")
+        debug_log(f"Paramètres: months={args.months}, state_file={args.state_file}, output={args.output}", "DEBUG")
+        base_dir = resolve_project_base_dir()
+        state_path = Path(args.state_file or build_player_state_path(str(base_dir), args.player))
+        safe_player_name = re.sub(r'[^a-zA-Z0-9._-]+', '_', args.player).strip('_') or 'player'
+        output_path = Path(args.output or str(base_dir / f"{safe_player_name}_report.pdf"))
+        output_path.parent.mkdir(parents=True, exist_ok=True)
 
-    payload = build_report_payload(args.player, state)
-    build_pdf(str(output_path), payload)
-    
-    if not state.get("games"):
-        debug_log("Aucun jeu chargé; le rapport sera basé sur un état vide", "WARNING")
-        debug_log("Aucun jeu n'a pu être chargé. Le rapport a été généré à partir d'un état vide.", "ESSENTIAL")
-    
-    debug_log(f"Rapport généré : {output_path}", "ESSENTIAL")
-    debug_log(f"État persistant : {state_path}", "ESSENTIAL")
+        state = load_state(str(state_path))
+        debug_log(f"État chargé depuis {state_path} (joueur={state.get('player')}, parties={len(state.get('games', {}))})", "INFO")
+        
+        if state.get("player") and state.get("player") != args.player:
+            state = {"player": None, "games": {}}
 
+        state, refreshed, message = refresh_state_with_player_games(state, args.player, months=args.months, state_path=str(state_path))
+        if not state.get("last_updated"):
+            state["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        save_state(str(state_path), state)
+        
+        if refreshed:
+            debug_log(message, "ESSENTIAL")
+        else:
+            debug_log(message, "WARNING")
+
+        payload = build_report_payload(args.player, state)
+        build_pdf(str(output_path), payload)
+        
+        if not state.get("games"):
+            debug_log("Aucun jeu chargé; le rapport sera basé sur un état vide", "WARNING")
+            debug_log("Aucun jeu n'a pu être chargé. Le rapport a été généré à partir d'un état vide.", "ESSENTIAL")
+        
+        debug_log(f"Rapport généré : {output_path}", "ESSENTIAL")
+        debug_log(f"État persistant : {state_path}", "ESSENTIAL")
+    finally:
+        ollama.stop()
 
 if __name__ == "__main__":
     main()
