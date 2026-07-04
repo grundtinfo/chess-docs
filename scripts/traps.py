@@ -61,20 +61,23 @@ def generate_moves_table(piege):
     for i, move in enumerate(moves):
         move_san = move.get("san", "")
         future_moves = [m.get("san", "") for m in moves[i+1:]]
-        commentaire = generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves)
+        
+        # MODIFIÉ : Récupération du commentaire ET du coup annoté
+        commentaire, coup_annote = generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves)
+        
         try: board.push(board.parse_san(move_san))
         except Exception: pass
         fen_after = board.fen()
 
         if move.get("color") == "white":
-            current_row = {"move_number": move["move_number"], "white": move["raw"], "white_comment": commentaire, "white_fen": fen_after, "black": "", "black_comment": "", "black_fen": None}
+            current_row = {"move_number": move["move_number"], "white": coup_annote, "white_comment": commentaire, "white_fen": fen_after, "black": "", "black_comment": "", "black_fen": None}
             rows.append(current_row)
         else:
             if not current_row or current_row["move_number"] != move["move_number"]:
-                current_row = {"move_number": move["move_number"], "white": "", "white_comment": "", "white_fen": None, "black": move["raw"], "black_comment": commentaire, "black_fen": fen_after}
+                current_row = {"move_number": move["move_number"], "white": "", "white_comment": "", "white_fen": None, "black": coup_annote, "black_comment": commentaire, "black_fen": fen_after}
                 rows.append(current_row)
             else:
-                current_row.update({"black": move["raw"], "black_comment": commentaire, "black_fen": fen_after})
+                current_row.update({"black": coup_annote, "black_comment": commentaire, "black_fen": fen_after})
     return rows
 
 def generate_fen_positions(piege):
@@ -177,7 +180,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
                 diag = ChessboardFlowable(fen, size=105, orientation=orient) if fen else ""
                 table_data.append([diag, Paragraph(row.get("white",""), bold_style), Paragraph(row.get("white_comment",""), normal_style), Paragraph(row.get("black",""), bold_style), Paragraph(row.get("black_comment",""), normal_style)])
 
-            t_coups = Table(table_data, colWidths=[120, 47, 143, 47, 143], repeatRows=1)
+            t_coups = Table(table_data, colWidths=[120, 50, 140, 50, 140], repeatRows=1)
             t_coups.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 6), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
             bloc.append(t_coups)
             elements.extend([KeepTogether(bloc), Spacer(1, 15)])

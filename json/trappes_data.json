@@ -1,7 +1,7 @@
 [
   {
     "nom": "Le Mat du Berger",
-    "coups": "1. e4 e5 2. Dh5 Cc6 3. Fc4 Cf6?? 4. Dxf7#",
+    "coups": "1. e4 e5 2. Dh5 Cc6 3. Fc4 Cf6 4. Dxf7",
     "conseil_defense": "Ne laissez pas la case f7 sans protection au début de la partie. Évitez de développer le cavalier en f6 si la Dame adverse peut viser f7.",
     "coup_defense": "3... g6",
     "fleches_defense": [
@@ -16,7 +16,7 @@
   },
   {
     "nom": "Le Mat du Sot",
-    "coups": "1. f4 e5 2. g4?? Dh4#",
+    "coups": "1. f4 e5 2. g4 Dh4",
     "conseil_defense": "Ne fragilisez pas la diagonale e1-h4 par des poussées de pions inutiles devant le roi.",
     "coup_defense": "2. Cf3 ou 2. e4",
     "fleches_defense": [
@@ -31,7 +31,7 @@
   },
   {
     "nom": "Le Mat de Légal",
-    "coups": "1. e4 e5 2. Cf3 d6 3. Fc4 Fg4 4. Cc3 g6? 5. Cxe5! Fxd1?? 6. Fxf7+ Re7 7. Cd5#",
+    "coups": "1. e4 e5 2. Cf3 d6 3. Fc4 Fg4 4. Cc3 g6 5. Cxe5 Fxd1 6. Fxf7 Re7 7. Cd5",
     "conseil_defense": "Ne prenez pas la Dame si cela permet une combinaison tactique. Vérifiez les menaces sur f7 et les fourchettes possibles.",
     "coup_defense": "5... dxe5",
     "fleches_defense": [
@@ -47,7 +47,7 @@
   },
   {
     "nom": "Le Piège de Blackburne Shilling",
-    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cd4?! 4. Cxe5?! Dg5! 5. Cxf7? Dxg2 6. Tf1 Qxe4+ 7. Fe2 Cf3#",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cd4 4. Cxe5 Dg5 5. Cxf7 Dxg2 6. Tf1 Qxe4 7. Fe2 Cf3",
     "conseil_defense": "Ne tombez pas dans des captures apparemment gagnantes sans vérifier les menaces tactiques adverses.",
     "coup_defense": "4. O-O ou 4. Cxd4",
     "fleches_defense": [
@@ -65,7 +65,7 @@
   },
   {
     "nom": "Le Mat Étouffé (Défense Caro-Kann)",
-    "coups": "1. e4 c6 2. d4 d5 3. Cc3 dxe4 4. Cxe4 Cd7 5. De2 Cgf6?? 6. Cd6#",
+    "coups": "1. e4 c6 2. d4 d5 3. Cc3 dxe4 4. Cxe4 Cd7 5. De2 Cgf6 6. Cd6",
     "conseil_defense": "Attention aux clouages et aux cases faibles autour du roi. Ne développez pas une pièce en laissant la colonne e ouverte.",
     "coup_defense": "5... e6",
     "fleches_defense": [
@@ -80,7 +80,7 @@
   },
   {
     "nom": "Enfermer le Fou (L'Arche de Noé)",
-    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 a6 4. Fa4 d6 5. d4 b5 6. Fb3 Cxd4 7. Cxd4 exd4 8. Dxd4?? c5 9. Dd5 Fe6 10. Dc6+ Fd7 11. Dd5 c4!",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 a6 4. Fa4 d6 5. d4 b5 6. Fb3 Cxd4 7. Cxd4 exd4 8. Dxd4 c5 9. Dd5 Fe6 10. Dc6 Fd7 11. Dd5 c4",
     "conseil_defense": "Ne laissez pas votre fou se retrouver sans cases de repli face à une poussée de pions adverse.",
     "coup_defense": "8. c3 ou 8. Fd5",
     "fleches_defense": [
@@ -93,7 +93,7 @@
   },
   {
     "nom": "Piège de la Canne à Pêche",
-    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 Cf6 4. O-O Cg4!? 5. h3 h5! 6. hxg4? hxg4 7. Ce1 Dh4",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fb5 Cf6 4. O-O Cg4 5. h3 h5 6. hxg4 hxg4 7. Ce1 Dh4",
     "conseil_defense": "Ne capturez pas mécaniquement un cavalier en g4 si cela ouvre une colonne vers votre roi.",
     "coup_defense": "6. d4 ou 6. Te1",
     "fleches_defense": [
@@ -110,7 +110,7 @@
   },
   {
     "nom": "Le piège du Gambit Englund",
-    "coups": "1. d4 e5 2. dxe5 Cc6 3. Cf3 De7 4. Ff4 Db4+ 5. Fd2 Dxb2 6. Fc3 Fb4 7. Dd2 Fxc3 8. Dxc3 Dc1#",
+    "coups": "1. d4 e5 2. dxe5 Cc6 3. Cf3 De7 4. Ff4 Db4 5. Fd2 Dxb2 6. Fc3 Fb4 7. Dd2 Fxc3 8. Dxc3 Dc1",
     "conseil_defense": "Protégez les pions faibles comme b2 et ne laissez pas la Dame adverse s'infiltrer sur la première rangée.",
     "coup_defense": "Cc3",
     "fleches_defense": [
@@ -127,7 +127,7 @@
   },
   {
     "nom": "Piège de Sibérie (Gambit Smith-Morra)",
-    "coups": "1. e4 c5 2. d4 cxd4 3. c3 dxc3 4. Cxc3 Cc6 5. Cf3 e6 6. Fc4 Dc7 7. O-O Cf6 8. De2 Cg4! 9. h3?? Cd4! 10. hxg4 Cxe2+",
+    "coups": "1. e4 c5 2. d4 cxd4 3. c3 dxc3 4. Cxc3 Cc6 5. Cf3 e6 6. Fc4 Dc7 7. O-O Cf6 8. De2 Cg4 9. h3 Cd4 10. hxg4 Cxe2",
     "conseil_defense": "Ne jouez pas h3 sans vérifier les menaces tactiques sur d4 et g2. La poussée peut être exploitée par des sauts de cavalier.",
     "coup_defense": "9. Te1 ou 9. Td1",
     "fleches_defense": [
@@ -143,7 +143,7 @@
   },
   {
     "nom": "Piège de l'Éléphant",
-    "coups": "1. d4 d5 2. c4 e6 3. Cc3 Cf6 4. Fg5 Cbd7 5. cxd5 exd5 6. Cxd5?? Cxd5! 7. Fxd8 Fb4+ 8. Dd2 Fxd2+ 9. Rxd2 Rxd8",
+    "coups": "1. d4 d5 2. c4 e6 3. Cc3 Cf6 4. Fg5 Cbd7 5. cxd5 exd5 6. Cxd5 Cxd5 7. Fxd8 Fb4 8. Dd2 Fxd2 9. Rxd2 Rxd8",
     "conseil_defense": "Ne capturez pas mécaniquement si cela permet une contre-attaque tactique. Vérifiez les échecs et les clouages.",
     "coup_defense": "6. e3 ou 6. Cf3",
     "fleches_defense": [
@@ -159,7 +159,7 @@
   },
   {
     "nom": "Piège de Lasker",
-    "coups": "1. d4 d5 2. c4 e5 3. dxe5 d4 4. e3 Fb4+ 5. Fd2 dxe3! 6. Fxb4 exf2+ 7. Re2 fxg1=C+! 8. Txg1 Fg4+",
+    "coups": "1. d4 d5 2. c4 e5 3. dxe5 d4 4. e3 Fb4 5. Fd2 dxe3 6. Fxb4 exf2 7. Re2 fxg1=C 8. Txg1 Fg4",
     "conseil_defense": "La sous-promotion peut être une ressource tactique surprenante. Vérifiez toujours les possibilités de promotion avec échec.",
     "coup_defense": "6. fxe3 ou 6. Da4",
     "fleches_defense": [
@@ -182,7 +182,7 @@
   },
   {
     "nom": "Vis-à-vis Dame et Roi (Défense Petrov)",
-    "coups": "1. e4 e5 2. Cf3 Cf6 3. Cxe5 Cxe4? 4. De2 Cf6?? 5. Cc6+ Fe7 6. Cxd8",
+    "coups": "1. e4 e5 2. Cf3 Cf6 3. Cxe5 Cxe4 4. De2 Cf6 5. Cc6 Fe7 6. Cxd8",
     "conseil_defense": "Évitez des retours de pièces qui ouvrent des découvertes sur la colonne e. Vérifiez les échecs et les fourchettes possibles.",
     "coup_defense": "4... De7 ou 4... d5",
     "fleches_defense": [
@@ -198,7 +198,7 @@
   },
   {
     "nom": "Le Piège de Kieninger (Gambit de Budapest)",
-    "coups": "1. d4 Cf6 2. c4 e5 3. dxe5 Cg4 4. Ff4 Cc6 5. Cf3 Fb4+ 6. Cbd2 De7 7. a3 Cgxe5 8. axb4?? Cd3#",
+    "coups": "1. d4 Cf6 2. c4 e5 3. dxe5 Cg4 4. Ff4 Cc6 5. Cf3 Fb4 6. Cbd2 De7 7. a3 Cgxe5 8. axb4 Cd3",
     "conseil_defense": "Dans le Gambit de Budapest, méfiez-vous des mats étouffés sur la case d3 lorsque votre pion e2 est cloué par la Dame adverse.",
     "coup_defense": "8. Cxe5 ou 8. e3",
     "fleches_defense": [
@@ -213,7 +213,7 @@
   },
   {
     "nom": "Piège de Monticelli",
-    "coups": "1. d4 Cf6 2. c4 e6 3. Cf3 b6 4. g3 Fb7 5. Fg2 Fb4+ 6. Fd2 Fxd2+ 7. Dxd2 O-O 8. Cc3 Ce4 9. Dc2 Cxc3? 10. Cg5!",
+    "coups": "1. d4 Cf6 2. c4 e6 3. Cf3 b6 4. g3 Fb7 5. Fg2 Fb4 6. Fd2 Fxd2 7. Dxd2 O-O 8. Cc3 Ce4 9. Dc2 Cxc3 10. Cg5",
     "conseil_defense": "Ne capturez pas un cavalier central si cela permet une attaque sur h7 ou une intrusion sur la septième rangée.",
     "coup_defense": "9... f5",
     "fleches_defense": [
@@ -229,7 +229,7 @@
   },
   {
     "nom": "Fourchette mortelle en c7",
-    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 e6 5. Cb5 d6 6. Ff4! e5 7. Fe3 a6",
+    "coups": "1. e4 c5 2. Cf3 Cc6 3. d4 cxd4 4. Cxd4 e6 5. Cb5 d6 6. Ff4 e5 7. Fe3 a6",
     "conseil_defense": "La case c7 peut devenir une cible pour une fourchette. Évitez de laisser des trous dans la structure centrale.",
     "coup_defense": "5... Cf6",
     "fleches_defense": [
@@ -243,7 +243,7 @@
   },
   {
     "nom": "L'Attaque Foie de Veau (Fried Liver)",
-    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cxd5?! 6. Cxf7! Rxf7 7. Df3+ Re6",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Cf6 4. Cg5 d5 5. exd5 Cxd5 6. Cxf7 Rxf7 7. Df3 Re6",
     "conseil_defense": "Ne reprenez pas le pion en d5 avec le Cavalier, car cela permet le redoutable sacrifice en f7.",
     "coup_defense": "5... Ca5 ou 5... b5",
     "fleches_defense": [
@@ -278,7 +278,7 @@
   },
   {
     "nom": "La découverte mortelle (Défense Française)",
-    "coups": "1. e4 e6 2. d4 d5 3. e5 c5 4. c3 Cc6 5. Cf3 Db6 6. Fd3 cxd4 7. cxd4 Cxd4?? 8. Cxd4 Dxd4?? 9. Fb5+",
+    "coups": "1. e4 e6 2. d4 d5 3. e5 c5 4. c3 Cc6 5. Cf3 Db6 6. Fd3 cxd4 7. cxd4 Cxd4 8. Cxd4 Dxd4 9. Fb5",
     "conseil_defense": "Ne soyez pas gourmand et vérifiez toujours si une capture ne s'expose pas à un échec à la découverte.",
     "coup_defense": "7... Fd7",
     "fleches_defense": [
@@ -294,7 +294,7 @@
   },
   {
     "nom": "Le Mat Éclair (Défense Hollandaise)",
-    "coups": "1. d4 f5 2. Fg5 h6 3. Fh4 g5 4. e3 gxh4?? 5. Dh5#",
+    "coups": "1. d4 f5 2. Fg5 h6 3. Fh4 g5 4. e3 gxh4 5. Dh5",
     "conseil_defense": "Ne poussez pas vos pions f, g ou h dans l'ouverture sans une excellente raison défensive, sous peine d'ouvrir des courants d'air mortels pour votre Roi.",
     "coup_defense": "2... Cf6",
     "fleches_defense": [
@@ -309,7 +309,7 @@
   },
   {
     "nom": "Le Piège de Réti (Défense Caro-Kann)",
-    "coups": "1. e4 c6 2. d4 d5 3. Cc3 dxe4 4. Cxe4 Cf6 5. Dd3 e5 6. dxe5 Da5+ 7. Fd2 Dxe5 8. 0-0-0 Cxe4?? 9. Dd8+!! Kxd8 10. Fg5+ Re8 11. Td8#",
+    "coups": "1. e4 c6 2. d4 d5 3. Cc3 dxe4 4. Cxe4 Cf6 5. Dd3 e5 6. dxe5 Da5 7. Fd2 Dxe5 8. 0-0-0 Cxe4 9. Dd8 Kxd8 10. Fg5 Re8 11. Td8",
     "conseil_defense": "Face à un double échec, l'interposition ou la prise d'une pièce est impossible. Le Roi est toujours forcé de bouger.",
     "coup_defense": "8... Fe7",
     "fleches_defense": [
@@ -325,7 +325,7 @@
   },
   {
     "nom": "Piège de Vukovic (Ouverture Ponziani, Contre-attaque Jaenisch)",
-    "coups": "1. e4 e5 2. Cf3 Cc6 3. c3 Cf6 4. d4 Cxe4 5. d5 Ce7 6. Cxe5 d6 7. Fb5+ c6 8. dxc6 Db6 9. cxb7+ Rd8 10. Cxf7+ Rc7 11. bxa8=C+",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. c3 Cf6 4. d4 Cxe4 5. d5 Ce7 6. Cxe5 d6 7. Fb5 c6 8. dxc6 Db6 9. cxb7 Rd8 10. Cxf7 Rc7 11. bxa8=C",
     "conseil_defense": "Ne vous laissez pas griser par une contre-attaque prématurée. Face à une menace de découverte, la priorité est la sécurité du Roi.",
     "coup_defense": "8... bxc6",
     "fleches_defense": [
@@ -342,8 +342,8 @@
   },
   {
     "nom": "Piège du gambit de l'aile",
-    "coups": "1. e4 c5 2. b4 cxb4 3. d4 Cc6 4. d5 Ce5 5. Fb2 d6 6. Cf3 Fg4 7. Cxe5! Fxd1?? 8. Fb5+! Dd7 9. Fxd7 Rd8 10. Cxf7+ Rxd7 11. Rxd1",
-    "conseil_defense": "Ne capturez pas la Dame adverse sans avoir vérifié les possibilités d'échec à la découverte ou de mat. Le coup Fb5+ est une menace constante qui exploite le clouage du pion d7.",
+    "coups": "1. e4 c5 2. b4 cxb4 3. d4 Cc6 4. d5 Ce5 5. Fb2 d6 6. Cf3 Fg4 7. Cxe5 Fxd1 8. Fb5 Dd7 9. Fxd7 Rd8 10. Cxf7 Rxd7 11. Rxd1",
+    "conseil_defense": "Ne capturez pas la Dame adverse sans avoir vérifié les possibilités d'échec à la découverte ou de mat. Le coup Fb5 est une menace constante qui exploite le clouage du pion d7.",
     "coup_defense": "7... dxe5",
     "fleches_defense": [
       "d6e5"
@@ -358,7 +358,7 @@
   },
   {
     "nom": "Piège d'ouverture Alapin",
-    "coups": "1. e4 e5 2. Ce2 Cf6 3. f4 exf4 4. Cxf4 Cxe4 5. De2 De7?? 6. Cd5 De5 7. Cbc3 c6 8. d4! Dxd4 9. Cxe4 cxd5?? 10. Cd6+ Rd8 11. De8+ Rc7 12. Cb5+ Rb6 13. Dd8+ Ra6 14. Cxd4+ b5 15. Dc7 Cc6 16. Fxb5#",
+    "coups": "1. e4 e5 2. Ce2 Cf6 3. f4 exf4 4. Cxf4 Cxe4 5. De2 De7 6. Cd5 De5 7. Cbc3 c6 8. d4 Dxd4 9. Cxe4 cxd5 10. Cd6 Rd8 11. De8 Rc7 12. Cb5 Rb6 13. Dd8 Ra6 14. Cxd4 b5 15. Dc7 Cc6 16. Fxb5",
     "conseil_defense": "Évitez de placer votre Dame sur une case qui bloque le développement de vos pièces (comme d7). Soyez extrêmement vigilant face aux échecs à la découverte et aux fourchettes de cavalier lorsque votre Roi est coincé au centre sur une colonne ouverte.",
     "coup_defense": "5... De7",
     "fleches_defense": [
@@ -370,6 +370,6 @@
       "d4b5"
     ],
     "defenseur": "Noirs",
-    "explication_defense": "Jouer 5... De7 permet de neutraliser le clouage sur la colonne e tout en laissant le Fou f8 libre de se développer. Le coup 5... Dd7?? est une erreur majeure qui paralyse l'aile Roi et expose les Noirs à une attaque dévastatrice."
+    "explication_defense": "Jouer 5... De7 permet de neutraliser le clouage sur la colonne e tout en laissant le Fou f8 libre de se développer. Le coup 5... Dd7 est une erreur majeure qui paralyse l'aile Roi et expose les Noirs à une attaque dévastatrice."
   }
 ]

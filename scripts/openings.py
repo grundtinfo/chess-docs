@@ -31,7 +31,8 @@ def generate_moves_table(item):
         arrow_notation = None
         arrow_color = None
         
-        commentaire = generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
+        # MODIFIÉ : Récupération du commentaire ET du coup annoté
+        commentaire, coup_annote = generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
         
         try:
             move_obj = board.parse_san(move_san)
@@ -46,7 +47,7 @@ def generate_moves_table(item):
         if move["color"] == "white":
             current_row = {
                 "move_number": move["move_number"],
-                "white": move_raw,
+                "white": coup_annote,
                 "white_comment": commentaire,
                 "white_fen": fen_after,
                 "white_arrow": arrow_notation,
@@ -59,12 +60,12 @@ def generate_moves_table(item):
                 current_row = {
                     "move_number": move["move_number"],
                     "white": "", "white_comment": "", "white_fen": None, "white_arrow": None, "white_arrow_color": None,
-                    "black": move_raw, "black_comment": commentaire, "black_fen": fen_after,
+                    "black": coup_annote, "black_comment": commentaire, "black_fen": fen_after,
                     "black_arrow": arrow_notation, "black_arrow_color": arrow_color
                 }
                 rows.append(current_row)
             else:
-                current_row.update({"black": move_raw, "black_comment": commentaire, "black_fen": fen_after, "black_arrow": arrow_notation, "black_arrow_color": arrow_color})
+                current_row.update({"black": coup_annote, "black_comment": commentaire, "black_fen": fen_after, "black_arrow": arrow_notation, "black_arrow_color": arrow_color})
     return rows
 
 def ajouter_pied_page(canvas, doc):
@@ -130,7 +131,7 @@ def build_pdf(output_path, source_name, data):
 
             table_data.append([diag, Paragraph(str(row.get('move_number', '')), bold_style), Paragraph(row.get('white', ''), bold_style), Paragraph(row.get('black', ''), bold_style), Paragraph(comment_text, normal_style)])
             
-        table = Table(table_data, colWidths=[130, 25, 47, 47, 291], repeatRows=1)
+        table = Table(table_data, colWidths=[130, 25, 50, 50, 285], repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
             ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]),

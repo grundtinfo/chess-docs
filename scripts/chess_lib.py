@@ -57,11 +57,14 @@ except ImportError:
 # CONFIGURATION OLLAMA (LLM Local)
 # =====================================================================
 OLLAMA_URL = "http://localhost:11434/api/generate"
-OLLAMA_MODEL = "mistral:7b"
+OLLAMA_MODEL = "llama3.1:8b"
 # Modèles testés :
+# - phi3.5 hallucine complètement et ne respecte pas les consignes
+# - mistral-nemo:12b lourd et se mets quand même à parler anglais parfois
+# - llama3.1:8b passe en paranoïa et refuse de répondre
+# - qwen2.5:7b le fançais n'est pas toujours très bon mais rigoureux et bons temps de réponse. Peut se mettre à parler chinois si on le pousse trop.
 # - granite3.2:8b quleques hallucinations et ne respecte pas toujours les consignes
-# - mistral:7b français impecable, comprends et applique les consignes mais pas toujours très rapide
-# - qwen2.5:7b le fançais n'est pas toujours très bon mais rigoureux et bons temps de réponse
+# - mistral:7b français impecable, comprends et applique les consignes mais pas toujours très rapide et hallucine parfois
 
 # =====================================================================
 # GESTIONNAIRE OLLAMA (Démarrage / Extinction automatique)
@@ -382,7 +385,7 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
         tactics.append(f"Tactique : Clouage imposé sur : {', '.join(pinned_pieces)}")
 
     # ==========================================
-    # 2. ANALYSE PROFONDE (Stockfish) - Ajout évaluation Fous et Cavaliers
+    # 2. ANALYSE PROFONDE (Stockfish)
     # ==========================================
     if eval_after and not board_after.is_checkmate():
         # Normalisation du dictionnaire/objet d'évaluation Stockfish
@@ -398,9 +401,39 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
 
         if t == 'mate':
             mate_in = val * player_multiplier
-            # On cible les mats forcés à très court terme (1 à 3 coups max)
-            if 0 < mate_in <= 3: tactics.append(f"Rend un mat inévitable en {mate_in} coup(s)")
-            elif -3 <= mate_in < 0: tactics.append(f"Gaffe autorisant un mat adverse en {abs(mate_in)} coup(s)")
+            # Utilisation de l'engine pour obtenir la ligne principale (PV)
+            sf = StockfishAnalyzer().get_engine()
+            sf.set_fen_position(board_after.fen())
+            # Demander la ligne principale (PV)
+            lines = sf.get_top_moves(1)
+            
+            # Simulation pour extraire les coups en notation lisible
+            sim_board = board_after.copy()
+            seq_fr = []
+            seq_eng = []
+            for _ in range(abs(val)): # Nombre de demi-coups pour le mat
+                best_uci = sf.get_best_move()
+                if not best_uci: break
+                move_obj_sim = sim_board.parse_uci(best_uci)
+                san_fr = convert_english_to_french_notation(sim_board.san(move_obj_sim))
+                seq_fr.append(san_fr)
+                san_eng = sim_board.san(move_obj_sim)
+                seq_eng.append(san_eng)
+                sim_board.push(move_obj_sim)
+                sf.set_fen_position(sim_board.fen())
+
+            is_in_trap = False
+            if future_moves:
+                match_len = min(len(future_moves), len(seq_eng))
+                # Vérifier si la séquence forcée correspond aux coups restants du piège
+                if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
+                    is_in_trap = True
+                    
+            if is_in_trap:
+                tactics.append(f"Mat inévitable (suite illustrée)")
+            else:
+                tactics.append(f"Mat inévitable via : {' '.join(seq_fr)}")
+            
         elif t == 'cp':
             cp_val = val * player_multiplier
             if cp_val >= 300 and "Capture" not in " ".join(tactics):
@@ -458,7 +491,7 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
                         tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups via : {' '.join(seq_fr)}")
                 else:
                     tactics.append("Expose le joueur à une lourde perte matérielle (gaffe stratégique)")
-    tactics_comment = " | ".join(tactics) if tactics else "Continuité"
+    tactics_comment = " ; ".join(tactics) if tactics else "Continuité"
     debug_log(f"Événement détecté pour le coup : {tactics_comment}", "INFO")
     return tactics_comment
 
@@ -482,7 +515,7 @@ def format_eval_string(eval_dict, is_white_turn):
         return f"{cp_val:+.1f}"
 
 def generate_move_comment(move_raw, move_san, board_state, is_trap=False, future_moves=None):
-    """Orchestre l'analyse Stockfish, la détection tactique et la rédaction par Ollama."""
+    """Orchestre l'analyse Stockfish, la détection tactique et la rédaction par Ollama. Renvoie un tuple (commentaire, coup_annote)"""
     raw = remove_special_chars(move_raw.strip())
     board = chess.Board(board_state.fen())
     turn_color = "Blancs" if board.turn == chess.WHITE else "Noirs"
@@ -504,92 +537,158 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False, future
                 if best_uci: board_best.push(chess.Move.from_uci(best_uci))
                 
                 # --- CALCUL MATHÉMATIQUE SÉCURISÉ ---
+                val_before = get_eval_value(eval_before, board)
                 val_after = get_eval_value(eval_after, board_after)
                 val_best = get_eval_value(best_eval, board_best)
                 
                 player_multiplier = 1 if board.turn == chess.WHITE else -1
+                eval_player_before = val_before * player_multiplier
                 eval_player_after = val_after * player_multiplier
                 eval_player_best = val_best * player_multiplier
                 
                 delta = eval_player_after - eval_player_best
+                swing = eval_player_after - eval_player_before
                 if move_obj and best_uci and move_obj.uci() == best_uci: delta = 0
+
+                # ==========================================
+                # NOTATION PILOTÉE PAR CHESS_LIB (!, !!, etc.)
+                # ==========================================
+                san_eng = board.san(move_obj) 
+                san_fr = convert_english_to_french_notation(san_eng)
+
+                # --- LOGIQUE DE SORTIE DIRECTE (SANS LLM) ---
+                if board_after.is_checkmate():
+                    return "Échec et mat.", f"{san_fr}#"
+
+                is_sacrifice = False
+                piece_moved = board.piece_at(move_obj.from_square)
+                if piece_moved and piece_moved.piece_type in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT]:
+                    if board.is_attacked_by(not board.turn, move_obj.to_square):
+                        is_sacrifice = True
+
+                t_after = eval_after.get('type', 'cp') if isinstance(eval_after, dict) else getattr(eval_after, 'type', 'cp')
+                val_after_raw = eval_after.get('value', 0) if isinstance(eval_after, dict) else (eval_after.value if hasattr(eval_after, 'value') and eval_after.value is not None else 0)
+                mate_in = (val_after_raw * player_multiplier) if t_after == 'mate' else 0
+
+                eval_symbol = ""
+                # Mat en 1-3 coups suite à un sacrifice d'une pièce majeure/mineure (!!)
+                if is_sacrifice and t_after == 'mate' and 0 < mate_in <= 3: eval_symbol = "!!"
+                elif delta <= -300: eval_symbol = "??"
+                elif delta <= -150: eval_symbol = "?"
+                elif delta <= -80: eval_symbol = "?!"
+                elif delta <= -30: eval_symbol = "!?"
+                # Coup optimal qui provoque une perte significative (+3 pions) chez l'adversaire (!)
+                elif delta == 0 and swing >= 300: eval_symbol = "!"
+                
+                final_move_str = f"{san_fr}{eval_symbol}"
                 
                 debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
+                # 1. Obtenir les tactiques d'abord
                 tactics = detect_tactics(board, move_obj, eval_after, future_moves)
+                # 2. Modérer le status en croisant delta et tactiques
+                if tactics != "Continuité":
+                    # Si des événements tactiques graves sont détectés (Mat, perte de pièce), 
+                    # on priorise cette information dans le status
+                    if "mat" in tactics.lower():
+                        status = "C'est une gaffe majeure entraînant un mat inévitable."
+                    elif "perte matérielle" in tactics.lower():
+                        status = "C'est une erreur sérieuse causant une perte matérielle forcée."
+                    else:
+                        # Fusionner le constat tactique avec l'évaluation numérique
+                        status = f"C'est un coup tactique significatif."
+                else:
+                    # 3. Logique par défaut basée sur l'évaluation (Delta)
+                    if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
+                    elif delta <= -300: status = "C'est une gaffe majeure entraînant une perte catastrophique."
+                    elif delta <= -150: status = "C'est une erreur sérieuse qui fait perdre un avantage significatif."
+                    elif delta <= -80: status = "C'est une imprécision qui dégrade légèrement la position."
+                    elif delta <= -30: status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
+                    else: status = "C'est un coup solide et tout à fait correct."
                 
-                if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
-                elif delta <= -300: status = "C'est une gaffe majeure entraînant une perte catastrophique."
-                elif delta <= -150: status = "C'est une erreur sérieuse qui fait perdre un avantage significatif."
-                elif delta <= -80: status = "C'est une imprécision qui dégrade légèrement la position."
-                elif delta <= -30: status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
-                else: status = "C'est un coup solide et tout à fait correct."
-                rules_text = ""
-                if raw != best_move_fr and delta < -20: 
-                    alt_context = f"- Meilleure alternative : {best_move_fr}\n                "
-                    rules_text = "\n                6. Mentionne brièvement la 'Meilleure alternative'.\n"
+                if raw != best_move_fr and delta < -20:
+                    alt_context = f"Meilleure alternative : {best_move_fr}\n  "
                 else:
                     alt_context = ""
-
-                prompt = f"""Tu es une IA de résumé factuel. Ton rôle est de traduire les faits fournis en une phrase pédagogique simple.
-
-                RÈGLES D'OR :
-                1. RÈGLE ABSOLUE : Si le "Coup joué" se termine par le symbole '#', ta réponse doit STRICTEMENT se limiter à la phrase : "Échec et mat. La partie est terminée." INTERDICTION FORMELLE de faire d'autres commentaires.
-                2. N'utilise QUE les informations fournies dans la section FAITS SUR LA POSITION.
-                3. NE PAS GENERER de commentaires supplémentaires.
-                4. Si un Événement est "Continuité", NE cherche PAS à justifier une attaque inexistante.
-                5. Rédige en français, 1 à 2 phrases max.{rules_text}
-
-                EXEMPLES DE RÉPONSE :
-                - FAITS SUR LA POSITION :
-                  Joueur : Blancs
-                  Coup joué : e4
-                  Qualité du coup : C'est un bon coup, le plus précis actuellement.
-                  Événement : Continuité
-                RÉPONSE : e4 est un bon coup qui permet de maintenir une position solide.
                 
-                - FAITS SUR LA POSITION :
-                  Joueur : Blancs
-                  Coup joué : Cxf7
-                  Qualité du coup : C'est un bon coup, le plus précis actuellement.
-                  Événement : Capture de Pion par Cavalier en f7 | Tactique : Fourchette par Cavalier en f7 sur : Dame en d8, Tour en h8
-                RÉPONSE : Cxf7 est un bon coup capturant un pion et créant une fourchette sur la Dame en d8 et la Tour en h8.
+                events_text = f"Événement : {tactics}" if tactics != "Continuité" else ""
                 
-                - FAITS SUR LA POSITION :
-                  Coup joué : Dxb7#
-                  Qualité du coup : C'est un bon coup, le plus précis actuellement.
-                  Événement : Capture de Pion par Dame en b7 | Mat par Dame en b7
-                RÉPONSE : Échec et mat. La partie est terminée.
+                # Formatage spécifique pour ollama.chat
+                messages = [
+                    {
+                        "role": "system",
+                        "content": """Tu es un assistant technique d'échecs factuel. Ton seul rôle est de rédiger UNE SEULE phrase courte résumant le coup joué.
 
-                FAITS SUR LA POSITION :
-                - Joueur : {turn_color}
-                - Coup joué : {raw}
-                {alt_context}- Qualité du coup : {status}
-                - Événement : {tactics}
-
-                RÉPONSE :
-                """
+RÈGLES STRICTES :
+1. Base-toi UNIQUEMENT sur les "FAITS" fournis.
+2. Si une suite de coups est fournie (après "via :"), TU DOIS l'inclure à la fin de ta phrase.
+3. N'invente aucune tactique, aucune suite de coups, aucun échange de pièces ou intention qui n'est pas explicitement écrit.
+4. Ne justifie pas ta réponse, ne donne pas de conseils.
+5. Donne directement la phrase finale."""
+                    },
+                    {
+                        "role": "user",
+                        "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\nCOMMENTAIRE :"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Un excellent début qui prend le contrôle du centre."
+                    },
+                    {
+                        "role": "user",
+                        "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse.\nÉvénement : Expose à une perte matérielle.\n\nCOMMENTAIRE :"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Une erreur tactique grave entraînant une perte matérielle imminente."
+                    },
+                    # --- NOUVEL EXEMPLE POUR FORCER L'AFFICHAGE DE LA SÉQUENCE ---
+                    {
+                        "role": "user",
+                        "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Ce coup expose le Cavalier à une perte matérielle forcée selon la suite : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5."
+                    },
+                    # -----------------------------------------------------------
+                    {
+                        "role": "user",
+                        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {san_fr}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
+                    }
+                ]
                 
                 try:
-                    debug_log(f"Prompt envoyé au LLM pour le coup {raw} :\n{prompt}", "DEBUG")
-                    debug_log(f"Appel d'Ollama ({OLLAMA_MODEL}) pour rédiger le commentaire de {raw}...", "INFO")
-                    result = ollama.generate(model=OLLAMA_MODEL, prompt=prompt)
+                    #debug_log(f"Prompt envoyé au LLM pour le coup {san_fr} (via Chat)", "DEBUG")
+                    debug_log(f"Appel d'Ollama ({OLLAMA_MODEL}) pour rédiger le commentaire de {san_fr}...", "INFO")
+                    result = ollama.chat(
+                        model=OLLAMA_MODEL,
+                        messages=messages,
+                        options={
+                            'temperature': 0.0,
+                            'top_p': 0.1,
+                            'num_predict': 70,
+                            'repeat_penalty': 1.0,
+                        }
+                    )
                     
-                    if result and hasattr(result, 'response'):
-                        comment = result['response'].strip().replace("\n", " ")
-                        debug_log(f"Résultat du prompt LLM pour {raw} : {comment}", "INFO")
-                        return comment
+                    if result and 'message' in result and 'content' in result['message']:
+                        comment = result['message']['content'].strip().replace("\n", " ")
+                        debug_log(f"Résultat du prompt LLM pour {san_fr} : {comment}", "INFO")
+                        return comment, final_move_str
                 except requests.exceptions.RequestException as e:
                     debug_log(f"Ollama injoignable sur {OLLAMA_URL}: {str(e)}. Fallback.", "WARNING")
                     
-                if delta < -50: return "Coup très mauvais : menace grave non évitée."
-                elif delta == 0 or delta > -10: return "Coup bon : maintient la pression."
-                else: return "Coup neutre : pas de menace immédiate."
+                if delta < -50: return "Coup très mauvais : menace grave non évitée.", final_move_str
+                elif delta == 0 or delta > -10: return "Coup bon : maintient la pression.", final_move_str
+                else: return "Coup neutre : pas de menace immédiate.", final_move_str
             
-            return "Analyse incomplète : données manquantes."
+            return "Analyse incomplète : données manquantes.", move_raw
         except Exception as e:
             debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")
-            return "Analyse impossible : erreur de calcul."
+            return "Analyse impossible : erreur de calcul.", move_raw
     
-    if "x" in raw: return "Coup de prise : attention à la position des pièces."
-    elif "+" in raw: return "Coup de mat : menace immédiate."
-    else: return "Coup neutre : pas de menace immédiate."
+    # Fallbacks mis à jour avec le bon symbole pour l'échec
+    if "x" in raw: return "Coup de prise : attention à la position des pièces.", move_raw
+    elif "#" in raw: return "Échec et mat. La partie est terminée.", move_raw
+    elif "+" in raw: return "Coup d'échec : menace immédiate.", move_raw
+    else: return "Coup neutre : pas de menace immédiate.", move_raw
