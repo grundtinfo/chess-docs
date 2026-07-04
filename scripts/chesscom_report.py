@@ -12,6 +12,9 @@ from statistics import mean
 import chess
 import chess.pgn
 import requests
+from reportlab.graphics.shapes import Drawing
+from reportlab.graphics.charts.piecharts import Pie
+from reportlab.lib import colors
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -42,28 +45,54 @@ class SimpleLineChart(Flowable):
     def draw(self):
         if not self.values or len(self.values) < 2:
             return
-        x0 = 30
-        y0 = 20
+        
+        # On décale x0 et y0 pour faire de la place aux échelles et aux dates
+        x0 = 40 
+        y0 = 25 
         x1 = self.width - 20
-        y1 = self.height - 20
+        y1 = self.height - 15
+
+        # Dessin du cadre extérieur
         self.canv.setStrokeColor(colors.HexColor("#cbd5e1"))
         self.canv.setLineWidth(0.6)
         self.canv.rect(x0, y0, x1 - x0, y1 - y0)
 
-        if len(self.values) == 1:
-            x = (x0 + x1) / 2
-            self.canv.circle(x, y0 + (y1 - y0) / 2, 3, stroke=0, fill=1)
-            return
-
         min_value = min(self.values)
         max_value = max(self.values)
         span = max_value - min_value or 1
+
+        # -------------------------------------------------------------
+        # NOUVEAU : Dessin des échelles (Y-axis) et de la grille
+        # -------------------------------------------------------------
+        self.canv.setFont("Helvetica", 8)
+        self.canv.setFillColor(COLOR_TEXT)
+        num_steps = 4  # Nombre de lignes intermédiaires
+        
+        for i in range(num_steps + 1):
+            y_pos = y0 + (i / num_steps) * (y1 - y0)
+            val = min_value + (i / num_steps) * span
+            
+            # Affichage de la valeur à gauche de l'axe Y
+            self.canv.drawRightString(x0 - 5, y_pos - 3, str(int(val)))
+            
+            # Lignes de repère pointillées (sauf sur les bords du cadre)
+            if 0 < i < num_steps:
+                self.canv.setStrokeColor(colors.HexColor("#e2e8f0")) # Gris très clair
+                self.canv.setDash(2, 2) # Ligne pointillée
+                self.canv.line(x0, y_pos, x1, y_pos)
+                self.canv.setDash() # Réinitialisation du trait
+
+        # -------------------------------------------------------------
+        # CORRECTION : Orientation et tracé des points
+        # -------------------------------------------------------------
         points = []
         for idx, value in enumerate(self.values):
             x = x0 + (idx / max(len(self.values) - 1, 1)) * (x1 - x0)
-            y = y0 + ((max_value - value) / span) * (y1 - y0)
+            # Correction : (value - min_value) au lieu de (max_value - value)
+            y = y0 + ((value - min_value) / span) * (y1 - y0) 
             points.append((x, y))
 
+        # Tracé des lignes reliant les points
         segments = []
         for i in range(len(points) - 1):
             p1 = points[i]
@@ -73,10 +102,15 @@ class SimpleLineChart(Flowable):
         self.canv.setStrokeColor(COLOR_SECONDARY := colors.HexColor("#0284c7"))
         self.canv.setLineWidth(1.2)
         self.canv.lines(segments)
+        
+        # Tracé des points eux-mêmes
         self.canv.setFillColor(COLOR_PRIMARY)
         for x, y in points:
             self.canv.circle(x, y, 2.6, stroke=0, fill=1)
 
+        # -------------------------------------------------------------
+        # Labels de l'axe X (Dates)
+        # -------------------------------------------------------------
         if self.labels:
             self.canv.setFont("Helvetica", 8)
             self.canv.setFillColor(COLOR_TEXT)
@@ -85,7 +119,8 @@ class SimpleLineChart(Flowable):
                 if idx % step != 0 and idx != len(self.labels) - 1:
                     continue
                 x = x0 + (idx / max(len(self.values) - 1, 1)) * (x1 - x0)
-                self.canv.drawString(x - 10, y0 - 8, label[:8])
+                # Affichage des dates sous l'axe (format réduit)
+                self.canv.drawString(x - 15, y0 - 12, str(label)[:10])
 
 def classify_opponent_type(username):
     if not username:
@@ -305,7 +340,7 @@ def parse_game_record(game, username):
         "time_control": game.get("time_control"),
         "rated": game.get("rated"),
         "accuracies": game.get("accuracies"),
-        "opening": game.get("opening", {}).get("eco") if isinstance(game.get("opening"), dict) else None,
+        "opening": game_obj.headers.get("Opening", game_obj.headers.get("ECO", "Inconnue")),
         "white": {"username": white_name, "elo": white.get("rating")},
         "black": {"username": black_name, "elo": black.get("rating")},
         "analysis": {
@@ -466,104 +501,176 @@ def build_report_payload(player_name, state):
         "games": games,
     }
 
+def ajouter_pied_page_rapport(canvas, doc):
+    canvas.saveState()
+    canvas.setFont('Helvetica', 9)
+    canvas.setFillColor(COLOR_TEXT)
+    canvas.drawString(36, 20, "Rapport d'Analyse - Chess Docs")
+    canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
+    canvas.restoreState()
+
 def build_pdf(output_path, payload):
     debug_log(f"Début génération PDF: {output_path}", "INFO")
     doc = SimpleDocTemplate(output_path, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle("Title", parent=styles["Heading1"], fontSize=20, leading=24, textColor=COLOR_PRIMARY, spaceAfter=10)
-    subtitle_style = ParagraphStyle("Subtitle", parent=styles["Normal"], fontSize=10, leading=14, textColor=COLOR_TEXT, spaceAfter=8)
-    section_style = ParagraphStyle("Section", parent=styles["Heading2"], fontSize=13, leading=16, textColor=COLOR_PRIMARY, spaceAfter=8)
-    normal_style = ParagraphStyle("NormalCustom", parent=styles["Normal"], fontSize=10, leading=13, textColor=COLOR_TEXT)
+    
+    # Styles
+    title_style = ParagraphStyle("Title", parent=styles["Heading1"], fontSize=22, leading=26, textColor=COLOR_PRIMARY, spaceAfter=5)
+    subtitle_style = ParagraphStyle("Subtitle", parent=styles["Normal"], fontSize=11, leading=14, textColor=COLOR_TEXT, spaceAfter=20)
+    section_style = ParagraphStyle("Section", parent=styles["Heading2"], fontSize=16, leading=20, textColor=COLOR_PRIMARY, spaceAfter=12)
+    normal_style = ParagraphStyle("NormalCustom", parent=styles["Normal"], fontSize=10, leading=14, textColor=COLOR_TEXT)
     bold_style = ParagraphStyle("BoldCustom", parent=normal_style, fontName="Helvetica-Bold")
 
     elements = [
-        Paragraph(f"Rapport de joueur Chess.com : {payload['player']}", title_style),
+        Paragraph(f"Rapport d'Analyse : {payload['player']}", title_style),
         Paragraph(f"Généré le {payload['generated_at']}", subtitle_style),
-        Spacer(1, 8),
     ]
 
     summary = payload.get("summary", {})
     results = summary.get("results", {})
-    elements.extend([
-        Paragraph("1. Vue d'ensemble", section_style),
-        Paragraph(
-            f"Parties analysées : {summary.get('games_count', 0)}. Résultats : {', '.join(f'{key}={value}' for key, value in results.items()) or 'aucun'}. "
-            f"Élo moyen observé : {summary.get('average_elo') or 'n/a'}.",
-            normal_style,
-        ),
-        Paragraph(
-            f"Ouvertures fréquentes : {', '.join(f'{name} ({count})' for name, count in summary.get('top_openings', [])[:3]) or 'n/a'}",
-            normal_style,
-        ),
-        Spacer(1, 10),
-    ])
+    
+    # --- 1. VUE D'ENSEMBLE (Tableau) ---
+    elements.append(Paragraph("1. Vue d'ensemble", section_style))
+    stats_data = [
+        [Paragraph("<b>Métrique</b>", normal_style), Paragraph("<b>Valeur</b>", normal_style)],
+        [Paragraph("Parties analysées", bold_style), Paragraph(str(summary.get('games_count', 0)), normal_style)],
+        [Paragraph("Résultats (V/N/D)", bold_style), Paragraph(", ".join(f"{k}={v}" for k, v in results.items()) or "n/a", normal_style)],
+        [Paragraph("Élo moyen observé", bold_style), Paragraph(str(summary.get('average_elo') or 'n/a'), normal_style)]
+    ]
+    t_stats = Table(stats_data, colWidths=[200, 340])
+    t_stats.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 8)
+    ]))
+    elements.append(t_stats)
 
+    # --- NOUVEAU : GRAPHIQUE EN CAMEMBERT ---
+    # Récupération sécurisée des clés classiques de résultats (adapte si les tiennes sont différentes)
+    wins = results.get('win', 0) or results.get('victoires', 0) or 0
+    draws = results.get('draw', 0) or results.get('nulles', 0) or 0
+    losses = results.get('loss', 0) or results.get('défaites', 0) or 0
+    
+    total_games = wins + draws + losses
+    
+    if total_games > 0:
+        drawing = Drawing(400, 160)
+        pie = Pie()
+        pie.x = 150
+        pie.y = 20
+        pie.width = 120
+        pie.height = 120
+        pie.data = [wins, draws, losses]
+        pie.labels = [f"Victoires\n({wins})", f"Nulles\n({draws})", f"Défaites\n({losses})"]
+        
+        # Personnalisation des couleurs des tranches
+        pie.slices[0].fillColor = colors.HexColor('#4CAF50') # Vert
+        pie.slices[1].fillColor = colors.HexColor('#9E9E9E') # Gris
+        pie.slices[2].fillColor = colors.HexColor('#F44336') # Rouge
+        
+        # Masquer les étiquettes pour les tranches à 0%
+        for i in range(3):
+            if pie.data[i] == 0:
+                pie.labels[i] = ""
+                pie.slices[i].fillColor = colors.transparent
+                pie.slices[i].strokeColor = colors.transparent
+                
+        # Esthétique du graphique
+        pie.sideLabels = 1
+        pie.sideLabelsOffset = 0.1
+        pie.simpleLabels = 0
+        
+        drawing.add(pie)
+        elements.extend([Spacer(1, 10), drawing, Spacer(1, 15)])
+    else:
+        elements.append(Spacer(1, 20))
+
+    # --- 2. ÉVOLUTION DU CLASSEMENT ---
     elo_history = payload.get("elo_history", [])
     if elo_history:
         values = [value for _, value in elo_history[-12:]]
         labels = [date or "" for date, _ in elo_history[-12:]]
         elements.extend([
-            Paragraph("2. Évolution du classement", section_style),
+            Paragraph("2. Évolution du classement (Dernières parties)", section_style),
             SimpleLineChart(values, labels=labels),
-            Spacer(1, 10),
+            Spacer(1, 20),
         ])
 
+    # --- 3 & 4. PHASES ET ADVERSAIRES ---
     phase_summary = payload.get("phase_summary", {})
-    elements.extend([
-        Paragraph("3. Analyse par phase", section_style),
-        Paragraph(
-            f"Ouverture : {phase_summary.get('opening', {}).get('good', 0)} coups de qualité, {phase_summary.get('opening', {}).get('blunders', 0)} erreurs majeures. ",
-            normal_style,
-        ),
-        Paragraph(
-            f"Milieu de partie : {phase_summary.get('middlegame', {}).get('good', 0)} coups de qualité, {phase_summary.get('middlegame', {}).get('blunders', 0)} erreurs majeures. ",
-            normal_style,
-        ),
-        Paragraph(
-            f"Fin de partie : {phase_summary.get('endgame', {}).get('good', 0)} coups de qualité, {phase_summary.get('endgame', {}).get('blunders', 0)} erreurs majeures. ",
-            normal_style,
-        ),
-        Spacer(1, 10),
-    ])
+    
+    elements.append(Paragraph("3. Analyse par phase de jeu", section_style))
+    phase_data = [
+        [Paragraph("<b>Phase</b>", normal_style), Paragraph("<b>Bons coups</b>", normal_style), Paragraph("<b>Erreurs majeures</b>", normal_style)],
+        [Paragraph("Ouverture", bold_style), Paragraph(str(phase_summary.get('opening', {}).get('good', 0)), normal_style), Paragraph(str(phase_summary.get('opening', {}).get('blunders', 0)), normal_style)],
+        [Paragraph("Milieu de partie", bold_style), Paragraph(str(phase_summary.get('middlegame', {}).get('good', 0)), normal_style), Paragraph(str(phase_summary.get('middlegame', {}).get('blunders', 0)), normal_style)],
+        [Paragraph("Fin de partie", bold_style), Paragraph(str(phase_summary.get('endgame', {}).get('good', 0)), normal_style), Paragraph(str(phase_summary.get('endgame', {}).get('blunders', 0)), normal_style)]
+    ]
+    t_phase = Table(phase_data, colWidths=[180, 180, 180])
+    t_phase.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 8)
+    ]))
+    elements.extend([t_phase, Spacer(1, 20)])
 
-    opponent_types = payload.get("opponent_types", {})
-    elements.extend([
-        Paragraph("4. Adversaires", section_style),
-        Paragraph(
-            f"Type humain : {opponent_types.get('humain', 0)} parties. Type autre : {opponent_types.get('autre', 0)} parties.",
-            normal_style,
-        ),
-        Spacer(1, 10),
-    ])
-
+    # --- 5. ANALYSE PAR OUVERTURE ---
     opening_focus = payload.get("opening_focus", [])
+    elements.extend([PageBreak(), Paragraph("4. Top Ouvertures Jouées", section_style)])
+    
     if opening_focus:
-        elements.extend([Paragraph("5. Analyse par ouverture", section_style)])
-        for item in opening_focus[:6]:
-            elements.append(Paragraph(
-                f"• {item['opening']} — {item['games']} partie(s), {item['good_moves']} coup(s) de qualité, {item['blunders']} erreur(s) majeure(s)",
-                normal_style,
-            ))
-            if item.get("sample"):
-                elements.append(Paragraph(f"  Exemples : {item['sample']}", normal_style))
-            elements.append(Spacer(1, 4))
-        elements.append(Spacer(1, 8))
+        op_data = [[Paragraph("<b>Ouverture</b>", normal_style), Paragraph("<b>Parties</b>", normal_style), Paragraph("<b>Bons/Erreurs</b>", normal_style)]]
+        
+        for item in opening_focus[:8]:
+            ratio = f"<font color='green'>{item['good_moves']}</font> / <font color='red'>{item['blunders']}</font>"
+            op_data.append([
+                Paragraph(item['opening'], bold_style),
+                Paragraph(str(item['games']), normal_style),
+                Paragraph(ratio, normal_style)
+            ])
+            
+        t_op = Table(op_data, colWidths=[300, 100, 140])
+        t_op.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]),
+            ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 8)
+        ]))
+        elements.extend([t_op, Spacer(1, 20)])
+    else:
+        # Afficher un message par défaut au lieu de masquer le point 4
+        elements.extend([
+            Paragraph("Aucune donnée d'ouverture n'a pu être extraite des parties récentes.", normal_style), 
+            Spacer(1, 20)
+        ])
 
-    elements.extend([Paragraph("6. Coups notables", section_style)])
+    # --- 6. COUPS NOTABLES ---
+    elements.append(Paragraph("5. Derniers Coups Notables (IA)", section_style))
+    notable_data = [[Paragraph("<b>Date / Résultat</b>", normal_style), Paragraph("<b>Coups Analysés</b>", normal_style)]]
+    
     for game in list(reversed(payload.get("games", [])))[:8]:
         analysis = game.get("analysis", {}) or {}
         notable_moves = analysis.get("notable_moves", [])
-        if not notable_moves:
-            continue
-        moves_text = ", ".join(
-            f"{move['move']} ({move.get('detail', '')}; alternative: {move.get('alternative') or 'n/a'})"
-            for move in notable_moves[:4]
+        if not notable_moves: continue
+        
+        moves_html = "<br/>".join(
+            f"<b>{move['move']}</b> : {move.get('detail', '')} <i>(Alt: {move.get('alternative') or 'n/a'})</i>"
+            for move in notable_moves[:3]
         )
-        elements.append(Paragraph(f"{game.get('date') or 'Sans date'} — {game.get('result')} — {moves_text}", normal_style))
-        elements.append(Spacer(1, 6))
+        game_info = f"{game.get('date') or 'Sans date'}<br/>{game.get('result')}"
+        notable_data.append([Paragraph(game_info, bold_style), Paragraph(moves_html, normal_style)])
 
-    doc.build(elements)
-    debug_log("PDF généré avec succès", "INFO")
+    if len(notable_data) > 1:
+        t_notable = Table(notable_data, colWidths=[120, 420])
+        t_notable.setStyle(TableStyle([
+            ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]),
+            ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 8),
+            ('VALIGN', (0,0), (-1,-1), 'TOP')
+        ]))
+        elements.append(t_notable)
+
+    doc.build(elements, onFirstPage=ajouter_pied_page_rapport, onLaterPages=ajouter_pied_page_rapport)
+    debug_log("PDF généré avec succès avec le nouveau design", "INFO")
 
 def main():
     parser = argparse.ArgumentParser(description="Génère un rapport PDF à partir des parties publiques d'un joueur Chess.com")

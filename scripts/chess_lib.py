@@ -134,38 +134,60 @@ def resolve_stockfish_depth(explicit_depth=None):
     return DEFAULT_STOCKFISH_DEPTH
 
 def convert_french_to_english_notation(move):
+    if not move: return move
     piece_map = {'D': 'Q', 'C': 'N', 'F': 'B', 'T': 'R', 'R': 'K'}
+    
+    # 1. Traduction de la première lettre (Pièces classiques)
+    if move[0] in piece_map:
+        move = piece_map[move[0]] + move[1:]
+        
+    # 2. Traduction de la promotion (gère =D, =D+, =D#)
     if '=' in move:
         parts = move.split('=')
-        if len(parts) == 2 and parts[1] in piece_map:
-            move = parts[0] + '=' + piece_map[parts[1]]
-    if move and move[0] in piece_map and '=' not in move[:move.find('=') if '=' in move else len(move)]:
-        move = piece_map[move[0]] + move[1:]
+        if len(parts) == 2 and len(parts[1]) > 0:
+            promoted_piece = parts[1][0] # On cible uniquement la lettre
+            if promoted_piece in piece_map:
+                # On reconstruit la chaîne en gardant les éventuels suffixes (+, #)
+                move = parts[0] + '=' + piece_map[promoted_piece] + parts[1][1:]
+                
     return move
 
 def convert_english_to_french_notation(move):
     if not move: return move
     piece_map = {'Q': 'D', 'N': 'C', 'B': 'F', 'R': 'T', 'K': 'R'}
+    
     if move[0] in piece_map:
         move = piece_map[move[0]] + move[1:]
+        
     if '=' in move:
         parts = move.split('=')
-        if len(parts) == 2 and parts[1] in piece_map:
-            move = parts[0] + '=' + piece_map[parts[1]]
+        if len(parts) == 2 and len(parts[1]) > 0:
+            promoted_piece = parts[1][0]
+            if promoted_piece in piece_map:
+                move = parts[0] + '=' + piece_map[promoted_piece] + parts[1][1:]
+                
     return move
 
 def parse_moves(coups_str):
     pattern = r'(\d+)\.\s*([^\s]+)(?:\s+([^\s]+))?'
     matches = re.findall(pattern, coups_str)
     moves = []
+    
+    # Correction de la regex : suppression du 'x' pour ne pas casser les captures de pions.
+    # On garde le nettoyage des annotations d'évaluation (!, ?) mais on laisse + et # 
+    # pour que python-chess puisse valider rigoureusement l'état du plateau.
+    clean_pattern = r'[?!]+' 
+    
     for num, white, black in matches:
         white_raw = white.strip()
-        white_san = convert_french_to_english_notation(re.sub(r'[?!+#x]+', '', white_raw))
+        white_san = convert_french_to_english_notation(re.sub(clean_pattern, '', white_raw))
         moves.append({"raw": white_raw, "san": white_san, "move_number": int(num), "color": "white"})
+        
         if black:
             black_raw = black.strip()
-            black_san = convert_french_to_english_notation(re.sub(r'[?!+#x]+', '', black_raw))
+            black_san = convert_french_to_english_notation(re.sub(clean_pattern, '', black_raw))
             moves.append({"raw": black_raw, "san": black_san, "move_number": int(num), "color": "black"})
+            
     return moves
 
 def get_eval_value(eval_dict, current_board=None):
@@ -219,9 +241,9 @@ class StockfishAnalyzer:
             
             depth = resolve_stockfish_depth(explicit_depth=depth)
             if stockfish_path:
-                self.engine = Stockfish(path=stockfish_path, depth=depth, parameters={"Threads": 12, "Hash": 4096})
+                self.engine = Stockfish(path=stockfish_path, depth=depth, parameters={"Threads": 12, "Hash": 3072})
             else:
-                self.engine = Stockfish(depth=depth, parameters={"Threads": 12, "Hash": 4096})
+                self.engine = Stockfish(depth=depth, parameters={"Threads": 12, "Hash": 3072})
         except Exception:
             self.engine = None
         return self.engine
@@ -353,9 +375,9 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
             checker_sq = list(checkers)[0]
             checker_piece = board_after.piece_at(checker_sq)
             checker_name = get_piece_name_fr(checker_piece)
-            tactics.append(f"Tactique : Échec à la découverte par {checker_name} (démasqué par {moving_piece_name})")
+            tactics.append(f"Tactique Échec à la découverte par {checker_name} (démasqué par {moving_piece_name})")
         elif len(checkers) > 1:
-            tactics.append(f"Tactique : Échec double impliquant {moving_piece_name} en {to_square_name}")
+            tactics.append(f"Tactique Échec double impliquant {moving_piece_name} en {to_square_name}")
         else:
             tactics.append(f"Échec par {moving_piece_name} en {to_square_name}")
         
@@ -370,7 +392,7 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
         
         if len(targets) > 1:
             targets_str = ", ".join(targets)
-            tactics.append(f"Tactique : Fourchette par {moving_piece_name} en {to_square_name} sur : {targets_str}")
+            tactics.append(f"Tactique Fourchette par {moving_piece_name} en {to_square_name} sur : {targets_str}")
 
     defender_color = board_after.turn
     pinned_pieces = []
@@ -382,7 +404,7 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
                     pinned_pieces.append(f"{get_piece_name_fr(piece)} en {chess.square_name(sq)}")
                     
     if pinned_pieces:
-        tactics.append(f"Tactique : Clouage imposé sur : {', '.join(pinned_pieces)}")
+        tactics.append(f"Tactique Clouage imposé sur : {', '.join(pinned_pieces)}")
 
     # ==========================================
     # 2. ANALYSE PROFONDE (Stockfish)
@@ -607,55 +629,56 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False, future
                 
                 if raw != best_move_fr and delta < -20:
                     alt_context = f"Meilleure alternative : {best_move_fr}\n  "
+                    alt_rule = "\n7. Mentionne le meilleur coup alternatif"
                 else:
                     alt_context = ""
+                    alt_rule = ""
                 
                 events_text = f"Événement : {tactics}" if tactics != "Continuité" else ""
                 
                 # Formatage spécifique pour ollama.chat
                 messages = [
-                    {
-                        "role": "system",
-                        "content": """Tu es un assistant technique d'échecs factuel. Ton seul rôle est de rédiger UNE SEULE phrase courte résumant le coup joué.
+    {
+        "role": "system",
+        "content": f"""Tu es un parseur de données strict. Ton unique objectif est de transformer les variables brutes fournies dans la section "FAITS" en une seule phrase naturelle en français.
 
-RÈGLES STRICTES :
-1. Base-toi UNIQUEMENT sur les "FAITS" fournis.
-2. Si une suite de coups est fournie (après "via :"), TU DOIS l'inclure à la fin de ta phrase.
-3. N'invente aucune tactique, aucune suite de coups, aucun échange de pièces ou intention qui n'est pas explicitement écrit.
-4. Ne justifie pas ta réponse, ne donne pas de conseils.
-5. Donne directement la phrase finale."""
-                    },
-                    {
-                        "role": "user",
-                        "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\nCOMMENTAIRE :"
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "Un excellent début qui prend le contrôle du centre."
-                    },
-                    {
-                        "role": "user",
-                        "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse.\nÉvénement : Expose à une perte matérielle.\n\nCOMMENTAIRE :"
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "Une erreur tactique grave entraînant une perte matérielle imminente."
-                    },
-                    # --- NOUVEL EXEMPLE POUR FORCER L'AFFICHAGE DE LA SÉQUENCE ---
-                    {
-                        "role": "user",
-                        "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"
-                    },
-                    {
-                        "role": "assistant",
-                        "content": "Ce coup expose le Cavalier à une perte matérielle forcée selon la suite : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5."
-                    },
-                    # -----------------------------------------------------------
-                    {
-                        "role": "user",
-                        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {san_fr}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
-                    }
-                ]
+RÈGLES :
+1. Utilise EXCLUSIVEMENT le vocabulaire, les pièces et les événements fournis dans les "FAITS".
+2. Si un attribut est vide ou absent, n'en parle pas.
+3. Si la mention "via :" apparaît dans les faits, tu dois obligatoirement la mentionner telle quelle avec la pièce concernée.
+4. Génère uniquement la phrase finale, sans aucune introduction, conclusion ou justification.
+5. RÈGLE ABSOLUE : utilise l'expression "mettre en échec" ou le mot "échec" que pour le Roi. Cet echec peut être direct ou indirect (échec à la découverte, échec double, échec par, etc.) mais ne doit jamais être utilisé pour d'autres pièces.
+6. RÈGLE ABSOLUE : Si l'événement est une simple capture de pion sans tactique associée (comme une fourchette, un clouage, ou un gain de matériel décisif), ce n'est pas un coup tactique significatif.{alt_rule}"""
+    },
+    {
+        "role": "user",
+        "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\n\nCOMMENTAIRE :"
+    },
+    {
+        "role": "assistant",
+        "content": "Un bon coup qui est le plus précis dans cette position."
+    },
+    {
+        "role": "user",
+        "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse.\nÉvénement : Expose à une perte matérielle.\n\nCOMMENTAIRE :"
+    },
+    {
+        "role": "assistant",
+        "content": "Ce coup est une erreur sérieuse car il expose à une perte matérielle."
+    },
+    {
+        "role": "user",
+        "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"
+    },
+    {
+        "role": "assistant",
+        "content": "Ce coup expose le Cavalier à une perte matérielle forcée selon la suite : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5."
+    },
+    {
+        "role": "user",
+        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {san_fr}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
+    }
+]
                 
                 try:
                     #debug_log(f"Prompt envoyé au LLM pour le coup {san_fr} (via Chat)", "DEBUG")
