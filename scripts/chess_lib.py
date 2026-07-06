@@ -102,7 +102,11 @@ class OllamaManager:
         # 1. Forcer le déchargement immédiat du modèle de la VRAM
         debug_log(f"Nettoyage : Déchargement du modèle {OLLAMA_MODEL} de la VRAM...", "ESSENTIAL")
         try:
-            ollama.stop()
+            ollama.generate(
+                model=OLLAMA_MODEL,
+                prompt="",
+                keep_alive=0
+            )
         except Exception as e:
             debug_log(f"Erreur lors du déchargement du modèle: {e}", "ERROR")
         
@@ -149,23 +153,19 @@ def convert_french_to_english_notation(move):
             if promoted_piece in piece_map:
                 # On reconstruit la chaîne en gardant les éventuels suffixes (+, #)
                 move = parts[0] + '=' + piece_map[promoted_piece] + parts[1][1:]
-                
     return move
 
 def convert_english_to_french_notation(move):
     if not move: return move
     piece_map = {'Q': 'D', 'N': 'C', 'B': 'F', 'R': 'T', 'K': 'R'}
-    
     if move[0] in piece_map:
         move = piece_map[move[0]] + move[1:]
-        
     if '=' in move:
         parts = move.split('=')
         if len(parts) == 2 and len(parts[1]) > 0:
             promoted_piece = parts[1][0]
             if promoted_piece in piece_map:
                 move = parts[0] + '=' + piece_map[promoted_piece] + parts[1][1:]
-                
     return move
 
 def parse_moves(coups_str):
@@ -332,7 +332,61 @@ class ChessboardFlowable(Flowable):
         except Exception: pass
 
 # =====================================================================
-# ANALYSE TACTIQUE ET APPEL LLM
+# FONCTIONS LLM CENTRALISÉES (FACTORISATION)
+# =====================================================================
+def query_llm(messages, options=None, context_log="LLM", fallback=""):
+    """Fonction générique pour appeler Ollama avec gestion propre du debug."""
+    debug_log(f"Appel d'Ollama ({OLLAMA_MODEL}) pour : {context_log}...", "INFO")
+    # Log brut uniquement en mode DEBUG (niveau 2)
+    debug_log(f"Prompt envoyé au LLM : {json.dumps(messages, ensure_ascii=False)}", "DEBUG")
+    
+    try:
+        result = ollama.chat(
+            model=OLLAMA_MODEL,
+            messages=messages,
+            options=options or {'temperature': 0.0}
+        )
+        if result and 'message' in result and 'content' in result['message']:
+            content = result['message']['content'].strip().replace("\n", " ")
+            # Résultat brut masqué sauf en niveau DEBUG
+            debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
+            return content
+    except requests.exceptions.RequestException as e:
+        debug_log(f"Ollama injoignable ({context_log}) sur {OLLAMA_URL}: {str(e)}. Fallback.", "WARNING")
+    except Exception as e:
+        debug_log(f"Erreur Ollama ({context_log}) : {str(e)}", "WARNING")
+        
+    return fallback
+
+def get_stockfish_theory_summary(opening_name, bad_move, stockfish_line):
+    """Demande au LLM de résumer la ligne théorique de Stockfish SANS la modifier."""
+    messages = [
+        {"role": "system", "content": "Tu es un commentateur d'échecs factuel. Ton SEUL but est d'expliquer la ligne calculée par Stockfish fournie par l'utilisateur. TU NE DOIS SOUS AUCUN PRÉTEXTE inventer ou proposer d'autres coups. Contente-toi de reprendre la ligne exacte et de la justifier brièvement."},
+        {"role": "user", "content": f"Dans l'ouverture '{opening_name}', le joueur a joué la gaffe '{bad_move}'. La correction exacte de l'ordinateur est la ligne suivante : {stockfish_line}. Explique de façon concise pourquoi cette ligne de l'ordinateur est forte, sans inventer de nouveaux coups."}
+    ]
+    
+    fallback_text = "Erreur de génération LLM."
+    content = query_llm(messages, context_log=f"Théorie {opening_name}", fallback=fallback_text)
+    return f"<b>Ligne Stockfish : {stockfish_line}</b><br/><br/>{content}"
+
+def translate_move_evaluation(move_raw, delta, best_move_san=None):
+    """Traduit une évaluation technique Stockfish en phrase naturelle."""
+    if best_move_san and best_move_san != move_raw:
+        prompt_context = f"Le joueur a joué {move_raw} (Perte d'évaluation : {delta:.1f}). L'ordinateur recommandait de jouer la variante théorique commençant par {best_move_san}."
+    elif best_move_san == move_raw:
+        prompt_context = f"Le joueur a joué le meilleur coup théorique {move_raw} validé par l'ordinateur."
+    else:
+        prompt_context = f"Le joueur a joué {move_raw}."
+
+    messages = [
+        {"role": "system", "content": "Tu es un traducteur technique d'échecs. Résume l'évaluation de l'ordinateur transmise en une phrase courte et factuelle. N'invente aucun coup."},
+        {"role": "user", "content": f"{prompt_context} Rends cela clair en une phrase simple."}
+    ]
+    
+    return query_llm(messages, context_log=f"Traduction évaluation {move_raw}")
+
+# =====================================================================
+# ANALYSE TACTIQUE ET APPEL LLM POUR COMMENTAIRES
 # =====================================================================
 def get_piece_name_fr(piece):
     if not piece: return "Pièce"
@@ -422,14 +476,8 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
         player_multiplier = 1 if board_before.turn == chess.WHITE else -1
 
         if t == 'mate':
-            mate_in = val * player_multiplier
-            # Utilisation de l'engine pour obtenir la ligne principale (PV)
             sf = StockfishAnalyzer().get_engine()
             sf.set_fen_position(board_after.fen())
-            # Demander la ligne principale (PV)
-            lines = sf.get_top_moves(1)
-            
-            # Simulation pour extraire les coups en notation lisible
             sim_board = board_after.copy()
             seq_fr = []
             seq_eng = []
@@ -447,7 +495,6 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
             is_in_trap = False
             if future_moves:
                 match_len = min(len(future_moves), len(seq_eng))
-                # Vérifier si la séquence forcée correspond aux coups restants du piège
                 if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
                     is_in_trap = True
                     
@@ -513,6 +560,7 @@ def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
                         tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups via : {' '.join(seq_fr)}")
                 else:
                     tactics.append("Expose le joueur à une lourde perte matérielle (gaffe stratégique)")
+                    
     tactics_comment = " ; ".join(tactics) if tactics else "Continuité"
     debug_log(f"Événement détecté pour le coup : {tactics_comment}", "INFO")
     return tactics_comment
@@ -638,9 +686,9 @@ def generate_move_comment(move_raw, move_san, board_state, is_trap=False, future
                 
                 # Formatage spécifique pour ollama.chat
                 messages = [
-    {
-        "role": "system",
-        "content": f"""Tu es un parseur de données strict. Ton unique objectif est de transformer les variables brutes fournies dans la section "FAITS" en une seule phrase naturelle en français.
+                    {
+                        "role": "system",
+                        "content": f"""Tu es un parseur de données strict. Ton unique objectif est de transformer les variables brutes fournies dans la section "FAITS" en une seule phrase naturelle en français.
 
 RÈGLES :
 1. Utilise EXCLUSIVEMENT le vocabulaire, les pièces et les événements fournis dans les "FAITS".
@@ -649,63 +697,53 @@ RÈGLES :
 4. Génère uniquement la phrase finale, sans aucune introduction, conclusion ou justification.
 5. RÈGLE ABSOLUE : utilise l'expression "mettre en échec" ou le mot "échec" que pour le Roi. Cet echec peut être direct ou indirect (échec à la découverte, échec double, échec par, etc.) mais ne doit jamais être utilisé pour d'autres pièces.
 6. RÈGLE ABSOLUE : Si l'événement est une simple capture de pion sans tactique associée (comme une fourchette, un clouage, ou un gain de matériel décisif), ce n'est pas un coup tactique significatif.{alt_rule}"""
-    },
-    {
-        "role": "user",
-        "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\n\nCOMMENTAIRE :"
-    },
-    {
-        "role": "assistant",
-        "content": "Un bon coup qui est le plus précis dans cette position."
-    },
-    {
-        "role": "user",
-        "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse.\nÉvénement : Expose à une perte matérielle.\n\nCOMMENTAIRE :"
-    },
-    {
-        "role": "assistant",
-        "content": "Ce coup est une erreur sérieuse car il expose à une perte matérielle."
-    },
-    {
-        "role": "user",
-        "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"
-    },
-    {
-        "role": "assistant",
-        "content": "Ce coup expose le Cavalier à une perte matérielle forcée selon la suite : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5."
-    },
-    {
-        "role": "user",
-        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {san_fr}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
-    }
-]
+                    },
+                    {
+                        "role": "user",
+                        "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\n\nCOMMENTAIRE :"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Un bon coup qui est le plus précis dans cette position."
+                    },
+                    {
+                        "role": "user",
+                        "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse.\nÉvénement : Expose à une perte matérielle.\n\nCOMMENTAIRE :"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Ce coup est une erreur sérieuse car il expose à une perte matérielle."
+                    },
+                    {
+                        "role": "user",
+                        "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"
+                    },
+                    {
+                        "role": "assistant",
+                        "content": "Ce coup expose le Cavalier à une perte matérielle forcée selon la suite : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5."
+                    },
+                    {
+                        "role": "user",
+                        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {san_fr}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
+                    }
+                ]
                 
-                try:
-                    #debug_log(f"Prompt envoyé au LLM pour le coup {san_fr} (via Chat)", "DEBUG")
-                    debug_log(f"Appel d'Ollama ({OLLAMA_MODEL}) pour rédiger le commentaire de {san_fr}...", "INFO")
-                    result = ollama.chat(
-                        model=OLLAMA_MODEL,
-                        messages=messages,
-                        options={
-                            'temperature': 0.0,
-                            'top_p': 0.1,
-                            'num_predict': 70,
-                            'repeat_penalty': 1.0,
-                        }
-                    )
-                    
-                    if result and 'message' in result and 'content' in result['message']:
-                        comment = result['message']['content'].strip().replace("\n", " ")
-                        debug_log(f"Résultat du prompt LLM pour {san_fr} : {comment}", "INFO")
-                        return comment, final_move_str
-                except requests.exceptions.RequestException as e:
-                    debug_log(f"Ollama injoignable sur {OLLAMA_URL}: {str(e)}. Fallback.", "WARNING")
-                    
-                if delta < -50: return "Coup très mauvais : menace grave non évitée.", final_move_str
-                elif delta == 0 or delta > -10: return "Coup bon : maintient la pression.", final_move_str
-                else: return "Coup neutre : pas de menace immédiate.", final_move_str
-            
-            return "Analyse incomplète : données manquantes.", move_raw
+                # Utilisation de la nouvelle fonction LLM factorisée
+                options = {
+                    'temperature': 0.0,
+                    'top_p': 0.1,
+                    'num_predict': 70,
+                    'repeat_penalty': 1.0,
+                }
+                
+                fallback_comment = "Analyse LLM échouée."
+                if delta < -50: fallback_comment = "Coup très mauvais : menace grave non évitée."
+                elif delta == 0 or delta > -10: fallback_comment = "Coup bon : maintient la pression."
+                else: fallback_comment = "Coup neutre : pas de menace immédiate."
+                
+                comment = query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment)
+                return comment, final_move_str
+
         except Exception as e:
             debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")
             return "Analyse impossible : erreur de calcul.", move_raw
