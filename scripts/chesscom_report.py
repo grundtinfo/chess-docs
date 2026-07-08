@@ -532,12 +532,7 @@ def main():
             w_name = g.get("white", {}).get("username", "").lower()
             b_name = g.get("black", {}).get("username", "").lower()
             
-            is_h2h = False
-            if args.opponent:
-                op_l = args.opponent.lower()
-                if w_name == op_l or b_name == op_l: is_h2h = True
-            
-            do_deep = is_h2h if args.opponent else True
+            do_deep = True
             
             if game_id not in existing_games or (do_deep and not existing_games[game_id].get("deep_analysis")):
                 parsed = parse_game_record(g, args.player, deep_analysis=do_deep)
