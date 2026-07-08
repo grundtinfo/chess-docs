@@ -163,7 +163,7 @@ def main(stockfish_depth=18, verbose=1, opening=None):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sources = collect_source_files(base_dir)
     if opening:
-        sources = [os.path.join(base_dir, f'json/{opening}.json')]
+        sources = [os.path.join(base_dir, f'json/opening_{opening}.json')]
     Logger.debug_log(f"Sources JSON découvertes: {len(sources)}", "INFO")
     if not sources:
         Logger.debug_log("Aucun fichier JSON trouvé.", "ERROR")
