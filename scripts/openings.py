@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import chess
 from datetime import datetime
@@ -6,12 +7,17 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from chess_lib import OllamaManager
 
-from chess_lib import (
-    COLOR_PRIMARY, COLOR_SECONDARY, COLOR_TEXT, COLOR_BG_LIGHT, COLOR_BORDER,
-    ChessboardFlowable, parse_moves, generate_move_comment, resolve_stockfish_depth, debug_log, set_debug_enabled
-)
+# Ajoute le répertoire parent au chemin de recherche des modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Importation depuis le nouveau dossier "classes"
+from classes.config import Config
+from classes.logger import Logger
+from classes.chess_utils import ChessUtils
+from classes.engines import OllamaManager
+from classes.ai_analyzer import AIAnalyzer
+from classes.pdf_components import ChessboardFlowable
 
 def get_orientation(item):
     orientation = item.get("Orientation", "Blancs")
@@ -19,7 +25,7 @@ def get_orientation(item):
 
 def generate_moves_table(item):
     coups_str = item.get("coups", "")
-    moves = parse_moves(coups_str)
+    moves = ChessUtils.parse_moves(coups_str)
     rows = []
     board = chess.Board()
     current_row = None
@@ -31,8 +37,7 @@ def generate_moves_table(item):
         arrow_notation = None
         arrow_color = None
         
-        # MODIFIÉ : Récupération du commentaire ET du coup annoté
-        commentaire, coup_annote = generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
+        commentaire, coup_annote = AIAnalyzer.generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
         
         try:
             move_obj = board.parse_san(move_san)
@@ -71,19 +76,19 @@ def generate_moves_table(item):
 def ajouter_pied_page(canvas, doc):
     canvas.saveState()
     canvas.setFont('Helvetica', 9)
-    canvas.setFillColor(COLOR_TEXT)
+    canvas.setFillColor(Config.COLOR_TEXT)
     canvas.drawString(36, 20, "Guide d'Ouvertures - Chess Docs")
     canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
     canvas.restoreState()
 
 def build_pdf(output_path, source_name, data):
-    debug_log(f"Début génération PDF ouvertures: {output_path}", "INFO")
+    Logger.debug_log(f"Début génération PDF ouvertures: {output_path}", "INFO")
     doc = SimpleDocTemplate(output_path, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
     styles = getSampleStyleSheet()
-    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, leading=26, textColor=COLOR_PRIMARY, spaceAfter=15)
-    intro_style = ParagraphStyle('Intro', parent=styles['Normal'], fontSize=11, leading=16, textColor=COLOR_TEXT, spaceAfter=8)
-    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=16, leading=20, textColor=COLOR_PRIMARY, spaceAfter=10)
-    normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, leading=14, textColor=COLOR_TEXT)
+    title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, leading=26, textColor=Config.COLOR_PRIMARY, spaceAfter=15)
+    intro_style = ParagraphStyle('Intro', parent=styles['Normal'], fontSize=11, leading=16, textColor=Config.COLOR_TEXT, spaceAfter=8)
+    section_style = ParagraphStyle('Section', parent=styles['Heading2'], fontSize=16, leading=20, textColor=Config.COLOR_PRIMARY, spaceAfter=10)
+    normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, leading=14, textColor=Config.COLOR_TEXT)
     bold_style = ParagraphStyle('CustomBold', parent=normal_style, fontName='Helvetica-Bold')
 
     elements = []
@@ -96,12 +101,12 @@ def build_pdf(output_path, source_name, data):
 
     for idx, item in enumerate(data):
         if idx > 0: elements.append(PageBreak())
-        debug_log(f"Analyse de la variante {idx+1}/{len(data)} : {item.get('nom', 'Sans titre')}", "ESSENTIAL")
+        Logger.debug_log(f"Analyse de la variante {idx+1}/{len(data)} : {item.get('nom', 'Sans titre')}", "ESSENTIAL")
         elements.append(Paragraph(f"{idx + 1}. {item.get('nom', 'Sans titre')}", section_style))
 
         orientation = get_orientation(item)
         explications = item.get('explications', {})
-        debug_log(f"Génération de la table de coups pour la variante {idx+1}", "INFO")
+        Logger.debug_log(f"Génération de la table de coups pour la variante {idx+1}", "INFO")
         rows = generate_moves_table(item)
         
         table_data = [[Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>N°</b>", normal_style), Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Noir</b>", normal_style), Paragraph("<b>Commentaire</b>", normal_style)]]
@@ -133,9 +138,9 @@ def build_pdf(output_path, source_name, data):
             
         table = Table(table_data, colWidths=[130, 25, 50, 50, 285], repeatRows=1)
         table.setStyle(TableStyle([
-            ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]),
-            ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6)
+            ('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, Config.COLOR_BG_LIGHT]),
+            ('LINEBELOW', (0,0), (-1,-1), 0.5, Config.COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6)
         ]))
         elements.extend([table, Spacer(1, 12)])
 
@@ -152,17 +157,16 @@ def collect_source_files(base_dir):
 
 def main(stockfish_depth=18, verbose=1):
     enabled, level = (True, max(int(verbose), 1)) if verbose else (False, 0)
-    set_debug_enabled(enabled, level=level)
-    debug_log("=== Début de la génération des guides d'ouvertures ===", "ESSENTIAL")
-    debug_log(f"Profondeur Stockfish retenue : {resolve_stockfish_depth(stockfish_depth)}", "ESSENTIAL")
+    Logger.set_debug_enabled(enabled, level=level)
+    Logger.debug_log("=== Début de la génération des guides d'ouvertures ===", "ESSENTIAL")
+    Logger.debug_log(f"Profondeur Stockfish retenue : {ChessUtils.resolve_stockfish_depth(stockfish_depth)}", "ESSENTIAL")
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sources = collect_source_files(base_dir)
-    debug_log(f"Sources JSON découvertes: {len(sources)}", "INFO")
+    Logger.debug_log(f"Sources JSON découvertes: {len(sources)}", "INFO")
     if not sources:
-        debug_log("Aucun fichier JSON trouvé.", "ERROR")
+        Logger.debug_log("Aucun fichier JSON trouvé.", "ERROR")
         return
         
-    # --- Démarrage d'Ollama ---
     ollama = OllamaManager()
     ollama.start()
     
@@ -172,14 +176,13 @@ def main(stockfish_depth=18, verbose=1):
                 with open(source_path, 'r', encoding='utf-8') as f: data = json.load(f)
                 if not isinstance(data, list): continue
                 output_path = os.path.join(base_dir, f"guide_{os.path.splitext(os.path.basename(source_path))[0]}.pdf")
-                debug_log(f"Traitement du fichier source {source_path}", "INFO")
-                debug_log(f"==== Génération de {output_path} ====", "ESSENTIAL")
+                Logger.debug_log(f"Traitement du fichier source {source_path}", "INFO")
+                Logger.debug_log(f"==== Génération de {output_path} ====", "ESSENTIAL")
                 build_pdf(output_path, os.path.basename(source_path), data)
             except Exception as exc: 
-                debug_log(f"Impossible de traiter {source_path}: {exc}", "ERROR")
-        debug_log("Génération terminée.", "ESSENTIAL")
+                Logger.debug_log(f"Impossible de traiter {source_path}: {exc}", "ERROR")
+        Logger.debug_log("Génération terminée.", "ESSENTIAL")
     finally:
-        # --- Extinction garantie d'Ollama ---
         ollama.stop()
 
 if __name__ == '__main__':

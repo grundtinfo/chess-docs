@@ -1,4 +1,5 @@
 import os
+import sys
 import re
 import json
 import chess
@@ -7,13 +8,17 @@ from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib import colors
-from chess_lib import OllamaManager
 
-from chess_lib import (
-    COLOR_PRIMARY, COLOR_SECONDARY, COLOR_TEXT, COLOR_BG_LIGHT, COLOR_BORDER, COLOR_MINT,
-    ChessboardFlowable, parse_moves, generate_move_comment, convert_french_to_english_notation,
-    resolve_stockfish_depth, debug_log, set_debug_enabled
-)
+# Ajoute le répertoire parent au chemin de recherche des modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Importation depuis le nouveau dossier "classes"
+from classes.config import Config
+from classes.logger import Logger
+from classes.chess_utils import ChessUtils
+from classes.engines import OllamaManager
+from classes.ai_analyzer import AIAnalyzer
+from classes.pdf_components import ChessboardFlowable
 
 def classify_trap(piege):
     coups = piege["coups"]
@@ -54,16 +59,15 @@ def split_move_options(moves_text):
     return [m.strip() for m in re.split(r'\s+ou\s+|\s*,\s*', moves_text) if m.strip()]
 
 def generate_moves_table(piege):
-    debug_log(f"Génération table des coups pour le piège {piege.get('nom', 'sans nom')}", "INFO")
-    moves = parse_moves(piege.get("coups", ""))
+    Logger.debug_log(f"Génération table des coups pour le piège {piege.get('nom', 'sans nom')}", "INFO")
+    moves = ChessUtils.parse_moves(piege.get("coups", ""))
     rows, board, current_row = [], chess.Board(), None
 
     for i, move in enumerate(moves):
         move_san = move.get("san", "")
         future_moves = [m.get("san", "") for m in moves[i+1:]]
         
-        # MODIFIÉ : Récupération du commentaire ET du coup annoté
-        commentaire, coup_annote = generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves)
+        commentaire, coup_annote = AIAnalyzer.generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves)
         
         try: board.push(board.parse_san(move_san))
         except Exception: pass
@@ -81,7 +85,7 @@ def generate_moves_table(piege):
     return rows
 
 def generate_fen_positions(piege):
-    moves = parse_moves(piege.get("coups", ""))
+    moves = ChessUtils.parse_moves(piege.get("coups", ""))
     board, positions = chess.Board(), []
     for move in moves:
         try:
@@ -105,7 +109,7 @@ def generate_fen_positions(piege):
     if len(defense_options) == 1:
         try:
             board_def = chess.Board(fen_intermediaire)
-            board_def.push(board_def.parse_san(convert_french_to_english_notation(re.sub(r'[?!+#x]+', '', defense_options[0]))))
+            board_def.push(board_def.parse_san(ChessUtils.convert_french_to_english_notation(re.sub(r'[?!+#x]+', '', defense_options[0]))))
             fen_defense = board_def.fen()
         except Exception: pass
 
@@ -114,34 +118,33 @@ def generate_fen_positions(piege):
 def ajouter_pied_page(canvas, doc):
     canvas.saveState()
     canvas.setFont('Helvetica', 9)
-    canvas.setFillColor(COLOR_TEXT)
+    canvas.setFillColor(Config.COLOR_TEXT)
     canvas.drawString(36, 20, "Guide des 20 Pièges d'Ouverture")
     canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
     canvas.restoreState()
 
 def generer_pdf(stockfish_depth=18, verbose=1):
     enabled, level = (True, max(int(verbose), 1)) if verbose else (False, 0)
-    set_debug_enabled(enabled, level=level)
-    debug_log("=== Début de la génération des guides de pièges ===", "ESSENTIAL")
-    debug_log("="*70, "ESSENTIAL")
-    debug_log("🔄 Génération du guide des pièges d'ouverture assistée par IA...", "ESSENTIAL")
-    debug_log(f"Profondeur Stockfish retenue : {resolve_stockfish_depth(stockfish_depth)}", "ESSENTIAL")
+    Logger.set_debug_enabled(enabled, level=level)
+    Logger.debug_log("=== Début de la génération des guides de pièges ===", "ESSENTIAL")
+    Logger.debug_log("="*70, "ESSENTIAL")
+    Logger.debug_log("🔄 Génération du guide des pièges d'ouverture assistée par IA...", "ESSENTIAL")
+    Logger.debug_log(f"Profondeur Stockfish retenue : {ChessUtils.resolve_stockfish_depth(stockfish_depth)}", "ESSENTIAL")
     
-    # --- Démarrage d'Ollama ---
     ollama = OllamaManager()
     ollama.start()
     
     try:
         with open('../json/trappes_data.json', 'r', encoding='utf-8') as f: trappes_data = json.load(f)
-        debug_log(f"{len(trappes_data)} pièges chargés depuis le fichier JSON", "INFO")
+        Logger.debug_log(f"{len(trappes_data)} pièges chargés depuis le fichier JSON", "INFO")
             
         doc = SimpleDocTemplate("../guide_pieges_et_defenses.pdf", pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
         styles = getSampleStyleSheet()
-        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, leading=26, textColor=COLOR_PRIMARY, spaceAfter=15)
-        intro_style = ParagraphStyle('Intro', parent=styles['Normal'], fontSize=11, leading=16, textColor=COLOR_TEXT, spaceAfter=8)
-        legend_heading = ParagraphStyle('LegendHeading', parent=styles['Heading2'], fontSize=14, leading=18, textColor=COLOR_MINT, spaceAfter=10)
-        trap_heading = ParagraphStyle('TrapHeading', parent=styles['Heading2'], fontSize=16, leading=20, textColor=COLOR_PRIMARY, spaceAfter=8)
-        normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, leading=14, textColor=COLOR_TEXT)
+        title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, leading=26, textColor=Config.COLOR_PRIMARY, spaceAfter=15)
+        intro_style = ParagraphStyle('Intro', parent=styles['Normal'], fontSize=11, leading=16, textColor=Config.COLOR_TEXT, spaceAfter=8)
+        legend_heading = ParagraphStyle('LegendHeading', parent=styles['Heading2'], fontSize=14, leading=18, textColor=Config.COLOR_MINT, spaceAfter=10)
+        trap_heading = ParagraphStyle('TrapHeading', parent=styles['Heading2'], fontSize=16, leading=20, textColor=Config.COLOR_PRIMARY, spaceAfter=8)
+        normal_style = ParagraphStyle('CustomNormal', parent=styles['Normal'], fontSize=10, leading=14, textColor=Config.COLOR_TEXT)
         bold_style = ParagraphStyle('CustomBold', parent=normal_style, fontName='Helvetica-Bold')
 
         elements = [
@@ -156,13 +159,13 @@ def generer_pdf(stockfish_depth=18, verbose=1):
             [Paragraph("Diagrammes", bold_style), Paragraph("Position finale, intermédiaire de détection, et défense.", normal_style)],
             [Paragraph("Table des coups", bold_style), Paragraph("Coups avec commentaires analytiques.", normal_style)]
         ], colWidths=[120, 420])
-        legend_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), COLOR_BG_LIGHT), ('LINEBELOW', (0,0), (-1,0), 1, COLOR_PRIMARY), ('PADDING', (0,0), (-1,-1), 6)]))
+        legend_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), Config.COLOR_BG_LIGHT), ('LINEBELOW', (0,0), (-1,0), 1, Config.COLOR_PRIMARY), ('PADDING', (0,0), (-1,-1), 6)]))
         elements.extend([legend_table, PageBreak()])
 
         for idx, piege in enumerate(trappes_data):
             if idx > 0: elements.append(PageBreak())
             
-            debug_log(f"Analyse du piège {idx+1}/{len(trappes_data)} : {piege.get('nom', 'Sans nom')}", "ESSENTIAL")
+            Logger.debug_log(f"Analyse du piège {idx+1}/{len(trappes_data)} : {piege.get('nom', 'Sans nom')}", "ESSENTIAL")
             
             bloc = [Paragraph(f"{idx+1}. {piege['nom']}", trap_heading)]
             fen_final, fen_inter, fen_def = generate_fen_positions(piege)
@@ -181,7 +184,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
                 table_data.append([diag, Paragraph(row.get("white",""), bold_style), Paragraph(row.get("white_comment",""), normal_style), Paragraph(row.get("black",""), bold_style), Paragraph(row.get("black_comment",""), normal_style)])
 
             t_coups = Table(table_data, colWidths=[120, 50, 140, 50, 140], repeatRows=1)
-            t_coups.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 6), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
+            t_coups.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, Config.COLOR_BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 6), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
             bloc.append(t_coups)
             elements.extend([KeepTogether(bloc), Spacer(1, 15)])
 
@@ -189,14 +192,13 @@ def generer_pdf(stockfish_depth=18, verbose=1):
                              [ChessboardFlowable(fen_final, 130, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
                               ChessboardFlowable(fen_inter, 130, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
                               ChessboardFlowable(fen_def, 130, fleches_defense=piege.get("fleches_defense",[]), orientation=orient)]], colWidths=[180, 180, 180])
-            t_diags.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('BACKGROUND', (0,0), (-1,0), COLOR_BG_LIGHT), ('BOX', (0,0), (-1,-1), 1, COLOR_BORDER)]))
+            t_diags.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('BACKGROUND', (0,0), (-1,0), Config.COLOR_BG_LIGHT), ('BOX', (0,0), (-1,-1), 1, Config.COLOR_BORDER)]))
             elements.extend([KeepTogether([t_diags, Spacer(1, 15)]), Paragraph(f"<b>Idée :</b> {piege.get('conseil_defense', '')}", normal_style), Paragraph(f"<b>Défense :</b> {piege.get('coup_defense', '')} - {piege.get('explication_defense', '')}", normal_style)])
 
         doc.build(elements, onFirstPage=ajouter_pied_page, onLaterPages=ajouter_pied_page)
-        debug_log("PDF généré avec succès", "ESSENTIAL")
+        Logger.debug_log("PDF généré avec succès", "ESSENTIAL")
     
     finally:
-        # --- Extinction garantie d'Ollama ---
         ollama.stop()
 
 if __name__ == "__main__":

@@ -6,7 +6,7 @@
 - Code : N'affiche PAS de blocs de code complets dans le chat. Limite-toi aux explications techniques et à la validation des étapes.
 
 ## 2. Environnement et Chemins (WSL)
-- Système : WSL (Linux). Utilise UNIQUEMENT des chemins relatifs (ex: `./src/main.py`).
+- Système : WSL (Linux). Utilise UNIQUEMENT des chemins relatifs (ex: `./tests/test.py`).
 - Erreur : En cas d'erreur de lecture, exécute `pwd` pour confirmer ta position et ajuste systématiquement le chemin en relatif (`./...`).
 
 ## 3. Comportement Agentique

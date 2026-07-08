@@ -6,3 +6,4 @@ svglib
 stockfish
 ollama
 requests
+openix

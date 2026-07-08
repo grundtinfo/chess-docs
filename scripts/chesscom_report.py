@@ -19,13 +19,16 @@ from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
 from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, KeepTogether
 
-# Importations depuis la librairie partagée
-from chess_lib import (
-    COLOR_BG_LIGHT, COLOR_BORDER, COLOR_PRIMARY, COLOR_TEXT, COLOR_SECONDARY, COLOR_MINT,
-    StockfishAnalyzer, debug_log, get_eval_value,
-    resolve_stockfish_depth, set_debug_enabled, OllamaManager, ChessboardFlowable,
-    get_stockfish_theory_summary, generate_move_comment, convert_english_to_french_notation
-)
+# Ajoute le répertoire parent au chemin de recherche des modules
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+# Importation depuis le nouveau dossier "classes"
+from classes.config import Config
+from classes.logger import Logger
+from classes.chess_utils import ChessUtils
+from classes.engines import StockfishAnalyzer, OllamaManager
+from classes.ai_analyzer import AIAnalyzer
+from classes.pdf_components import ChessboardFlowable
 
 # =====================================================================
 # COMPOSANTS GRAPHIQUES
@@ -52,7 +55,7 @@ class SimpleLineChart(Flowable):
         span = max_value - min_value or 1
 
         self.canv.setFont("Helvetica", 8)
-        self.canv.setFillColor(COLOR_TEXT)
+        self.canv.setFillColor(Config.COLOR_TEXT)
         num_steps = 4
         for i in range(num_steps + 1):
             y_pos = y0 + (i / num_steps) * (y1 - y0)
@@ -71,16 +74,16 @@ class SimpleLineChart(Flowable):
             points.append((x, y))
 
         segments = [(points[i][0], points[i][1], points[i+1][0], points[i+1][1]) for i in range(len(points) - 1)]
-        self.canv.setStrokeColor(COLOR_SECONDARY)
+        self.canv.setStrokeColor(Config.COLOR_SECONDARY)
         self.canv.setLineWidth(1.2)
         self.canv.lines(segments)
         
-        self.canv.setFillColor(COLOR_PRIMARY)
+        self.canv.setFillColor(Config.COLOR_PRIMARY)
         for x, y in points: self.canv.circle(x, y, 2.6, stroke=0, fill=1)
 
         if self.labels:
             self.canv.setFont("Helvetica", 8)
-            self.canv.setFillColor(COLOR_TEXT)
+            self.canv.setFillColor(Config.COLOR_TEXT)
             step = max(1, len(self.labels) // 4)
             for idx, label in enumerate(self.labels):
                 if idx % step != 0 and idx != len(self.labels) - 1: continue
@@ -138,7 +141,7 @@ def save_state(path, state):
 
 def fetch_player_games(username, months=6):
     headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ChessDocs/1.0"}
-    debug_log(f"Récupération des archives Chess.com pour {username} (mois={months})", "INFO")
+    Logger.debug_log(f"Récupération des archives Chess.com pour {username} (mois={months})", "INFO")
 
     def request_with_retry(url, retries=3):
         for attempt in range(retries):
@@ -158,7 +161,7 @@ def fetch_player_games(username, months=6):
         response = request_with_retry(archives_url)
         archives = response.json().get("archives", [])
     except Exception as e:
-        debug_log(f"Erreur API archives: {e}", "ERROR")
+        Logger.debug_log(f"Erreur API archives: {e}", "ERROR")
         return []
 
     recent_archives = archives[-months:] if months and months > 0 else archives
@@ -181,10 +184,19 @@ def parse_game_record(game, username, deep_analysis=False):
     white_name = game.get("white", {}).get("username", "")
     black_name = game.get("black", {}).get("username", "")
     
-    result = game.get("result") or "*"
-    if result == "win" and white_name == username: result_text = "1-0"
-    elif result == "win" and black_name == username: result_text = "0-1"
-    else: result_text = "1/2-1/2" if result == "draw" else "*"
+    # 1. On tente de récupérer le résultat officiel directement via les métadonnées PGN
+    result_text = game_obj.headers.get("Result", "*")
+    
+    # 2. Sécurité : si le PGN ne contient pas le résultat, on lit les statuts détaillés du JSON
+    if result_text == "*":
+        w_res = game.get("white", {}).get("result", "")
+        b_res = game.get("black", {}).get("result", "")
+        if w_res == "win": 
+            result_text = "1-0"
+        elif b_res == "win": 
+            result_text = "0-1"
+        elif w_res in ["agreed", "repetition", "stalemate", "insufficient", "50move", "timevsinsufficient"]: 
+            result_text = "1/2-1/2"
 
     board_before = game_obj.board()
 
@@ -196,11 +208,10 @@ def parse_game_record(game, username, deep_analysis=False):
         moves.append(move)
         board_before.push(move)
 
-    # Revenir à la position initiale
     board_before = game_obj.board()
     
     analyzer = StockfishAnalyzer()
-    engine = analyzer.get_engine(depth=resolve_stockfish_depth(14))
+    engine = analyzer.get_engine(depth=ChessUtils.resolve_stockfish_depth(18))
 
     details = []
     blunders, good_moves = 0, 0
@@ -214,10 +225,9 @@ def parse_game_record(game, username, deep_analysis=False):
         delta = 0
         pv_san = ""
         
-        # Conserver le calcul delta pour les statistiques globales du JSON
         if engine:
             try:
-                info = engine.analyse(board_before, chess.engine.Limit(depth=resolve_stockfish_depth(14)))
+                info = engine.analyse(board_before, chess.engine.Limit(depth=ChessUtils.resolve_stockfish_depth(14)))
                 if "pv" in info and len(info["pv"]) > 0:
                     b_temp = board_before.copy()
                     pv_list = []
@@ -230,17 +240,16 @@ def parse_game_record(game, username, deep_analysis=False):
                 board_after = board_before.copy()
                 board_after.push(move_obj)
                 pm = 1 if board_before.turn == chess.WHITE else -1
-                val_before = get_eval_value(eval_before, board_before) * pm
-                val_after = get_eval_value(eval_after, board_after) * pm
+                val_before = ChessUtils.get_eval_value(eval_before, board_before) * pm
+                val_after = ChessUtils.get_eval_value(eval_after, board_after) * pm
                 delta = val_after - val_before
             except Exception: pass
 
-        # Centralisation via chess_lib comme pour traps et openings
         future_moves = san_moves[idx:]
         llm_comment = ""
         
         if idx <= max_deep_moves:
-            llm_comment, move_label = generate_move_comment(
+            llm_comment, move_label = AIAnalyzer.generate_move_comment(
                 move_raw_en, move_raw_en, board_before, is_trap=False, future_moves=future_moves
             )
         else:
@@ -251,7 +260,7 @@ def parse_game_record(game, username, deep_analysis=False):
                 is_checkmate=board_test_check.is_checkmate(), 
                 delta=delta
             )
-            san_fr = convert_english_to_french_notation(move_raw_en)
+            san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             move_label = f"{san_fr}{suffix}" if suffix else san_fr
 
         if idx <= 12 and delta <= -250 and pv_san:
@@ -315,7 +324,7 @@ def parse_game_record(game, username, deep_analysis=False):
 def ajouter_pied_page_rapport(canvas, doc):
     canvas.saveState()
     canvas.setFont('Helvetica', 9)
-    canvas.setFillColor(COLOR_TEXT)
+    canvas.setFillColor(Config.COLOR_TEXT)
     canvas.drawString(36, 20, "Rapport Analytique Complet - Chess Docs")
     canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
     canvas.restoreState()
@@ -372,23 +381,23 @@ def render_game_analysis_table(game, normal_style, bold_style):
         
     t = Table(table_data, colWidths=[120, 30, 50, 50, 260], repeatRows=1)
     t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, COLOR_BG_LIGHT]),
-        ('LINEBELOW', (0,0), (-1,-1), 0.5, COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6)
+        ('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+        ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, Config.COLOR_BG_LIGHT]),
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, Config.COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6)
     ]))
     elements.append(t)
     return elements
 
 def build_pdf(output_path, state, player_name, opponent_name=None):
-    debug_log(f"Génération du PDF : {output_path}", "INFO")
+    Logger.debug_log(f"Génération du PDF : {output_path}", "INFO")
     doc = SimpleDocTemplate(output_path, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
     styles = getSampleStyleSheet()
     
-    title_style = ParagraphStyle("Title", parent=styles["Heading1"], fontSize=22, leading=26, textColor=COLOR_PRIMARY, spaceAfter=5)
-    subtitle_style = ParagraphStyle("Subtitle", parent=styles["Normal"], fontSize=11, leading=14, textColor=COLOR_TEXT, spaceAfter=20)
-    section_style = ParagraphStyle("Section", parent=styles["Heading2"], fontSize=16, leading=20, textColor=COLOR_SECONDARY, spaceAfter=12)
-    subsection_style = ParagraphStyle("SubSection", parent=styles["Heading3"], fontSize=14, leading=18, textColor=COLOR_MINT, spaceAfter=8)
-    normal_style = ParagraphStyle("NormalCustom", parent=styles["Normal"], fontSize=10, leading=14, textColor=COLOR_TEXT)
+    title_style = ParagraphStyle("Title", parent=styles["Heading1"], fontSize=22, leading=26, textColor=Config.COLOR_PRIMARY, spaceAfter=5)
+    subtitle_style = ParagraphStyle("Subtitle", parent=styles["Normal"], fontSize=11, leading=14, textColor=Config.COLOR_TEXT, spaceAfter=20)
+    section_style = ParagraphStyle("Section", parent=styles["Heading2"], fontSize=16, leading=20, textColor=Config.COLOR_SECONDARY, spaceAfter=12)
+    subsection_style = ParagraphStyle("SubSection", parent=styles["Heading3"], fontSize=14, leading=18, textColor=Config.COLOR_MINT, spaceAfter=8)
+    normal_style = ParagraphStyle("NormalCustom", parent=styles["Normal"], fontSize=10, leading=14, textColor=Config.COLOR_TEXT)
     bold_style = ParagraphStyle("BoldCustom", parent=normal_style, fontName="Helvetica-Bold")
 
     elements = []
@@ -455,8 +464,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                 sample_blunder = blunders_list[0] 
                 elements.append(Paragraph(f"Ouverture : {op_name} ({len(blunders_list)} erreurs récentes)", subsection_style))
                 
-                # Utilisation de la fonction centralisée de chess_lib
-                theory_text = get_stockfish_theory_summary(
+                theory_text = AIAnalyzer.get_stockfish_theory_summary(
                     op_name, 
                     sample_blunder["played_move"], 
                     sample_blunder["stockfish_pv"]
@@ -482,7 +490,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         ] + render_game_analysis_table(g, normal_style, bold_style)))
 
     doc.build(elements, onFirstPage=ajouter_pied_page_rapport, onLaterPages=ajouter_pied_page_rapport)
-    debug_log(f"PDF généré avec succès : {output_path}", "ESSENTIAL")
+    Logger.debug_log(f"PDF généré avec succès : {output_path}", "ESSENTIAL")
 
 # =====================================================================
 # MAIN EXECUTION
@@ -496,9 +504,8 @@ def main():
     parser.add_argument("--verbose", nargs="?", const=1, default=0, type=int, help="Active les logs")
     args = parser.parse_args()
 
-    # Logique harmonisée pour la gestion du debug
     enabled, level = (True, max(int(args.verbose), 1)) if args.verbose else (False, 0)
-    set_debug_enabled(enabled, level=level)
+    Logger.set_debug_enabled(enabled, level=level)
     
     ollama_mgr = OllamaManager()
     ollama_mgr.start()
