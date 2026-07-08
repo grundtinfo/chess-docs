@@ -12,7 +12,7 @@
 ## 3. Comportement Agentique
 - Cycle : Réflexion -> Action -> Observation.
 - Autonomie : Tu es autorisé à utiliser `read_file` pour lire les fichiers nécessaires sans demander de confirmation préalable.
-- Anti-Boucle : Un seul `/deep-planning` max. Travail incrémental. Si erreur : analyse, corrige, réessaie (pas de nouveau plan global).
+- Anti-Boucle : Planning interdit. Si une étape échoue, corrige IMMÉDIATEMENT via `edit_file` ou `write_to_file`. NE JAMAIS relancer de `/deep-planning` ou de nouvelle réflexion stratégique une fois le travail lancé.
 
 ## 4. Gestion des Fichiers et Gros Fichiers
 - Fichiers > 300 lignes : NE JAMAIS lire en entier. Utilise `grep` pour localiser la cible.

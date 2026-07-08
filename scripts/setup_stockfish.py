@@ -51,7 +51,7 @@ def get_stockfish_url():
 
 def download_stockfish():
     """Télécharge et extrait le binaire Stockfish."""
-    stockfish_dir = Path(__file__).parent / "stockfish"
+    stockfish_dir = Path.home() / "stockfish"
     stockfish_dir.mkdir(exist_ok=True)
     
     url = get_stockfish_url()
@@ -167,6 +167,10 @@ STOCKFISH_PATH = "{stockfish_path_str}"
     try:
         os.symlink(stockfish_path_str, "/usr/local/sbin/stockfish")
         print("\n✓ Lien symbolique créé avec succès.")
+    except PermissionError:
+        print(f'créer l\'accès à stockfish via cette commande :\n    sudo ln -s {stockfish_path_str} /usr/local/sbin/stockfish')
+    except FileExistsError:
+        print(f"\n⚠️  Le lien symbolique existe déjà. Vérifiez /usr/local/sbin/stockfish")
     except Exception as e:
         print(f"\n✗ Échec de la création du lien symbolique: {e}")
     
@@ -212,7 +216,7 @@ def main():
     print()
     print("📋 Prochaines étapes:")
     print("   1. Vérifier que Stockfish fonctionne:")
-    print(f"      {stockfish_path}")
+    print(f"      /usr/local/sbin/stockfish")
     print()
     print("   2. Les fichiers openings.py et traps.py vont")
     print("      automatiquement détecter Stockfish")
