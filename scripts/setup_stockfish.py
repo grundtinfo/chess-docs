@@ -163,6 +163,13 @@ STOCKFISH_PATH = "{stockfish_path_str}"
     print(f"   self.engine = Stockfish(path='{stockfish_path_str}', depth=15, ...")
     print(f"   ```")
     
+    # Create a symbolic link in /usr/local/sbin
+    try:
+        os.symlink(stockfish_path_str, "/usr/local/sbin/stockfish")
+        print("\n✓ Lien symbolique créé avec succès.")
+    except Exception as e:
+        print(f"\n✗ Échec de la création du lien symbolique: {e}")
+    
     return stockfish_path_str
 
 def main():
