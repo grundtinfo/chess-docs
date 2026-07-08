@@ -5,7 +5,7 @@ from classes.config import Config
 from classes.logger import Logger
 
 try:
-    from openix import ChessOpeningsLibrary
+    from Openix import ChessOpeningsLibrary
     # Initialisation de la bibliothèque d'ouvertures
     _op_lib = ChessOpeningsLibrary()
     _op_lib.load_builtin_openings()
