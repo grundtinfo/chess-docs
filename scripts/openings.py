@@ -155,13 +155,15 @@ def collect_source_files(base_dir):
                 files.add(os.path.join(json_dir, filename))
     return sorted(files)
 
-def main(stockfish_depth=18, verbose=1):
+def main(stockfish_depth=18, verbose=1, opening=None):
     enabled, level = (True, max(int(verbose), 1)) if verbose else (False, 0)
     Logger.set_debug_enabled(enabled, level=level)
     Logger.debug_log("=== Début de la génération des guides d'ouvertures ===", "ESSENTIAL")
     Logger.debug_log(f"Profondeur Stockfish retenue : {ChessUtils.resolve_stockfish_depth(stockfish_depth)}", "ESSENTIAL")
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
     sources = collect_source_files(base_dir)
+    if opening:
+        sources = [os.path.join(base_dir, f'json/{opening}.json')]
     Logger.debug_log(f"Sources JSON découvertes: {len(sources)}", "INFO")
     if not sources:
         Logger.debug_log("Aucun fichier JSON trouvé.", "ERROR")
@@ -191,5 +193,6 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description="Génère les guides d'ouvertures en PDF")
     parser.add_argument("--stockfish-depth", type=int, default=18, help="Profondeur Stockfish à utiliser")
     parser.add_argument("--verbose", nargs="?", const=1, default=0, type=int, help="Active les logs de debug détaillés avec un niveau optionnel (1 par défaut)")
+    parser.add_argument("--opening", type=str, help="Ouverture spécifique à générer (par exemple: 'fried_liever_attack')")
     args = parser.parse_args()
-    main(stockfish_depth=args.stockfish_depth, verbose=args.verbose)
+    main(stockfish_depth=args.stockfish_depth, verbose=args.verbose, opening=args.opening)
