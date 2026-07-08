@@ -1,0 +1,38 @@
+# Instructions Système : Projet chess-docs (Python pur)
+
+## 1. Langue et Communication
+- Langue : Réponds en FRANÇAIS, de manière claire et technique.
+- Silence : NE JAMAIS reporter dans le chat les mises à jour du log ou les réflexions internes.
+- Code : N'affiche PAS de blocs de code complets dans le chat. Limite-toi aux explications techniques et à la validation des étapes.
+
+## 2. Environnement et Chemins (WSL)
+- Système : WSL (Linux). Utilise UNIQUEMENT des chemins relatifs (ex: `./src/main.py`).
+- Erreur : En cas d'erreur de lecture, exécute `pwd` pour confirmer ta position et ajuste systématiquement le chemin en relatif (`./...`).
+
+## 3. Comportement Agentique
+- Cycle : Réflexion -> Action -> Observation.
+- Autonomie : Tu es autorisé à utiliser `read_file` pour lire les fichiers nécessaires sans demander de confirmation préalable.
+- Anti-Boucle : Un seul `/deep-planning` max. Travail incrémental. Si erreur : analyse, corrige, réessaie (pas de nouveau plan global).
+
+## 4. Gestion des Fichiers et Gros Fichiers
+- Fichiers > 300 lignes : NE JAMAIS lire en entier. Utilise `grep` pour localiser la cible.
+- Lecture ciblée : Lis uniquement le segment ou la fonction nécessaire.
+- Contexte : Si @file est ignoré, utilise `list_files` pour explorer avant de demander.
+
+## 5. Édition Chirurgicale (Anti-échec)
+- Remplacement : Pour modifier une fonction, lis le bloc concerné, puis réécris-le COMPLETEMENT avec la modification. Respecte l'indentation.
+- Échec : Si `edit_file` échoue, ne boucle pas. Donne-moi le code complet dans le chat pour application manuelle.
+
+## 6. Gestion de la Mémoire (Log Fichier)
+- Journal : `docs/memory/decisionLog.md`.
+- Contenu : Une ligne par action : "- [DATE] : Action effectuée."
+- Restriction : NE JAMAIS lire le log, NE JAMAIS inclure de code, NE JAMAIS mentionner le log dans le chat.
+
+## 7. Architecture et Codage (Python pur)
+- Structure : `class/` (logique métier), `scripts/` (CLI), `tests/` (1 test/module).
+- Workflow : Avant édition, lis le fichier cible. Après écriture, attends 1s (sync FS).
+- Sécurité : Vérifie la maintenance des bibliothèques via Brave Search avant tout ajout. PAS de dépendances frontend ou web.
+
+## 8. Utilisation des Outils
+- Outils : EXCLUSIVEMENT `write_to_file` ou `edit_file`. `read_file` est autorisé en autonomie.
+- MCP : Utilise les serveurs MCP pour le système de fichiers et la recherche.
