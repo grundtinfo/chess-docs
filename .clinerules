@@ -1,39 +1,28 @@
 # Instructions Système : Projet chess-docs
 
-## 1. Comportement & Sortie
+## 1. Comportement
 - Langue : Français uniquement.
-- Silence : NE JAMAIS afficher de logs, réflexions internes, ou planifications dans le chat.
-- Sortie : Réponse concise. Pas de blocs de code complets (sauf si edit_file échoue).
+- Silence : NE JAMAIS afficher de logs, réflexions ou plannings dans le chat.
 
-## 2. Environnement (WSL)
-- Système : Linux. Chemins relatifs UNIQUEMENT (ex: ./scripts/main.py).
-- Erreur : Si "File not found", exécuter `pwd`, ajuster, puis réessayer.
+## 2. Gestion des Fichiers (Protocole Chirurgical)
+- Gros Fichiers (>100 lignes) : NE JAMAIS lire en entier.
+- Stratégie : Toujours isoler la fonction cible avec `grep` ou recherche textuelle avant toute lecture.
+- Édition : Si > 100 lignes, interdiction de réécrire le fichier. `edit_file` doit porter UNIQUEMENT sur le bloc de code modifié.
+- Échec : Si une édition échoue, ne pas ré-essayer plus de 2 fois. Demander une application manuelle.
 
-## 3. Workflow Agentique (Strict)
-- Cycle : Action directe. Planning interdit.
-- Autonomie : `read_file` autorisé sans demande.
-- Échec : Si une étape échoue, corriger IMMÉDIATEMENT via `edit_file` ou `write_to_file`. Ne jamais relancer de réflexion stratégique.
+## 3. Mémoire Active & Raisonnement (Moteur d'État)
+- Fichier : `docs/memory/decisionLog.md`
+- Format du fichier :
+    ## État Actuel
+    [Objectif immédiat]
+    ## Historique
+    - [Action]
+- Protocole de Travail :
+    1. **Lecture (Obligatoire)** : Lire le fichier `docs/memory/decisionLog.md` pour comprendre l'état courant.
+    2. **Action** : Effectuer la tâche de code.
+    3. **Mise à jour (Obligatoire)** : Utiliser `edit_file` sur `docs/memory/decisionLog.md` pour mettre à jour "État Actuel" et ajouter l'action à "Historique".
+- Règle Anti-Boucle : Si l'État Actuel est identique à l'action précédente, l'agent DOIT changer d'approche (ex: changer de fichier, changer d'outil).
 
-## 4. Fichiers & Édition
-- Gros Fichiers (>300 lignes) : NE JAMAIS lire en entier. Utiliser `grep` pour isoler la cible.
-- Édition Chirurgicale :
-  1. Lire le bloc cible.
-  2. Réécrire le bloc COMPLET avec la modification.
-  3. Respecter l'indentation.
-- Échec édition : Si `edit_file` échoue, fournir le code complet dans le chat pour application manuelle.
-
-## 5. Mémoire Active (Anti-Boucle)
-- Fichier : `docs/memory/decisionLog.md`.
-- Recall : AVANT chaque nouvelle action, lis uniquement les 5 dernières lignes de ce fichier.
-- But : Détecter les répétitions et éviter les boucles infinies.
-- Restriction : NE JAMAIS afficher le contenu du log dans le chat.
-
-## 6. Journalisation (Écriture)
-- Action : À la fin de chaque action réussie, écris `- [DATE] : [Description précise de l'action]` à la fin du log.
-- Restriction : NE JAMAIS inclure de code dans le log.
-
-## 7. Architecture & Sécurité
-- Structure : `class/` (métier), `scripts/` (CLI), `tests/` (1 test/module).
-- Workflow : Avant édition, lire fichier. Après écriture, attendre 1s.
-- Sécurité : Vérifier bibliothèques via Brave Search. PAS de frontend/web.
-- Outils : EXCLUSIVEMENT `write_to_file` ou `edit_file`. MCP activé pour FS/Search.
+## 4. Workflow (Action Directe)
+- Cycle : Action directe uniquement. Planning interdit.
+- Validation : Aucune tâche n'est terminée tant que `docs/memory/decisionLog.md` n'est pas mis à jour avec le nouvel état.
