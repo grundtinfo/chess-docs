@@ -491,6 +491,44 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
 
     doc.build(elements, onFirstPage=ajouter_pied_page_rapport, onLaterPages=ajouter_pied_page_rapport)
     Logger.debug_log(f"PDF généré avec succès : {output_path}", "ESSENTIAL")
+def fill_missing_data(existing_data, new_data):
+    """
+    Parcourt récursivement existing_data et le met à jour avec new_data 
+    uniquement si la clé est manquante ou si sa valeur est strictement vide.
+    """
+    for key, new_val in new_data.items():
+        if key not in existing_data:
+            existing_data[key] = new_val
+        else:
+            existing_val = existing_data[key]
+            
+            # Descente récursive pour les dictionnaires (ex: 'analysis', 'summary')
+            if isinstance(existing_val, dict) and isinstance(new_val, dict):
+                fill_missing_data(existing_val, new_val)
+            
+            # Mise à jour si la valeur existante est "vide" (None, chaîne vide, liste/dict vide)
+            # On ignore 0 ou False qui sont des valeurs valides.
+            elif existing_val in (None, "", [], {}) and existing_val is not False and existing_val != 0:
+                existing_data[key] = new_val
+                
+    return existing_data
+
+def is_game_incomplete(game, require_deep):
+    """Détermine si la partie en cache présente des trous justifiant un re-parsing."""
+    if not game: return True
+    
+    # Vérification des métadonnées de base
+    if not game.get("result") or game.get("result") == "*": return True
+    if not game.get("date") or not game.get("end_time"): return True
+    if not game.get("analysis") or not game.get("analysis").get("summary"): return True
+    
+    # Vérification liée à l'analyse profonde des coups
+    if require_deep:
+        if not game.get("deep_analysis"): return True
+        analysis = game.get("analysis", {})
+        if not analysis.get("details") or len(analysis.get("details")) == 0: return True
+        
+    return False
 
 # =====================================================================
 # MAIN EXECUTION
@@ -533,11 +571,20 @@ def main():
             b_name = g.get("black", {}).get("username", "").lower()
             
             do_deep = True
+            existing_game = existing_games.get(game_id)
             
-            if game_id not in existing_games or (do_deep and not existing_games[game_id].get("deep_analysis")):
+            # On utilise la nouvelle fonction pour vérifier si un re-parsing est nécessaire
+            if is_game_incomplete(existing_game, require_deep=do_deep):
                 parsed = parse_game_record(g, args.player, deep_analysis=do_deep)
+                
                 if parsed:
-                    existing_games[game_id] = parsed
+                    if existing_game:
+                        # Remplissage sélectif des valeurs manquantes/vides
+                        existing_games[game_id] = fill_missing_data(existing_game, parsed)
+                    else:
+                        # Nouvelle partie
+                        existing_games[game_id] = parsed
+                        
                     state["games"] = existing_games
                     save_state(str(state_path), state)
         
