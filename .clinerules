@@ -1,38 +1,39 @@
-# Instructions Système : Projet chess-docs (Python pur)
+# Instructions Système : Projet chess-docs
 
-## 1. Langue et Communication
-- Langue : Réponds en FRANÇAIS, de manière claire et technique.
-- Silence : NE JAMAIS reporter dans le chat les mises à jour du log ou les réflexions internes.
-- Code : N'affiche PAS de blocs de code complets dans le chat. Limite-toi aux explications techniques et à la validation des étapes.
+## 1. Comportement & Sortie
+- Langue : Français uniquement.
+- Silence : NE JAMAIS afficher de logs, réflexions internes, ou planifications dans le chat.
+- Sortie : Réponse concise. Pas de blocs de code complets (sauf si edit_file échoue).
 
-## 2. Environnement et Chemins (WSL)
-- Système : WSL (Linux). Utilise UNIQUEMENT des chemins relatifs (ex: `./tests/test.py`).
-- Erreur : En cas d'erreur de lecture, exécute `pwd` pour confirmer ta position et ajuste systématiquement le chemin en relatif (`./...`).
+## 2. Environnement (WSL)
+- Système : Linux. Chemins relatifs UNIQUEMENT (ex: ./scripts/main.py).
+- Erreur : Si "File not found", exécuter `pwd`, ajuster, puis réessayer.
 
-## 3. Comportement Agentique
-- Cycle : Réflexion -> Action -> Observation.
-- Autonomie : Tu es autorisé à utiliser `read_file` pour lire les fichiers nécessaires sans demander de confirmation préalable.
-- Anti-Boucle : Planning interdit. Si une étape échoue, corrige IMMÉDIATEMENT via `edit_file` ou `write_to_file`. NE JAMAIS relancer de `/deep-planning` ou de nouvelle réflexion stratégique une fois le travail lancé.
+## 3. Workflow Agentique (Strict)
+- Cycle : Action directe. Planning interdit.
+- Autonomie : `read_file` autorisé sans demande.
+- Échec : Si une étape échoue, corriger IMMÉDIATEMENT via `edit_file` ou `write_to_file`. Ne jamais relancer de réflexion stratégique.
 
-## 4. Gestion des Fichiers et Gros Fichiers
-- Fichiers > 300 lignes : NE JAMAIS lire en entier. Utilise `grep` pour localiser la cible.
-- Lecture ciblée : Lis uniquement le segment ou la fonction nécessaire.
-- Contexte : Si @file est ignoré, utilise `list_files` pour explorer avant de demander.
+## 4. Fichiers & Édition
+- Gros Fichiers (>300 lignes) : NE JAMAIS lire en entier. Utiliser `grep` pour isoler la cible.
+- Édition Chirurgicale :
+  1. Lire le bloc cible.
+  2. Réécrire le bloc COMPLET avec la modification.
+  3. Respecter l'indentation.
+- Échec édition : Si `edit_file` échoue, fournir le code complet dans le chat pour application manuelle.
 
-## 5. Édition Chirurgicale (Anti-échec)
-- Remplacement : Pour modifier une fonction, lis le bloc concerné, puis réécris-le COMPLETEMENT avec la modification. Respecte l'indentation.
-- Échec : Si `edit_file` échoue, ne boucle pas. Donne-moi le code complet dans le chat pour application manuelle.
+## 5. Mémoire Active (Anti-Boucle)
+- Fichier : `docs/memory/decisionLog.md`.
+- Recall : AVANT chaque nouvelle action, lis uniquement les 5 dernières lignes de ce fichier.
+- But : Détecter les répétitions et éviter les boucles infinies.
+- Restriction : NE JAMAIS afficher le contenu du log dans le chat.
 
-## 6. Gestion de la Mémoire (Log Fichier)
-- Journal : `docs/memory/decisionLog.md`.
-- Contenu : Une ligne par action : "- [DATE] : Action effectuée."
-- Restriction : NE JAMAIS lire le log, NE JAMAIS inclure de code, NE JAMAIS mentionner le log dans le chat.
+## 6. Journalisation (Écriture)
+- Action : À la fin de chaque action réussie, écris `- [DATE] : [Description précise de l'action]` à la fin du log.
+- Restriction : NE JAMAIS inclure de code dans le log.
 
-## 7. Architecture et Codage (Python pur)
-- Structure : `class/` (logique métier), `scripts/` (CLI), `tests/` (1 test/module).
-- Workflow : Avant édition, lis le fichier cible. Après écriture, attends 1s (sync FS).
-- Sécurité : Vérifie la maintenance des bibliothèques via Brave Search avant tout ajout. PAS de dépendances frontend ou web.
-
-## 8. Utilisation des Outils
-- Outils : EXCLUSIVEMENT `write_to_file` ou `edit_file`. `read_file` est autorisé en autonomie.
-- MCP : Utilise les serveurs MCP pour le système de fichiers et la recherche.
+## 7. Architecture & Sécurité
+- Structure : `class/` (métier), `scripts/` (CLI), `tests/` (1 test/module).
+- Workflow : Avant édition, lire fichier. Après écriture, attendre 1s.
+- Sécurité : Vérifier bibliothèques via Brave Search. PAS de frontend/web.
+- Outils : EXCLUSIVEMENT `write_to_file` ou `edit_file`. MCP activé pour FS/Search.

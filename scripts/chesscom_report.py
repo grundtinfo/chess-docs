@@ -218,7 +218,7 @@ def parse_game_record(game, username, deep_analysis=False):
     opening_phase, middlegame_phase, endgame_phase = [], [], []
     opening_blunders_data = []
     
-    max_deep_moves = 16 if deep_analysis else 0
+    max_deep_moves = len(moves) if deep_analysis else 0
 
     for idx, move in enumerate(moves, start=1):
         move_raw_en = san_moves[idx - 1]
@@ -344,7 +344,7 @@ def render_game_analysis_table(game, normal_style, bold_style):
     rows = []
     current_row = None
     for ply in details:
-        if ply.get("phase") != "opening": continue
+        # if ply.get("phase") != "opening": continue
         
         move_num = ply["move_number"]
         if ply["color"] == "white":
@@ -477,7 +477,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     elements.append(Spacer(1, 15))
 
     deep_games = [g for g in games if g.get("deep_analysis")]
-    for idx, g in enumerate(deep_games[:5]):
+    for idx, g in enumerate(deep_games):
         if idx > 0: elements.append(Spacer(1, 20))
         g["player_focus"] = player_name
         white, black = g["white"]["username"], g["black"]["username"]
