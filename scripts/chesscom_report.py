@@ -408,8 +408,14 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         # Calcul de l'ELO estimé en temps réel
         acpl_w = (white_cpl / white_m_count) if white_m_count > 0 else 0
         acpl_b = (black_cpl / black_m_count) if black_m_count > 0 else 0
-        est_elo_w = max(100, min(3200, int(3000 - (acpl_w * 25))))
-        est_elo_b = max(100, min(3200, int(3000 - (acpl_b * 25))))
+        
+        # Nouvelle formule : 3000 - (ACPL * 20) avec un facteur de lissage
+        est_elo_w = max(100, min(3200, int(3000 - (acpl_w * 20))))
+        est_elo_b = max(100, min(3200, int(3000 - (acpl_b * 20))))
+        
+        result_data["analysis"]["summary"] = summary
+        result_data["analysis"]["est_elo_white"] = est_elo_w
+        result_data["analysis"]["est_elo_black"] = est_elo_b
         
         result_data["analysis"]["summary"] = summary
         result_data["analysis"]["blunders"] = blunders
@@ -441,6 +447,12 @@ def ajouter_pied_page_rapport(canvas, doc):
 def render_game_analysis_table(game, normal_style, bold_style):
     elements = []
     details = game.get("analysis", {}).get("details", [])
+
+    # Ajout d'une ligne d'en-tête de scores estimés avant la table
+    w_est = game["analysis"].get("est_elo_white", "N/A")
+    b_est = game["analysis"].get("est_elo_black", "N/A")
+    elements.append(Paragraph(f"<i>Performance estimée : Blanc {w_est} | Noir {b_est}</i>", normal_style))
+    elements.append(Spacer(1, 5))
     
     table_data = [[
         Paragraph("<b>Diag</b>", normal_style),
