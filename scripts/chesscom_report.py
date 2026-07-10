@@ -22,7 +22,7 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate
 # Ajoute le répertoire parent au chemin de recherche des modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Importation depuis le nouveau dossier "classes"
+# Importation depuis le dossier "classes"
 from classes.config import Config
 from classes.logger import Logger
 from classes.chess_utils import ChessUtils
@@ -135,6 +135,33 @@ def save_state(path, state):
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(state, handle, ensure_ascii=False, separators=(",", ":"), indent=2)
 
+def fill_missing_data(existing_data, new_data):
+    """Parcourt récursivement existing_data et le met à jour avec new_data uniquement si la clé est manquante."""
+    for key, new_val in new_data.items():
+        if key not in existing_data:
+            existing_data[key] = new_val
+        else:
+            existing_val = existing_data[key]
+            if isinstance(existing_val, dict) and isinstance(new_val, dict):
+                fill_missing_data(existing_val, new_val)
+            elif existing_val in (None, "", [], {}) and existing_val is not False and existing_val != 0:
+                existing_data[key] = new_val
+    return existing_data
+
+def is_game_incomplete(game, require_deep):
+    """Détermine si la partie en cache présente des trous justifiant un re-parsing."""
+    if not game: return True
+    if not game.get("result") or game.get("result") == "*": return True
+    if not game.get("date") or not game.get("end_time"): return True
+    if not game.get("analysis") or not game.get("analysis").get("summary"): return True
+    
+    if require_deep:
+        if not game.get("deep_analysis"): return True
+        analysis = game.get("analysis", {})
+        if not analysis.get("details") or len(analysis.get("details")) == 0: return True
+        
+    return False
+
 # =====================================================================
 # FETCH ET PARSING DES PARTIES
 # =====================================================================
@@ -184,22 +211,16 @@ def parse_game_record(game, username, deep_analysis=False):
     white_name = game.get("white", {}).get("username", "")
     black_name = game.get("black", {}).get("username", "")
     
-    # 1. On tente de récupérer le résultat officiel directement via les métadonnées PGN
     result_text = game_obj.headers.get("Result", "*")
-    
-    # 2. Sécurité : si le PGN ne contient pas le résultat, on lit les statuts détaillés du JSON
     if result_text == "*":
         w_res = game.get("white", {}).get("result", "")
         b_res = game.get("black", {}).get("result", "")
-        if w_res == "win": 
-            result_text = "1-0"
-        elif b_res == "win": 
-            result_text = "0-1"
+        if w_res == "win": result_text = "1-0"
+        elif b_res == "win": result_text = "0-1"
         elif w_res in ["agreed", "repetition", "stalemate", "insufficient", "50move", "timevsinsufficient"]: 
             result_text = "1/2-1/2"
 
     board_before = game_obj.board()
-
     moves = []
     san_moves = []
 
@@ -222,28 +243,51 @@ def parse_game_record(game, username, deep_analysis=False):
 
     for idx, move in enumerate(moves, start=1):
         move_raw_en = san_moves[idx - 1]
-        delta = 0
+        swing = 0
+        precision = -9999
         pv_san = ""
         
         if engine:
             try:
-                info = engine.analyse(board_before, chess.engine.Limit(depth=ChessUtils.resolve_stockfish_depth(14)))
-                if "pv" in info and len(info["pv"]) > 0:
-                    b_temp = board_before.copy()
-                    pv_list = []
-                    for m in info["pv"][:4]:
-                        pv_list.append(b_temp.san(m))
-                        b_temp.push(m)
-                    pv_san = " ".join(pv_list)
-
+                # Utilisation exclusive de la classe StockfishAnalyzer (harmonisé avec openings et traps)
                 eval_before, eval_after, move_obj = analyzer.analyze_move(board_before, move_raw_en)
-                board_after = board_before.copy()
-                board_after.push(move_obj)
-                pm = 1 if board_before.turn == chess.WHITE else -1
-                val_before = ChessUtils.get_eval_value(eval_before, board_before) * pm
-                val_after = ChessUtils.get_eval_value(eval_after, board_after) * pm
-                delta = val_after - val_before
-            except Exception: pass
+                _, best_eval, best_uci = analyzer.get_best_move_with_eval(board_before.copy())
+                
+                if eval_before and eval_after and move_obj:
+                    board_after = board_before.copy()
+                    board_after.push(move_obj)
+                    
+                    pm = 1 if board_before.turn == chess.WHITE else -1
+                    val_before = ChessUtils.get_eval_value(eval_before, board_before)
+                    val_after = ChessUtils.get_eval_value(eval_after, board_after)
+                    val_best = ChessUtils.get_eval_value(best_eval, board_after) if best_eval else val_before
+                    
+                    eval_player_before = val_before * pm
+                    eval_player_after = val_after * pm
+                    eval_player_best = val_best * pm
+                    
+                    swing = eval_player_after - eval_player_before
+                    precision = eval_player_after - eval_player_best
+                    if best_uci and move_obj.uci() == best_uci: 
+                        precision = 0
+                    
+                    # Génération PV manuel uniquement pour gaffes majeures d'ouverture
+                    if idx <= 12 and swing <= -250:
+                        sim_board = board_before.copy()
+                        pv_list = []
+                        engine.set_fen_position(sim_board.fen())
+                        for _ in range(4):
+                            m_best = engine.get_best_move()
+                            if not m_best: break
+                            m_sim = sim_board.parse_uci(m_best)
+                            pv_list.append(sim_board.san(m_sim))
+                            sim_board.push(m_sim)
+                            engine.set_fen_position(sim_board.fen())
+                        pv_san = " ".join(pv_list)
+                        engine.set_fen_position(board_before.fen()) # reset position
+                        
+            except Exception as e: 
+                Logger.debug_log(f"Erreur d'analyse (ply {idx}) pour le coup {move_raw_en} : {str(e)}", "ERROR")
 
         future_moves = san_moves[idx:]
         llm_comment = ""
@@ -258,24 +302,27 @@ def parse_game_record(game, username, deep_analysis=False):
             suffix = infer_move_suffix(
                 is_check=board_test_check.is_check(), 
                 is_checkmate=board_test_check.is_checkmate(), 
-                delta=delta
+                delta=swing
             )
             san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             move_label = f"{san_fr}{suffix}" if suffix else san_fr
 
-        if idx <= 12 and delta <= -250 and pv_san:
+        if idx <= 12 and swing <= -250 and pv_san:
             opening_blunders_data.append({
                 "played_move": move_raw_en,
                 "stockfish_pv": pv_san,
                 "fen": board_before.fen()
             })
 
-        if delta <= -300: blunders += 1
-        elif delta >= 180: good_moves += 1
+        # Nouvelles conditions robustes basées sur "swing" et "precision"
+        if swing <= -300: 
+            blunders += 1
+        elif precision >= -30 and swing > -100: 
+            good_moves += 1
 
         phase = "opening" if idx <= 12 else "middlegame" if idx <= 30 else "endgame"
         phase_bucket = {"opening": opening_phase, "middlegame": middlegame_phase, "endgame": endgame_phase}[phase]
-        phase_bucket.append({"move": move_label, "delta": delta})
+        phase_bucket.append({"move": move_label, "swing": swing, "precision": precision})
 
         board_before.push(move)
         
@@ -287,14 +334,24 @@ def parse_game_record(game, username, deep_analysis=False):
             "raw_san": move_raw_en,
             "comment": llm_comment,
             "fen": board_before.fen(),
-            "delta": round(delta, 2),
+            "delta": round(swing, 2),
             "phase": phase,
         })
 
+    # Mise à jour du filtrage des compteurs par phase
     summary = {
-        "opening": {"good_moves": sum(1 for i in opening_phase if i.get("delta", 0) >= 180), "blunders": sum(1 for i in opening_phase if i.get("delta", 0) <= -300)},
-        "middlegame": {"good_moves": sum(1 for i in middlegame_phase if i.get("delta", 0) >= 180), "blunders": sum(1 for i in middlegame_phase if i.get("delta", 0) <= -300)},
-        "endgame": {"good_moves": sum(1 for i in endgame_phase if i.get("delta", 0) >= 180), "blunders": sum(1 for i in endgame_phase if i.get("delta", 0) <= -300)}
+        "opening": {
+            "good_moves": sum(1 for i in opening_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
+            "blunders": sum(1 for i in opening_phase if i.get("swing", 0) <= -300)
+        },
+        "middlegame": {
+            "good_moves": sum(1 for i in middlegame_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
+            "blunders": sum(1 for i in middlegame_phase if i.get("swing", 0) <= -300)
+        },
+        "endgame": {
+            "good_moves": sum(1 for i in endgame_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
+            "blunders": sum(1 for i in endgame_phase if i.get("swing", 0) <= -300)
+        }
     }
 
     return {
@@ -344,8 +401,6 @@ def render_game_analysis_table(game, normal_style, bold_style):
     rows = []
     current_row = None
     for ply in details:
-        # if ply.get("phase") != "opening": continue
-        
         move_num = ply["move_number"]
         if ply["color"] == "white":
             current_row = {
@@ -491,44 +546,6 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
 
     doc.build(elements, onFirstPage=ajouter_pied_page_rapport, onLaterPages=ajouter_pied_page_rapport)
     Logger.debug_log(f"PDF généré avec succès : {output_path}", "ESSENTIAL")
-def fill_missing_data(existing_data, new_data):
-    """
-    Parcourt récursivement existing_data et le met à jour avec new_data 
-    uniquement si la clé est manquante ou si sa valeur est strictement vide.
-    """
-    for key, new_val in new_data.items():
-        if key not in existing_data:
-            existing_data[key] = new_val
-        else:
-            existing_val = existing_data[key]
-            
-            # Descente récursive pour les dictionnaires (ex: 'analysis', 'summary')
-            if isinstance(existing_val, dict) and isinstance(new_val, dict):
-                fill_missing_data(existing_val, new_val)
-            
-            # Mise à jour si la valeur existante est "vide" (None, chaîne vide, liste/dict vide)
-            # On ignore 0 ou False qui sont des valeurs valides.
-            elif existing_val in (None, "", [], {}) and existing_val is not False and existing_val != 0:
-                existing_data[key] = new_val
-                
-    return existing_data
-
-def is_game_incomplete(game, require_deep):
-    """Détermine si la partie en cache présente des trous justifiant un re-parsing."""
-    if not game: return True
-    
-    # Vérification des métadonnées de base
-    if not game.get("result") or game.get("result") == "*": return True
-    if not game.get("date") or not game.get("end_time"): return True
-    if not game.get("analysis") or not game.get("analysis").get("summary"): return True
-    
-    # Vérification liée à l'analyse profonde des coups
-    if require_deep:
-        if not game.get("deep_analysis"): return True
-        analysis = game.get("analysis", {})
-        if not analysis.get("details") or len(analysis.get("details")) == 0: return True
-        
-    return False
 
 # =====================================================================
 # MAIN EXECUTION
@@ -573,16 +590,13 @@ def main():
             do_deep = True
             existing_game = existing_games.get(game_id)
             
-            # On utilise la nouvelle fonction pour vérifier si un re-parsing est nécessaire
             if is_game_incomplete(existing_game, require_deep=do_deep):
                 parsed = parse_game_record(g, args.player, deep_analysis=do_deep)
                 
                 if parsed:
                     if existing_game:
-                        # Remplissage sélectif des valeurs manquantes/vides
                         existing_games[game_id] = fill_missing_data(existing_game, parsed)
                     else:
-                        # Nouvelle partie
                         existing_games[game_id] = parsed
                         
                     state["games"] = existing_games
