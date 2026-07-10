@@ -253,6 +253,8 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         blunders = old_analysis.get("blunders", 0)
         good_moves = old_analysis.get("good_moves", 0)
         opening_blunders_data = old_analysis.get("opening_blunders", [])
+        est_elo_white = old_analysis.get("est_elo_white", None)
+        est_elo_black = old_analysis.get("est_elo_black", None)
         
         for ply_data in details:
             ph = ply_data.get("phase", "opening")
@@ -291,7 +293,9 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             "details": details, 
             "blunders": blunders, 
             "good_moves": good_moves,
-            "opening_blunders": opening_blunders_data
+            "opening_blunders": opening_blunders_data,
+            "est_elo_white": est_elo_white if 'est_elo_white' in locals() else None,
+            "est_elo_black": est_elo_black if 'est_elo_black' in locals() else None
         }
     }
 
@@ -412,10 +416,6 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         # Nouvelle formule : 3000 - (ACPL * 20) avec un facteur de lissage
         est_elo_w = max(100, min(3200, int(3000 - (acpl_w * 20))))
         est_elo_b = max(100, min(3200, int(3000 - (acpl_b * 20))))
-        
-        result_data["analysis"]["summary"] = summary
-        result_data["analysis"]["est_elo_white"] = est_elo_w
-        result_data["analysis"]["est_elo_black"] = est_elo_b
         
         result_data["analysis"]["summary"] = summary
         result_data["analysis"]["blunders"] = blunders
