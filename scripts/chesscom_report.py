@@ -22,7 +22,6 @@ from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate
 # Ajoute le répertoire parent au chemin de recherche des modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-# Importation depuis le dossier "classes"
 from classes.config import Config
 from classes.logger import Logger
 from classes.chess_utils import ChessUtils
@@ -31,13 +30,14 @@ from classes.ai_analyzer import AIAnalyzer
 from classes.pdf_components import ChessboardFlowable
 
 # =====================================================================
-# COMPOSANTS GRAPHIQUES
+# COMPOSANTS GRAPHIQUES : GRAPHIQUE ELO
 # =====================================================================
 
-class SimpleLineChart(Flowable):
-    def __init__(self, values, labels=None, width=420, height=180):
+class EloProgressionChart(Flowable):
+    def __init__(self, values_player, values_opponent, labels=None, width=460, height=200):
         super().__init__()
-        self.values = values or []
+        self.vp = values_player or []
+        self.vo = values_opponent or []
         self.labels = labels or []
         self.width = width
         self.height = height
@@ -46,17 +46,27 @@ class SimpleLineChart(Flowable):
         return self.width, self.height
 
     def draw(self):
-        if not self.values or len(self.values) < 2: return
+        if not self.vp or len(self.vp) < 2: return
         x0, y0, x1, y1 = 40, 25, self.width - 20, self.height - 15
+        
+        # Fond du graphique
         self.canv.setStrokeColor(colors.HexColor("#cbd5e1"))
         self.canv.setLineWidth(0.6)
         self.canv.rect(x0, y0, x1 - x0, y1 - y0)
-        min_value, max_value = min(self.values), max(self.values)
+        
+        all_vals = self.vp + self.vo
+        min_value, max_value = min(all_vals), max(all_vals)
+        
+        # Padding vertical
+        min_value = max(0, min_value - 150)
+        max_value = max_value + 150
         span = max_value - min_value or 1
 
         self.canv.setFont("Helvetica", 8)
         self.canv.setFillColor(Config.COLOR_TEXT)
-        num_steps = 4
+        num_steps = 5
+        
+        # Lignes horizontales (Repères ELO)
         for i in range(num_steps + 1):
             y_pos = y0 + (i / num_steps) * (y1 - y0)
             val = min_value + (i / num_steps) * span
@@ -67,28 +77,35 @@ class SimpleLineChart(Flowable):
                 self.canv.line(x0, y_pos, x1, y_pos)
                 self.canv.setDash()
 
-        points = []
-        for idx, value in enumerate(self.values):
-            x = x0 + (idx / max(len(self.values) - 1, 1)) * (x1 - x0)
-            y = y0 + ((value - min_value) / span) * (y1 - y0) 
-            points.append((x, y))
+        # Fonction de tracé d'une ligne de données
+        def draw_line(values, color_hex):
+            points = []
+            for idx, value in enumerate(values):
+                x = x0 + (idx / max(len(values) - 1, 1)) * (x1 - x0)
+                y = y0 + ((value - min_value) / span) * (y1 - y0) 
+                points.append((x, y))
 
-        segments = [(points[i][0], points[i][1], points[i+1][0], points[i+1][1]) for i in range(len(points) - 1)]
-        self.canv.setStrokeColor(Config.COLOR_SECONDARY)
-        self.canv.setLineWidth(1.2)
-        self.canv.lines(segments)
-        
-        self.canv.setFillColor(Config.COLOR_PRIMARY)
-        for x, y in points: self.canv.circle(x, y, 2.6, stroke=0, fill=1)
+            segments = [(points[i][0], points[i][1], points[i+1][0], points[i+1][1]) for i in range(len(points) - 1)]
+            self.canv.setStrokeColor(colors.HexColor(color_hex))
+            self.canv.setLineWidth(1.8)
+            self.canv.lines(segments)
+            
+            self.canv.setFillColor(colors.HexColor(color_hex))
+            for x, y in points: self.canv.circle(x, y, 2.5, stroke=0, fill=1)
 
+        # Tracé : Orange (Adversaire) en premier, puis Bleu (Joueur)
+        draw_line(self.vo, "#f97316") # Orange
+        draw_line(self.vp, "#0284c7") # Bleu
+
+        # Labels (Noms/Numéros de parties en abscisse)
         if self.labels:
             self.canv.setFont("Helvetica", 8)
             self.canv.setFillColor(Config.COLOR_TEXT)
-            step = max(1, len(self.labels) // 4)
+            step = max(1, len(self.labels) // 6)
             for idx, label in enumerate(self.labels):
                 if idx % step != 0 and idx != len(self.labels) - 1: continue
-                x = x0 + (idx / max(len(self.values) - 1, 1)) * (x1 - x0)
-                self.canv.drawString(x - 15, y0 - 12, str(label)[:10])
+                x = x0 + (idx / max(len(self.vp) - 1, 1)) * (x1 - x0)
+                self.canv.drawString(x - 10, y0 - 12, str(label)[:10])
 
 # =====================================================================
 # UTILITAIRES ET DATA MANAGEMENT
@@ -135,22 +152,9 @@ def save_state(path, state):
     with open(path, "w", encoding="utf-8") as handle:
         json.dump(state, handle, ensure_ascii=False, separators=(",", ":"), indent=2)
 
-def fill_missing_data(existing_data, new_data):
-    """Parcourt récursivement existing_data et le met à jour avec new_data uniquement si la clé est manquante."""
-    for key, new_val in new_data.items():
-        if key not in existing_data:
-            existing_data[key] = new_val
-        else:
-            existing_val = existing_data[key]
-            if isinstance(existing_val, dict) and isinstance(new_val, dict):
-                fill_missing_data(existing_val, new_val)
-            elif existing_val in (None, "", [], {}) and existing_val is not False and existing_val != 0:
-                existing_data[key] = new_val
-    return existing_data
-
 def is_game_incomplete(game, require_deep):
-    """Détermine si la partie en cache présente des trous justifiant un re-parsing."""
     if not game: return True
+    if not game.get("is_complete", False): return True
     if not game.get("result") or game.get("result") == "*": return True
     if not game.get("date") or not game.get("end_time"): return True
     if not game.get("analysis") or not game.get("analysis").get("summary"): return True
@@ -199,7 +203,7 @@ def fetch_player_games(username, months=6):
         except Exception: pass
     return games
 
-def parse_game_record(game, username, deep_analysis=False):
+def parse_game_record(game, username, deep_analysis=False, progress_callback=None, existing_game=None):
     game_url = game.get("url")
     pgn_text = game.get("pgn") or ""
     if not pgn_text: return None
@@ -239,17 +243,72 @@ def parse_game_record(game, username, deep_analysis=False):
     opening_phase, middlegame_phase, endgame_phase = [], [], []
     opening_blunders_data = []
     
+    # Suivi des Centipawns (CPL) pour calcul d'ELO
+    white_cpl, black_cpl = 0, 0
+    white_m_count, black_m_count = 0, 0
+
+    if existing_game and "analysis" in existing_game:
+        old_analysis = existing_game["analysis"]
+        details = old_analysis.get("details", [])
+        blunders = old_analysis.get("blunders", 0)
+        good_moves = old_analysis.get("good_moves", 0)
+        opening_blunders_data = old_analysis.get("opening_blunders", [])
+        
+        for ply_data in details:
+            ph = ply_data.get("phase", "opening")
+            prec = ply_data.get("precision", -9999)
+            bucket = opening_phase if ph == "opening" else middlegame_phase if ph == "middlegame" else endgame_phase
+            bucket.append({"move": ply_data.get("move"), "swing": ply_data.get("delta", 0), "precision": prec})
+            
+            # Reconstruction du tracker CPL
+            if prec != -9999:
+                loss = min(1000, max(0, -prec))  # Borné à 10 pions
+                if ply_data.get("color") == "white":
+                    white_cpl += loss
+                    white_m_count += 1
+                else:
+                    black_cpl += loss
+                    black_m_count += 1
+
+        Logger.debug_log(f"Reprise de l'analyse de {game_url} à partir du coup {len(details) + 1}", "INFO")
+
     max_deep_moves = len(moves) if deep_analysis else 0
+
+    result_data = {
+        "id": game_url,
+        "is_complete": False,
+        "date": datetime.fromtimestamp(game.get("end_time", 0)).strftime("%Y-%m-%d %H:%M") if game.get("end_time") else None,
+        "end_time": game.get("end_time"),
+        "result": result_text,
+        "time_class": game.get("time_class", "inconnu"),
+        "opponent_type": classify_opponent_type(black_name if white_name == username else white_name),
+        "white": {"username": white_name, "elo": game.get("white", {}).get("rating")},
+        "black": {"username": black_name, "elo": game.get("black", {}).get("rating")},
+        "opening": game_obj.headers.get("Opening", game_obj.headers.get("ECO", "Inconnue")),
+        "deep_analysis": deep_analysis,
+        "analysis": {
+            "summary": {"opening": {}, "middlegame": {}, "endgame": {}}, 
+            "details": details, 
+            "blunders": blunders, 
+            "good_moves": good_moves,
+            "opening_blunders": opening_blunders_data
+        }
+    }
 
     for idx, move in enumerate(moves, start=1):
         move_raw_en = san_moves[idx - 1]
+        
+        # SI DÉJÀ ANALYSÉ : avance le jeu et ignore l'évaluation
+        if idx <= len(details):
+            board_before.push(move)
+            continue
+
         swing = 0
         precision = -9999
         pv_san = ""
         
         if engine:
             try:
-                # Utilisation exclusive de la classe StockfishAnalyzer (harmonisé avec openings et traps)
                 eval_before, eval_after, move_obj = analyzer.analyze_move(board_before, move_raw_en)
                 _, best_eval, best_uci = analyzer.get_best_move_with_eval(board_before.copy())
                 
@@ -270,8 +329,14 @@ def parse_game_record(game, username, deep_analysis=False):
                     precision = eval_player_after - eval_player_best
                     if best_uci and move_obj.uci() == best_uci: 
                         precision = 0
+
+                    # Ajout dynamique au track CPL pour calcul de l'ELO estimé
+                    loss = min(1000, max(0, -precision))
+                    if idx % 2 != 0:
+                        white_cpl += loss; white_m_count += 1
+                    else:
+                        black_cpl += loss; black_m_count += 1
                     
-                    # Génération PV manuel uniquement pour gaffes majeures d'ouverture
                     if idx <= 12 and swing <= -250:
                         sim_board = board_before.copy()
                         pv_list = []
@@ -284,7 +349,7 @@ def parse_game_record(game, username, deep_analysis=False):
                             sim_board.push(m_sim)
                             engine.set_fen_position(sim_board.fen())
                         pv_san = " ".join(pv_list)
-                        engine.set_fen_position(board_before.fen()) # reset position
+                        engine.set_fen_position(board_before.fen()) 
                         
             except Exception as e: 
                 Logger.debug_log(f"Erreur d'analyse (ply {idx}) pour le coup {move_raw_en} : {str(e)}", "ERROR")
@@ -299,11 +364,7 @@ def parse_game_record(game, username, deep_analysis=False):
         else:
             board_test_check = board_before.copy()
             board_test_check.push(move)
-            suffix = infer_move_suffix(
-                is_check=board_test_check.is_check(), 
-                is_checkmate=board_test_check.is_checkmate(), 
-                delta=swing
-            )
+            suffix = infer_move_suffix(is_check=board_test_check.is_check(), is_checkmate=board_test_check.is_checkmate(), delta=swing)
             san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             move_label = f"{san_fr}{suffix}" if suffix else san_fr
 
@@ -314,11 +375,8 @@ def parse_game_record(game, username, deep_analysis=False):
                 "fen": board_before.fen()
             })
 
-        # Nouvelles conditions robustes basées sur "swing" et "precision"
-        if swing <= -300: 
-            blunders += 1
-        elif precision >= -30 and swing > -100: 
-            good_moves += 1
+        if swing <= -300: blunders += 1
+        elif precision >= -30 and swing > -100: good_moves += 1
 
         phase = "opening" if idx <= 12 else "middlegame" if idx <= 30 else "endgame"
         phase_bucket = {"opening": opening_phase, "middlegame": middlegame_phase, "endgame": endgame_phase}[phase]
@@ -327,52 +385,46 @@ def parse_game_record(game, username, deep_analysis=False):
         board_before.push(move)
         
         details.append({
-            "ply": idx,
-            "move_number": (idx + 1) // 2,
-            "color": "white" if idx % 2 != 0 else "black",
-            "move": move_label,
-            "raw_san": move_raw_en,
-            "comment": llm_comment,
-            "fen": board_before.fen(),
-            "delta": round(swing, 2),
-            "phase": phase,
+            "ply": idx, "move_number": (idx + 1) // 2, "color": "white" if idx % 2 != 0 else "black",
+            "move": move_label, "raw_san": move_raw_en, "comment": llm_comment, "fen": board_before.fen(),
+            "delta": round(swing, 2), "precision": round(precision, 2), "phase": phase,
         })
 
-    # Mise à jour du filtrage des compteurs par phase
-    summary = {
-        "opening": {
-            "good_moves": sum(1 for i in opening_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
-            "blunders": sum(1 for i in opening_phase if i.get("swing", 0) <= -300)
-        },
-        "middlegame": {
-            "good_moves": sum(1 for i in middlegame_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
-            "blunders": sum(1 for i in middlegame_phase if i.get("swing", 0) <= -300)
-        },
-        "endgame": {
-            "good_moves": sum(1 for i in endgame_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
-            "blunders": sum(1 for i in endgame_phase if i.get("swing", 0) <= -300)
+        summary = {
+            "opening": {
+                "good_moves": sum(1 for i in opening_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
+                "blunders": sum(1 for i in opening_phase if i.get("swing", 0) <= -300)
+            },
+            "middlegame": {
+                "good_moves": sum(1 for i in middlegame_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
+                "blunders": sum(1 for i in middlegame_phase if i.get("swing", 0) <= -300)
+            },
+            "endgame": {
+                "good_moves": sum(1 for i in endgame_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
+                "blunders": sum(1 for i in endgame_phase if i.get("swing", 0) <= -300)
+            }
         }
-    }
+        
+        # Calcul de l'ELO estimé en temps réel
+        acpl_w = (white_cpl / white_m_count) if white_m_count > 0 else 0
+        acpl_b = (black_cpl / black_m_count) if black_m_count > 0 else 0
+        est_elo_w = max(100, min(3200, int(3000 - (acpl_w * 25))))
+        est_elo_b = max(100, min(3200, int(3000 - (acpl_b * 25))))
+        
+        result_data["analysis"]["summary"] = summary
+        result_data["analysis"]["blunders"] = blunders
+        result_data["analysis"]["good_moves"] = good_moves
+        result_data["analysis"]["est_elo_white"] = est_elo_w
+        result_data["analysis"]["est_elo_black"] = est_elo_b
+        
+        if progress_callback:
+            progress_callback(result_data)
 
-    return {
-        "id": game_url,
-        "date": datetime.fromtimestamp(game.get("end_time", 0)).strftime("%Y-%m-%d %H:%M") if game.get("end_time") else None,
-        "end_time": game.get("end_time"),
-        "result": result_text,
-        "time_class": game.get("time_class", "inconnu"),
-        "opponent_type": classify_opponent_type(black_name if white_name == username else white_name),
-        "white": {"username": white_name, "elo": game.get("white", {}).get("rating")},
-        "black": {"username": black_name, "elo": game.get("black", {}).get("rating")},
-        "opening": game_obj.headers.get("Opening", game_obj.headers.get("ECO", "Inconnue")),
-        "deep_analysis": deep_analysis,
-        "analysis": {
-            "summary": summary, 
-            "details": details, 
-            "blunders": blunders, 
-            "good_moves": good_moves,
-            "opening_blunders": opening_blunders_data
-        }
-    }
+    result_data["is_complete"] = True
+    if progress_callback:
+        progress_callback(result_data)
+
+    return result_data
 
 # =====================================================================
 # RENDU PDF
@@ -470,8 +522,11 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         op_lower = opponent_name.lower()
         games = [g for g in games if g["white"]["username"].lower() == op_lower or g["black"]["username"].lower() == op_lower]
 
+    # Trie chronologiquement
+    games = sorted([g for g in games if g.get("is_complete", True)], key=lambda x: x.get("end_time", 0))
+
     if not games:
-        elements.append(Paragraph("Aucune partie trouvée pour ces critères.", normal_style))
+        elements.append(Paragraph("Aucune partie complétée trouvée pour ces critères.", normal_style))
         doc.build(elements)
         return
 
@@ -482,6 +537,25 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     elements.append(Paragraph("1. Vue d'ensemble", section_style))
     summary_text = f"Analyse basée sur <b>{len(games)} parties</b>. Bilan pour {player_name} : <font color='green'>{wins} V</font> / <font color='gray'>{draws} N</font> / <font color='red'>{losses} D</font>."
     elements.extend([Paragraph(summary_text, normal_style), Spacer(1, 15)])
+
+    # GRAPHIQUE ELO
+    player_elos, opponent_elos, graph_labels = [], [], []
+    for idx, g in enumerate(games):
+        w_name = g["white"]["username"].lower()
+        if w_name == player_name.lower():
+            player_elos.append(g["analysis"].get("est_elo_white", 1200))
+            opponent_elos.append(g["analysis"].get("est_elo_black", 1200))
+        else:
+            player_elos.append(g["analysis"].get("est_elo_black", 1200))
+            opponent_elos.append(g["analysis"].get("est_elo_white", 1200))
+        graph_labels.append(f"P {idx+1}")
+        
+    if len(player_elos) > 1:
+        elements.append(Paragraph("Progression des Performances Estimées", subsection_style))
+        elements.append(EloProgressionChart(player_elos, opponent_elos, labels=graph_labels))
+        elements.append(Spacer(1, 5))
+        elements.append(Paragraph("<i><font color='#0284c7'>Bleu : Niveau de performance (Joueur)</font> | <font color='#f97316'>Orange : Niveau de performance (Adversaire)</font></i>", normal_style))
+        elements.append(Spacer(1, 15))
 
     elements.append(Paragraph("2. Forces et Faiblesses (Ouvertures)", section_style))
     categorized_games = {}
@@ -535,12 +609,15 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     for idx, g in enumerate(deep_games):
         if idx > 0: elements.append(Spacer(1, 20))
         g["player_focus"] = player_name
-        white, black = g["white"]["username"], g["black"]["username"]
-        title = f"Partie {idx+1} : {white} vs {black} ({g['date']})"
+        
+        w_name, b_name = g["white"]["username"], g["black"]["username"]
+        w_elo = g["analysis"].get("est_elo_white", "N/A")
+        b_elo = g["analysis"].get("est_elo_black", "N/A")
+        title = f"Partie {idx+1} : {w_name} ({w_elo} ELO) vs {b_name} ({b_elo} ELO)"
         
         elements.append(KeepTogether([
             Paragraph(title, subsection_style),
-            Paragraph(f"Ouverture : {g.get('opening')} | Résultat : {g['result']}", normal_style),
+            Paragraph(f"Ouverture : {g.get('opening')} | Résultat : {g['result']} ({g['date']})", normal_style),
             Spacer(1, 10)
         ] + render_game_analysis_table(g, normal_style, bold_style)))
 
@@ -587,20 +664,27 @@ def main():
             w_name = g.get("white", {}).get("username", "").lower()
             b_name = g.get("black", {}).get("username", "").lower()
             
+            if args.opponent:
+                op_lower = args.opponent.lower()
+                if w_name != op_lower and b_name != op_lower:
+                    continue
+            
             do_deep = True
             existing_game = existing_games.get(game_id)
             
             if is_game_incomplete(existing_game, require_deep=do_deep):
-                parsed = parse_game_record(g, args.player, deep_analysis=do_deep)
                 
-                if parsed:
-                    if existing_game:
-                        existing_games[game_id] = fill_missing_data(existing_game, parsed)
-                    else:
-                        existing_games[game_id] = parsed
-                        
+                def save_progress(partial_parsed):
+                    existing_games[game_id] = partial_parsed
                     state["games"] = existing_games
                     save_state(str(state_path), state)
+                
+                parse_game_record(
+                    g, args.player, 
+                    deep_analysis=do_deep, 
+                    progress_callback=save_progress, 
+                    existing_game=existing_game
+                )
         
         state["player"] = args.player
         state["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
