@@ -118,7 +118,7 @@ def build_player_state_path(base_dir, player_name):
     return os.path.join(base_dir, "json", f"player_{safe_name}.json")
 
 def load_state(path):
-    if not path or not os.path.exists(path): return {"player": None, "games": {}}
+    if not path or not os.path.exists(path): return {"player": "", "games": {}}
     try:
         with open(path, "r", encoding="utf-8") as handle:
             data = json.load(handle)
@@ -127,7 +127,7 @@ def load_state(path):
             elif not isinstance(data.get("games"), dict):
                 data["games"] = {}
             return data
-    except Exception: return {"player": None, "games": {}}
+    except Exception: return {"player": "", "games": {}}
 
 def save_state(path, state):
     os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -526,7 +526,7 @@ def main():
         output_path = base_dir / f"{out_name}_report_avance.pdf"
         
         state = load_state(str(state_path))
-        if state.get("player", "").lower() != args.player.lower():
+        if (state.get("player") or "").lower() != args.player.lower():
             state = {"player": args.player, "games": {}}
         
         for game in state.get("games", {}).values():
