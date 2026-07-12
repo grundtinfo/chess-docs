@@ -11,7 +11,6 @@ from collections import defaultdict
 
 import chess
 import chess.pgn
-import chess.engine
 import requests
 
 from reportlab.lib import colors
@@ -49,41 +48,32 @@ class EloProgressionChart(Flowable):
         if not self.vp or len(self.vp) < 2: return
         x0, y0, x1, y1 = 40, 25, self.width - 20, self.height - 15
         
-        # Fond du graphique
-        self.canv.setStrokeColor(colors.HexColor("#cbd5e1"))
+        self.canv.setStrokeColor(Config.COLOR_BORDER)
         self.canv.setLineWidth(0.6)
         self.canv.rect(x0, y0, x1 - x0, y1 - y0)
         
         all_vals = self.vp + self.vo
-        min_value, max_value = min(all_vals), max(all_vals)
-        
-        # Padding vertical
-        min_value = max(0, min_value - 150)
-        max_value = max_value + 150
+        min_value, max_value = max(0, min(all_vals) - 150), max(all_vals) + 150
         span = max_value - min_value or 1
 
         self.canv.setFont("Helvetica", 8)
         self.canv.setFillColor(Config.COLOR_TEXT)
         num_steps = 5
         
-        # Lignes horizontales (Repères ELO)
         for i in range(num_steps + 1):
             y_pos = y0 + (i / num_steps) * (y1 - y0)
             val = min_value + (i / num_steps) * span
             self.canv.drawRightString(x0 - 5, y_pos - 3, str(int(val)))
             if 0 < i < num_steps:
-                self.canv.setStrokeColor(colors.HexColor("#e2e8f0"))
+                self.canv.setStrokeColor(Config.COLOR_BORDER)
                 self.canv.setDash(2, 2)
                 self.canv.line(x0, y_pos, x1, y_pos)
                 self.canv.setDash()
 
-        # Fonction de tracé d'une ligne de données
         def draw_line(values, color_hex):
-            points = []
-            for idx, value in enumerate(values):
-                x = x0 + (idx / max(len(values) - 1, 1)) * (x1 - x0)
-                y = y0 + ((value - min_value) / span) * (y1 - y0) 
-                points.append((x, y))
+            points = [(x0 + (idx / max(len(values) - 1, 1)) * (x1 - x0), 
+                       y0 + ((value - min_value) / span) * (y1 - y0)) 
+                      for idx, value in enumerate(values)]
 
             segments = [(points[i][0], points[i][1], points[i+1][0], points[i+1][1]) for i in range(len(points) - 1)]
             self.canv.setStrokeColor(colors.HexColor(color_hex))
@@ -93,11 +83,9 @@ class EloProgressionChart(Flowable):
             self.canv.setFillColor(colors.HexColor(color_hex))
             for x, y in points: self.canv.circle(x, y, 2.5, stroke=0, fill=1)
 
-        # Tracé : Orange (Adversaire) en premier, puis Bleu (Joueur)
-        draw_line(self.vo, "#f97316") # Orange
-        draw_line(self.vp, "#0284c7") # Bleu
+        draw_line(self.vo, "#f97316")
+        draw_line(self.vp, "#0284c7")
 
-        # Labels (Noms/Numéros de parties en abscisse)
         if self.labels:
             self.canv.setFont("Helvetica", 8)
             self.canv.setFillColor(Config.COLOR_TEXT)
@@ -113,10 +101,7 @@ class EloProgressionChart(Flowable):
 
 def classify_opponent_type(username):
     if not username: return "humain"
-    lowered = username.lower()
-    if any(token in lowered for token in ["bot", "engine", "stockfish", "computer", "ai", "chess.com"]):
-        return "robot"
-    return "humain"
+    return "robot" if any(token in username.lower() for token in ["bot", "engine", "stockfish", "computer", "ai", "chess.com"]) else "humain"
 
 def infer_move_suffix(is_check=False, is_checkmate=False, delta=None):
     if is_checkmate: return "#"
@@ -131,9 +116,6 @@ def infer_move_suffix(is_check=False, is_checkmate=False, delta=None):
 def build_player_state_path(base_dir, player_name):
     safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", player_name).strip("_") or "player"
     return os.path.join(base_dir, "json", f"player_{safe_name}.json")
-
-def resolve_project_base_dir():
-    return Path(__file__).resolve().parent.parent
 
 def load_state(path):
     if not path or not os.path.exists(path): return {"player": None, "games": {}}
@@ -153,18 +135,9 @@ def save_state(path, state):
         json.dump(state, handle, ensure_ascii=False, separators=(",", ":"), indent=2)
 
 def is_game_incomplete(game, require_deep):
-    if not game: return True
-    if not game.get("is_complete", False): return True
-    if not game.get("result") or game.get("result") == "*": return True
-    if not game.get("date") or not game.get("end_time"): return True
-    if not game.get("analysis") or not game.get("analysis").get("summary"): return True
-    
-    if require_deep:
-        if not game.get("deep_analysis"): return True
-        analysis = game.get("analysis", {})
-        if not analysis.get("details") or len(analysis.get("details")) == 0: return True
-        
-    return False
+    if not game or not game.get("is_complete", False) or not game.get("result") or game.get("result") == "*": return True
+    if not game.get("date") or not game.get("end_time") or not game.get("analysis", {}).get("summary"): return True
+    return require_deep and (not game.get("deep_analysis") or not game.get("analysis", {}).get("details"))
 
 # =====================================================================
 # FETCH ET PARSING DES PARTIES
@@ -189,8 +162,7 @@ def fetch_player_games(username, months=6):
 
     archives_url = f"https://api.chess.com/pub/player/{username}/games/archives"
     try:
-        response = request_with_retry(archives_url)
-        archives = response.json().get("archives", [])
+        archives = request_with_retry(archives_url).json().get("archives", [])
     except Exception as e:
         Logger.debug_log(f"Erreur API archives: {e}", "ERROR")
         return []
@@ -198,86 +170,62 @@ def fetch_player_games(username, months=6):
     recent_archives = archives[-months:] if months and months > 0 else archives
     games = []
     for archive_url in recent_archives:
-        try:
-            games.extend(request_with_retry(archive_url).json().get("games", []))
+        try: games.extend(request_with_retry(archive_url).json().get("games", []))
         except Exception: pass
     return games
 
 def parse_game_record(game, username, deep_analysis=False, progress_callback=None, existing_game=None):
-    game_url = game.get("url")
-    pgn_text = game.get("pgn") or ""
+    pgn_text = game.get("pgn")
     if not pgn_text: return None
 
     try: game_obj = chess.pgn.read_game(StringIO(pgn_text))
     except Exception: return None
     if not game_obj: return None
 
-    white_name = game.get("white", {}).get("username", "")
-    black_name = game.get("black", {}).get("username", "")
-    
+    white_name, black_name = game.get("white", {}).get("username", ""), game.get("black", {}).get("username", "")
     result_text = game_obj.headers.get("Result", "*")
+    
     if result_text == "*":
-        w_res = game.get("white", {}).get("result", "")
-        b_res = game.get("black", {}).get("result", "")
+        w_res, b_res = game.get("white", {}).get("result", ""), game.get("black", {}).get("result", "")
         if w_res == "win": result_text = "1-0"
         elif b_res == "win": result_text = "0-1"
-        elif w_res in ["agreed", "repetition", "stalemate", "insufficient", "50move", "timevsinsufficient"]: 
-            result_text = "1/2-1/2"
+        elif w_res in ["agreed", "repetition", "stalemate", "insufficient", "50move", "timevsinsufficient"]: result_text = "1/2-1/2"
 
     board_before = game_obj.board()
-    moves = []
-    san_moves = []
-
+    moves, san_moves = [], []
     for move in game_obj.mainline_moves():
         san_moves.append(board_before.san(move))
         moves.append(move)
         board_before.push(move)
 
     board_before = game_obj.board()
-    
     analyzer = StockfishAnalyzer()
-    engine = analyzer.get_engine(depth=ChessUtils.resolve_stockfish_depth(18))
+    engine = analyzer.get_engine(depth=Config.DEFAULT_STOCKFISH_DEPTH)
 
-    details = []
+    details, opening_blunders_data = [], []
     blunders, good_moves = 0, 0
     opening_phase, middlegame_phase, endgame_phase = [], [], []
-    opening_blunders_data = []
     
-    # Suivi des Centipawns (CPL) pour calcul d'ELO
-    white_cpl, black_cpl = 0, 0
-    white_m_count, black_m_count = 0, 0
-
     if existing_game and "analysis" in existing_game:
         old_analysis = existing_game["analysis"]
         details = old_analysis.get("details", [])
         blunders = old_analysis.get("blunders", 0)
         good_moves = old_analysis.get("good_moves", 0)
         opening_blunders_data = old_analysis.get("opening_blunders", [])
-        est_elo_white = old_analysis.get("est_elo_white", None)
-        est_elo_black = old_analysis.get("est_elo_black", None)
+        est_elo_white = old_analysis.get("est_elo_white")
+        est_elo_black = old_analysis.get("est_elo_black")
         
         for ply_data in details:
             ph = ply_data.get("phase", "opening")
             prec = ply_data.get("precision", -9999)
             bucket = opening_phase if ph == "opening" else middlegame_phase if ph == "middlegame" else endgame_phase
             bucket.append({"move": ply_data.get("move"), "swing": ply_data.get("delta", 0), "precision": prec})
-            
-            # Reconstruction du tracker CPL
-            if prec != -9999:
-                loss = min(1000, max(0, -prec))  # Borné à 10 pions
-                if ply_data.get("color") == "white":
-                    white_cpl += loss
-                    white_m_count += 1
-                else:
-                    black_cpl += loss
-                    black_m_count += 1
 
-        Logger.debug_log(f"Reprise de l'analyse de {game_url} à partir du coup {len(details) + 1}", "INFO")
+        Logger.debug_log(f"Reprise de l'analyse de {game.get('url')} au coup {len(details) + 1}", "INFO")
 
     max_deep_moves = len(moves) if deep_analysis else 0
-
     result_data = {
-        "id": game_url,
+        "id": game.get("url"),
         "is_complete": False,
         "date": datetime.fromtimestamp(game.get("end_time", 0)).strftime("%Y-%m-%d %H:%M") if game.get("end_time") else None,
         "end_time": game.get("end_time"),
@@ -286,13 +234,11 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         "opponent_type": classify_opponent_type(black_name if white_name == username else white_name),
         "white": {"username": white_name, "elo": game.get("white", {}).get("rating")},
         "black": {"username": black_name, "elo": game.get("black", {}).get("rating")},
-        "opening": game_obj.headers.get("Opening", game_obj.headers.get("ECO", "Inconnue")),
+        "opening": game_obj.headers.get("Opening", game_obj.headers.get("ECO", ChessUtils.get_opening_name(game_obj.board()))),
         "deep_analysis": deep_analysis,
         "analysis": {
             "summary": {"opening": {}, "middlegame": {}, "endgame": {}}, 
-            "details": details, 
-            "blunders": blunders, 
-            "good_moves": good_moves,
+            "details": details, "blunders": blunders, "good_moves": good_moves,
             "opening_blunders": opening_blunders_data,
             "est_elo_white": est_elo_white if 'est_elo_white' in locals() else None,
             "est_elo_black": est_elo_black if 'est_elo_black' in locals() else None
@@ -301,15 +247,11 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
 
     for idx, move in enumerate(moves, start=1):
         move_raw_en = san_moves[idx - 1]
-        
-        # SI DÉJÀ ANALYSÉ : avance le jeu et ignore l'évaluation
         if idx <= len(details):
             board_before.push(move)
             continue
 
-        swing = 0
-        precision = -9999
-        pv_san = ""
+        swing, precision, pv_san = 0, -9999, ""
         
         if engine:
             try:
@@ -323,23 +265,12 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                     pm = 1 if board_before.turn == chess.WHITE else -1
                     val_before = ChessUtils.get_eval_value(eval_before, board_before)
                     val_after = ChessUtils.get_eval_value(eval_after, board_after)
-                    val_best = ChessUtils.get_eval_value(best_eval, board_after) if best_eval else val_before
+                    val_best = ChessUtils.get_eval_value(best_eval, board_before) if best_eval else val_before
                     
-                    eval_player_before = val_before * pm
-                    eval_player_after = val_after * pm
-                    eval_player_best = val_best * pm
-                    
-                    swing = eval_player_after - eval_player_before
-                    precision = eval_player_after - eval_player_best
-                    if best_uci and move_obj.uci() == best_uci: 
+                    swing = (val_after - val_before) * pm
+                    precision = min((val_after - val_best) * pm, swing)
+                    if best_uci and move_obj.uci() == best_uci and swing > -50: 
                         precision = 0
-
-                    # Ajout dynamique au track CPL pour calcul de l'ELO estimé
-                    loss = min(1000, max(0, -precision))
-                    if idx % 2 != 0:
-                        white_cpl += loss; white_m_count += 1
-                    else:
-                        black_cpl += loss; black_m_count += 1
                     
                     if idx <= 12 and swing <= -250:
                         sim_board = board_before.copy()
@@ -358,33 +289,29 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             except Exception as e: 
                 Logger.debug_log(f"Erreur d'analyse (ply {idx}) pour le coup {move_raw_en} : {str(e)}", "ERROR")
 
-        future_moves = san_moves[idx:]
-        llm_comment = ""
-        
         if idx <= max_deep_moves:
+            # Le cache StockfishAnalyzer optimise les doubles appels générés ici
             llm_comment, move_label = AIAnalyzer.generate_move_comment(
-                move_raw_en, move_raw_en, board_before, is_trap=False, future_moves=future_moves
+                move_raw_en, move_raw_en, board_before, is_trap=False, future_moves=san_moves[idx:]
             )
         else:
-            board_test_check = board_before.copy()
-            board_test_check.push(move)
-            suffix = infer_move_suffix(is_check=board_test_check.is_check(), is_checkmate=board_test_check.is_checkmate(), delta=swing)
+            board_test = board_before.copy()
+            board_test.push(move)
+            suffix = infer_move_suffix(is_check=board_test.is_check(), is_checkmate=board_test.is_checkmate(), delta=swing)
             san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             move_label = f"{san_fr}{suffix}" if suffix else san_fr
+            llm_comment = ""
 
         if idx <= 12 and swing <= -250 and pv_san:
-            opening_blunders_data.append({
-                "played_move": move_raw_en,
-                "stockfish_pv": pv_san,
-                "fen": board_before.fen()
-            })
+            opening_blunders_data.append({"played_move": move_raw_en, "stockfish_pv": pv_san, "fen": board_before.fen()})
 
         if swing <= -300: blunders += 1
         elif precision >= -30 and swing > -100: good_moves += 1
 
         phase = "opening" if idx <= 12 else "middlegame" if idx <= 30 else "endgame"
-        phase_bucket = {"opening": opening_phase, "middlegame": middlegame_phase, "endgame": endgame_phase}[phase]
-        phase_bucket.append({"move": move_label, "swing": swing, "precision": precision})
+        {"opening": opening_phase, "middlegame": middlegame_phase, "endgame": endgame_phase}[phase].append({
+            "move": move_label, "swing": swing, "precision": precision
+        })
 
         board_before.push(move)
         
@@ -394,41 +321,20 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             "delta": round(swing, 2), "precision": round(precision, 2), "phase": phase,
         })
 
-        summary = {
-            "opening": {
-                "good_moves": sum(1 for i in opening_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
-                "blunders": sum(1 for i in opening_phase if i.get("swing", 0) <= -300)
-            },
-            "middlegame": {
-                "good_moves": sum(1 for i in middlegame_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
-                "blunders": sum(1 for i in middlegame_phase if i.get("swing", 0) <= -300)
-            },
-            "endgame": {
-                "good_moves": sum(1 for i in endgame_phase if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
-                "blunders": sum(1 for i in endgame_phase if i.get("swing", 0) <= -300)
-            }
+        result_data["analysis"]["summary"] = {
+            ph: {"good_moves": sum(1 for i in lst if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
+                 "blunders": sum(1 for i in lst if i.get("swing", 0) <= -300)}
+            for ph, lst in [("opening", opening_phase), ("middlegame", middlegame_phase), ("endgame", endgame_phase)]
         }
         
-        # Calcul de l'ELO estimé en temps réel
-        acpl_w = (white_cpl / white_m_count) if white_m_count > 0 else 0
-        acpl_b = (black_cpl / black_m_count) if black_m_count > 0 else 0
-        
-        # Nouvelle formule : 3000 - (ACPL * 20) avec un facteur de lissage
-        est_elo_w = max(100, min(3200, int(3000 - (acpl_w * 20))))
-        est_elo_b = max(100, min(3200, int(3000 - (acpl_b * 20))))
-        
-        result_data["analysis"]["summary"] = summary
         result_data["analysis"]["blunders"] = blunders
         result_data["analysis"]["good_moves"] = good_moves
-        result_data["analysis"]["est_elo_white"] = est_elo_w
-        result_data["analysis"]["est_elo_black"] = est_elo_b
+        result_data["analysis"]["est_elo_white"], result_data["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(details)
         
-        if progress_callback:
-            progress_callback(result_data)
+        if progress_callback: progress_callback(result_data)
 
     result_data["is_complete"] = True
-    if progress_callback:
-        progress_callback(result_data)
+    if progress_callback: progress_callback(result_data)
 
     return result_data
 
@@ -446,31 +352,20 @@ def ajouter_pied_page_rapport(canvas, doc):
 
 def render_game_analysis_table(game, normal_style, bold_style):
     elements = []
-    details = game.get("analysis", {}).get("details", [])
-
-    # Ajout d'une ligne d'en-tête de scores estimés avant la table
-    w_est = game["analysis"].get("est_elo_white", "N/A")
-    b_est = game["analysis"].get("est_elo_black", "N/A")
-    elements.append(Paragraph(f"<i>Performance estimée : Blanc {w_est} | Noir {b_est}</i>", normal_style))
-    elements.append(Spacer(1, 5))
+    w_est, b_est = game["analysis"].get("est_elo_white", "N/A"), game["analysis"].get("est_elo_black", "N/A")
+    elements.extend([Paragraph(f"<i>Performance estimée : Blanc {w_est} | Noir {b_est}</i>", normal_style), Spacer(1, 5)])
     
     table_data = [[
-        Paragraph("<b>Diag</b>", normal_style),
-        Paragraph("<b>N°</b>", normal_style),
-        Paragraph("<b>Blanc</b>", normal_style),
-        Paragraph("<b>Noir</b>", normal_style),
+        Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>N°</b>", normal_style),
+        Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Noir</b>", normal_style),
         Paragraph("<b>Analyse (Stockfish)</b>", normal_style)
     ]]
     
-    rows = []
-    current_row = None
-    for ply in details:
+    rows, current_row = [], None
+    for ply in game.get("analysis", {}).get("details", []):
         move_num = ply["move_number"]
         if ply["color"] == "white":
-            current_row = {
-                "move_number": move_num, "white": ply["move"], "white_comment": ply["comment"], "white_fen": ply["fen"],
-                "black": "", "black_comment": "", "black_fen": None
-            }
+            current_row = {"move_number": move_num, "white": ply["move"], "white_comment": ply["comment"], "white_fen": ply["fen"], "black": "", "black_comment": "", "black_fen": None}
             rows.append(current_row)
         else:
             if not current_row or current_row["move_number"] != move_num:
@@ -484,18 +379,13 @@ def render_game_analysis_table(game, normal_style, bold_style):
     for row in rows:
         fen = row.get("black_fen") or row.get("white_fen")
         diag = ChessboardFlowable(fen, size=110, orientation=orientation) if fen else ""
-        
         parts = []
         if row.get("white_comment"): parts.append(f"<b>Blancs :</b> {row['white_comment']}")
         if row.get("black_comment"): parts.append(f"<b>Noirs :</b> {row['black_comment']}")
-        comment_text = "<br/>".join(parts) if parts else "<i>Développement validé.</i>"
-
+        
         table_data.append([
-            diag,
-            Paragraph(str(row["move_number"]), bold_style),
-            Paragraph(row.get("white", ""), bold_style),
-            Paragraph(row.get("black", ""), bold_style),
-            Paragraph(comment_text, normal_style)
+            diag, Paragraph(str(row["move_number"]), bold_style), Paragraph(row.get("white", ""), bold_style),
+            Paragraph(row.get("black", ""), bold_style), Paragraph("<br/>".join(parts) if parts else "<i>Développement validé.</i>", normal_style)
         ])
         
     t = Table(table_data, colWidths=[120, 30, 50, 50, 260], repeatRows=1)
@@ -519,22 +409,16 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     normal_style = ParagraphStyle("NormalCustom", parent=styles["Normal"], fontSize=10, leading=14, textColor=Config.COLOR_TEXT)
     bold_style = ParagraphStyle("BoldCustom", parent=normal_style, fontName="Helvetica-Bold")
 
-    elements = []
-    title_text = f"Rapport Stratégique : {player_name}"
-    if opponent_name:
-        title_text += f" vs {opponent_name}"
-        
-    elements.extend([
-        Paragraph(title_text, title_style),
+    elements = [
+        Paragraph(f"Rapport Stratégique : {player_name}" + (f" vs {opponent_name}" if opponent_name else ""), title_style),
         Paragraph(f"Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}", subtitle_style),
-    ])
+    ]
 
     games = list(state.get("games", {}).values())
     if opponent_name:
         op_lower = opponent_name.lower()
-        games = [g for g in games if g["white"]["username"].lower() == op_lower or g["black"]["username"].lower() == op_lower]
+        games = [g for g in games if op_lower in (g["white"]["username"].lower(), g["black"]["username"].lower())]
 
-    # Trie chronologiquement
     games = sorted([g for g in games if g.get("is_complete", True)], key=lambda x: x.get("end_time", 0))
 
     if not games:
@@ -542,90 +426,71 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         doc.build(elements)
         return
 
-    wins = sum(1 for g in games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_name.lower()) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_name.lower()))
-    losses = sum(1 for g in games if (g["result"] == "0-1" and g["white"]["username"].lower() == player_name.lower()) or (g["result"] == "1-0" and g["black"]["username"].lower() == player_name.lower()))
-    draws = len(games) - wins - losses
+    player_lower = player_name.lower()
+    wins = sum(1 for g in games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_lower) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_lower))
+    losses = sum(1 for g in games if (g["result"] == "0-1" and g["white"]["username"].lower() == player_lower) or (g["result"] == "1-0" and g["black"]["username"].lower() == player_lower))
+    
+    elements.extend([
+        Paragraph("1. Vue d'ensemble", section_style),
+        Paragraph(f"Analyse basée sur <b>{len(games)} parties</b>. Bilan pour {player_name} : <font color='green'>{wins} V</font> / <font color='gray'>{len(games) - wins - losses} N</font> / <font color='red'>{losses} D</font>.", normal_style),
+        Spacer(1, 15)
+    ])
 
-    elements.append(Paragraph("1. Vue d'ensemble", section_style))
-    summary_text = f"Analyse basée sur <b>{len(games)} parties</b>. Bilan pour {player_name} : <font color='green'>{wins} V</font> / <font color='gray'>{draws} N</font> / <font color='red'>{losses} D</font>."
-    elements.extend([Paragraph(summary_text, normal_style), Spacer(1, 15)])
-
-    # GRAPHIQUE ELO
-    player_elos, opponent_elos, graph_labels = [], [], []
-    for idx, g in enumerate(games):
-        w_name = g["white"]["username"].lower()
-        if w_name == player_name.lower():
-            player_elos.append(g["analysis"].get("est_elo_white", 1200))
-            opponent_elos.append(g["analysis"].get("est_elo_black", 1200))
-        else:
-            player_elos.append(g["analysis"].get("est_elo_black", 1200))
-            opponent_elos.append(g["analysis"].get("est_elo_white", 1200))
-        graph_labels.append(f"P {idx+1}")
+    player_elos, opponent_elos = [], []
+    for g in games:
+        is_white = g["white"]["username"].lower() == player_lower
+        player_elos.append(g["analysis"].get("est_elo_white" if is_white else "est_elo_black", 1200))
+        opponent_elos.append(g["analysis"].get("est_elo_black" if is_white else "est_elo_white", 1200))
         
     if len(player_elos) > 1:
-        elements.append(Paragraph("Progression des Performances Estimées", subsection_style))
-        elements.append(EloProgressionChart(player_elos, opponent_elos, labels=graph_labels))
-        elements.append(Spacer(1, 5))
-        elements.append(Paragraph("<i><font color='#0284c7'>Bleu : Niveau de performance (Joueur)</font> | <font color='#f97316'>Orange : Niveau de performance (Adversaire)</font></i>", normal_style))
-        elements.append(Spacer(1, 15))
+        elements.extend([
+            Paragraph("Progression des Performances Estimées", subsection_style),
+            EloProgressionChart(player_elos, opponent_elos, labels=[f"P {i+1}" for i in range(len(games))]),
+            Spacer(1, 5),
+            Paragraph("<i><font color='#0284c7'>Bleu : Niveau de performance (Joueur)</font> | <font color='#f97316'>Orange : Niveau de performance (Adversaire)</font></i>", normal_style),
+            Spacer(1, 15)
+        ])
 
     elements.append(Paragraph("2. Forces et Faiblesses (Ouvertures)", section_style))
-    categorized_games = {}
-    for g in games:
-        cat = f"{g['time_class'].capitalize()} ({g['opponent_type'].capitalize()})"
-        categorized_games.setdefault(cat, []).append(g)
+    categorized_games = defaultdict(list)
+    for g in games: categorized_games[f"{g['time_class'].capitalize()} ({g['opponent_type'].capitalize()})"].append(g)
 
-    sorted_categories = sorted(categorized_games.keys(), key=lambda x: (1 if "Robot" in x else 0, x))
-
-    for cat in sorted_categories:
+    for cat in sorted(categorized_games.keys(), key=lambda x: (1 if "Robot" in x else 0, x)):
         cat_games = categorized_games[cat]
         good = sum(g["analysis"]["summary"]["opening"].get("good_moves", 0) for g in cat_games)
         blunders = sum(g["analysis"]["summary"]["opening"].get("blunders", 0) for g in cat_games)
-        
-        elements.append(Paragraph(f"Format : {cat} ({len(cat_games)} parties)", subsection_style))
-        elements.append(Paragraph(f"Bons coups théoriques : <b>{good}</b> | Gaffes d'ouverture : <b>{blunders}</b>", normal_style))
-        elements.append(Spacer(1, 10))
+        elements.extend([
+            Paragraph(f"Format : {cat} ({len(cat_games)} parties)", subsection_style),
+            Paragraph(f"Bons coups théoriques : <b>{good}</b> | Gaffes d'ouverture : <b>{blunders}</b>", normal_style),
+            Spacer(1, 10)
+        ])
 
-    elements.append(PageBreak())
-    elements.append(Paragraph("3. Focus Théorique des Ouvertures (via Stockfish)", section_style))
+    elements.extend([PageBreak(), Paragraph("3. Focus Théorique des Ouvertures (via Stockfish)", section_style)])
     
     openings_blunders = defaultdict(list)
     for g in games:
-        op = g.get("opening", "Inconnue")
         for blunder in g.get("analysis", {}).get("opening_blunders", []):
-            openings_blunders[op].append(blunder)
+            openings_blunders[g.get("opening", "Inconnue")].append(blunder)
 
-    top_weak_openings = sorted(openings_blunders.items(), key=lambda x: len(x[1]), reverse=True)[:3]
+    top_weak = sorted(openings_blunders.items(), key=lambda x: len(x[1]), reverse=True)[:3]
     
-    if not top_weak_openings:
+    if not top_weak:
         elements.append(Paragraph("Aucune erreur critique d'ouverture n'a été détectée dans cet échantillon.", normal_style))
     else:
-        for op_name, blunders_list in top_weak_openings:
-            if len(blunders_list) > 0 and op_name != "Inconnue":
-                sample_blunder = blunders_list[0] 
-                elements.append(Paragraph(f"Ouverture : {op_name} ({len(blunders_list)} erreurs récentes)", subsection_style))
-                
-                theory_text = AIAnalyzer.get_stockfish_theory_summary(
-                    op_name, 
-                    sample_blunder["played_move"], 
-                    sample_blunder["stockfish_pv"]
-                )
-                elements.append(Paragraph(f"<i>Analyse de l'ordinateur :</i><br/>{theory_text}", normal_style))
-                elements.append(Spacer(1, 15))
+        for op_name, blunders_list in [item for item in top_weak if item[0] != "Inconnue"]:
+            sample = blunders_list[0] 
+            elements.extend([
+                Paragraph(f"Ouverture : {op_name} ({len(blunders_list)} erreurs récentes)", subsection_style),
+                Paragraph(f"<i>Analyse de l'ordinateur :</i><br/>{AIAnalyzer.get_stockfish_theory_summary(op_name, sample['played_move'], sample['stockfish_pv'])}", normal_style),
+                Spacer(1, 15)
+            ])
 
-    elements.append(PageBreak())
-    elements.append(Paragraph("4. Analyses Détaillées des Parties", section_style))
-    elements.append(Spacer(1, 15))
+    elements.extend([PageBreak(), Paragraph("4. Analyses Détaillées des Parties", section_style), Spacer(1, 15)])
 
-    deep_games = [g for g in games if g.get("deep_analysis")]
-    for idx, g in enumerate(deep_games):
+    for idx, g in enumerate([g for g in games if g.get("deep_analysis")]):
         if idx > 0: elements.append(Spacer(1, 20))
         g["player_focus"] = player_name
-        
-        w_name, b_name = g["white"]["username"], g["black"]["username"]
-        w_elo = g["analysis"].get("est_elo_white", "N/A")
-        b_elo = g["analysis"].get("est_elo_black", "N/A")
-        title = f"Partie {idx+1} : {w_name} ({w_elo} ELO) vs {b_name} ({b_elo} ELO)"
+        title = f"Partie {idx+1} : {g['white']['username']} ({g['analysis'].get('est_elo_white', 'N/A')} ELO) vs {g['black']['username']} ({g['analysis'].get('est_elo_black', 'N/A')} ELO)"
         
         elements.append(KeepTogether([
             Paragraph(title, subsection_style),
@@ -648,64 +513,50 @@ def main():
     parser.add_argument("--verbose", nargs="?", const=1, default=0, type=int, help="Active les logs")
     args = parser.parse_args()
 
-    enabled, level = (True, max(int(args.verbose), 1)) if args.verbose else (False, 0)
-    Logger.set_debug_enabled(enabled, level=level)
+    Logger.set_debug_enabled(bool(args.verbose), level=max(int(args.verbose or 0), 1))
     
     ollama_mgr = OllamaManager()
     ollama_mgr.start()
     
     try:
-        base_dir = resolve_project_base_dir()
+        base_dir = Path(__file__).resolve().parent.parent
         state_path = build_player_state_path(str(base_dir), args.player)
         
-        out_name = f"{args.player}_vs_{args.opponent}" if args.opponent else args.player
-        out_name = re.sub(r'[^a-zA-Z0-9._-]+', '_', out_name).strip('_')
+        out_name = re.sub(r'[^a-zA-Z0-9._-]+', '_', f"{args.player}_vs_{args.opponent}" if args.opponent else args.player).strip('_')
         output_path = base_dir / f"{out_name}_report_avance.pdf"
         
         state = load_state(str(state_path))
-        if state.get("player") and state.get("player").lower() != args.player.lower():
+        if state.get("player", "").lower() != args.player.lower():
             state = {"player": args.player, "games": {}}
+        
+        for game in state.get("games", {}).values():
+            if "analysis" in game and "details" in game["analysis"]:
+                game["analysis"]["est_elo_white"], game["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(game["analysis"]["details"])
 
         existing_games = state.get("games", {})
-        fetched_games = fetch_player_games(args.player, months=args.months)
         
-        for g in fetched_games:
+        for g in fetch_player_games(args.player, months=args.months):
             game_id = g.get("url")
             if not game_id: continue
             
-            w_name = g.get("white", {}).get("username", "").lower()
-            b_name = g.get("black", {}).get("username", "").lower()
+            if args.opponent and args.opponent.lower() not in (g.get("white", {}).get("username", "").lower(), g.get("black", {}).get("username", "").lower()):
+                continue
             
-            if args.opponent:
-                op_lower = args.opponent.lower()
-                if w_name != op_lower and b_name != op_lower:
-                    continue
-            
-            do_deep = True
-            existing_game = existing_games.get(game_id)
-            
-            if is_game_incomplete(existing_game, require_deep=do_deep):
-                
+            if is_game_incomplete(existing_games.get(game_id), require_deep=True):
                 def save_progress(partial_parsed):
                     existing_games[game_id] = partial_parsed
                     state["games"] = existing_games
                     save_state(str(state_path), state)
                 
-                parse_game_record(
-                    g, args.player, 
-                    deep_analysis=do_deep, 
-                    progress_callback=save_progress, 
-                    existing_game=existing_game
-                )
+                parse_game_record(g, args.player, deep_analysis=True, progress_callback=save_progress, existing_game=existing_games.get(game_id))
         
-        state["player"] = args.player
-        state["last_updated"] = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        state.update({"player": args.player, "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
         save_state(str(state_path), state)
-        
         build_pdf(str(output_path), state, args.player, args.opponent)
 
     finally:
         ollama_mgr.stop()
+        StockfishAnalyzer().clear_cache()
 
 if __name__ == "__main__":
     main()

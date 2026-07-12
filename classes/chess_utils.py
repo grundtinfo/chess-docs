@@ -1,6 +1,7 @@
 import re
 import string
 import chess
+import math
 from classes.config import Config
 from classes.logger import Logger
 
@@ -15,6 +16,37 @@ except ImportError:
     Logger.debug_log("Bibliothèque Openix non trouvée. Utilisation du mode restreint.", "WARNING")
 
 class ChessUtils:
+    @staticmethod
+    def calculate_elo_from_details(details):
+        """Calcule l'ELO estimé basé sur les précisions des coups (ACPL) avec une courbe exponentielle."""
+        weights = {"opening": 0.7, "middlegame": 1.2, "endgame": 1.0}
+        w_cpl, b_cpl = 0.0, 0.0
+        w_sum, b_sum = 0.0, 0.0
+        
+        for ply in details:
+            w = weights.get(ply.get("phase", "opening"), 1.0)
+            # Utilise la précision stockée (loss) pour le calcul
+            loss = min(1000, max(0, -ply.get("precision", 0)))
+            if ply.get("color") == "white":
+                w_cpl += (loss * w); w_sum += w
+            else:
+                b_cpl += (loss * w); b_sum += w
+                
+        # Paramètres du modèle exponentiel
+        MAX_ELO = 3200
+        FLOOR_ELO = 400
+        DECAY_CONSTANT = 0.019
+        
+        # Fonction locale pour appliquer la courbe exponentielle
+        def apply_exponential_curve(acpl):
+            return int(FLOOR_ELO + (MAX_ELO - FLOOR_ELO) * math.exp(-DECAY_CONSTANT * acpl))
+
+        # Calcul final des ELOs estimés
+        est_w = apply_exponential_curve(w_cpl / w_sum) if w_sum > 0 else 1200
+        est_b = apply_exponential_curve(b_cpl / b_sum) if b_sum > 0 else 1200
+        
+        return est_w, est_b
+
     @staticmethod
     def get_opening_name(board):
         """Récupère le nom de l'ouverture intelligemment."""
