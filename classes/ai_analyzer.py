@@ -42,6 +42,20 @@ class AIAnalyzer:
         return f"<b>Ligne Stockfish : {stockfish_line}</b><br/><br/>{content}"
 
     @staticmethod
+    def translate_opening_name(opening_name):
+        if not opening_name or opening_name == "Ouverture Inconnue":
+            return opening_name
+            
+        messages = [
+            {"role": "system", "content": "Tu es un expert en échecs. Si le nom de l'ouverture fournie est en anglais, traduis-le en français avec la terminologie officielle (ex: 'Queen's Gambit' -> 'Gambit Dame'). Si c'est déjà en français, renvoie-le tel quel sans rien ajouter d'autre. Ne mets pas de guillemets."},
+            {"role": "user", "content": f"Nom : {opening_name}"}
+        ]
+        
+        # Température à 0.0 pour forcer une traduction déterministe et factuelle
+        traduction = AIAnalyzer.query_llm(messages, options={'temperature': 0.0}, context_log=f"Traduction de {opening_name}", fallback=opening_name)
+        return traduction
+
+    @staticmethod
     def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
         Logger.debug_log(f"Détection des tactiques pour le coup {move_obj.uci()}...", "INFO")
         tactics = []

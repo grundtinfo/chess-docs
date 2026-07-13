@@ -24,11 +24,16 @@ def get_orientation(item):
     return chess.BLACK if orientation.lower().startswith("n") else chess.WHITE
 
 def generate_moves_table(item):
+    from classes.json_cache import CacheManager
     coups_str = item.get("coups", "")
     moves = ChessUtils.parse_moves(coups_str)
     rows = []
     board = chess.Board()
     current_row = None
+    
+    # Chargement du cache
+    cache = CacheManager.load_cache()
+    cache_updated = False
     
     for i, move in enumerate(moves):
         move_raw = move.get("raw", "")
@@ -37,7 +42,18 @@ def generate_moves_table(item):
         arrow_notation = None
         arrow_color = None
         
-        commentaire, coup_annote = AIAnalyzer.generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
+        # Clé unique basée sur la position exacte (FEN) et le coup joué
+        fen_before = board.fen()
+        cache_key = f"opening_{fen_before}_{move_san}"
+        
+        # Vérification du cache : si vide ou absent, on regénère
+        if cache_key in cache and cache[cache_key].get("commentaire") and cache[cache_key].get("coup_annote"):
+            commentaire = cache[cache_key]["commentaire"]
+            coup_annote = cache[cache_key]["coup_annote"]
+        else:
+            commentaire, coup_annote = AIAnalyzer.generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
+            cache[cache_key] = {"commentaire": commentaire, "coup_annote": coup_annote}
+            cache_updated = True
         
         try:
             move_obj = board.parse_san(move_san)
@@ -71,6 +87,11 @@ def generate_moves_table(item):
                 rows.append(current_row)
             else:
                 current_row.update({"black": coup_annote, "black_comment": commentaire, "black_fen": fen_after, "black_arrow": arrow_notation, "black_arrow_color": arrow_color})
+                
+    # Sauvegarde uniquement s'il y a eu des modifications
+    if cache_updated:
+        CacheManager.save_cache(cache)
+        
     return rows
 
 def ajouter_pied_page(canvas, doc):

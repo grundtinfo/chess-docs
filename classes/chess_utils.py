@@ -3,7 +3,6 @@ import string
 import chess
 import math
 import os
-import orjson
 import time
 import requests
 from datetime import datetime
@@ -21,6 +20,8 @@ except ImportError:
     Logger.debug_log("Bibliothèque Openix non trouvée. Utilisation du mode restreint.", "WARNING")
 
 class ChessUtils:
+    _translation_cache = {}
+
     @staticmethod
     def calculate_elo_from_details(details):
         """Calcule l'ELO estimé basé sur les précisions des coups (ACPL) avec une courbe exponentielle."""
@@ -53,21 +54,40 @@ class ChessUtils:
         return est_w, est_b
 
     @staticmethod
+    @staticmethod
     def get_opening_name(board):
-        """Récupère le nom de l'ouverture intelligemment."""
+        """Récupère le nom de l'ouverture intelligemment avec Openix, traduit via LLM si nécessaire."""
+        opening_name = "Ouverture Inconnue"
+        
         if OPENIX_AVAILABLE:
             try:
-                # Récupère la séquence des coups joués
-                move_stack = [move.san() for move in board.move_stack]
+                # CORRECTION : Reconstitution correcte de la liste des coups en SAN
+                # On utilise un plateau temporaire pour générer les SAN selon l'historique
+                temp_board = chess.Board()
+                move_stack = []
+                for move in board.move_stack:
+                    move_stack.append(temp_board.san(move))
+                    temp_board.push(move)
+                
                 # Recherche l'ouverture correspondante
                 matches = _op_lib.find_openings_after_moves(move_stack)
                 if matches:
-                    return matches[0].name
+                    opening_name = matches[0].name
             except Exception as e:
                 Logger.debug_log(f"Erreur lookup Openix: {e}", "ERROR")
-        
-        # Fallback : utilise le header ECO si disponible dans l'objet board ou headers
-        return "Ouverture Inconnue"
+
+        if opening_name != "Ouverture Inconnue":
+            # Import local pour éviter l'erreur d'import circulaire avec AIAnalyzer
+            from classes.ai_analyzer import AIAnalyzer
+            
+            if opening_name not in ChessUtils._translation_cache:
+                traduit = AIAnalyzer.translate_opening_name(opening_name)
+                ChessUtils._translation_cache[opening_name] = traduit
+            
+            return ChessUtils._translation_cache[opening_name]
+
+        # Fallback
+        return opening_name
 
     @staticmethod
     def resolve_stockfish_depth(explicit_depth=None):
@@ -188,28 +208,6 @@ class ChessUtils:
     def build_player_state_path(base_dir, player_name):
         safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", player_name).strip("_") or "player"
         return os.path.join(base_dir, "json", f"player_{safe_name}.json")
-
-    @staticmethod
-    def load_state(path):
-        if not path or not os.path.exists(path): 
-            return {"player": "", "games": {}}
-        try:
-            with open(path, "rb") as handle: # Mode binaire 'rb'
-                data = orjson.loads(handle.read()) # orjson gère les bytes directement
-                if isinstance(data.get("games"), list):
-                    data["games"] = {g["id"]: g for g in data["games"] if "id" in g}
-                elif not isinstance(data.get("games"), dict):
-                    data["games"] = {}
-                return data
-        except Exception: 
-            return {"player": "", "games": {}}
-
-    @staticmethod
-    def save_state(path, state):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "wb") as handle: # Mode binaire 'wb'
-            # OPT_INDENT_2 remplace le paramètre 'indent=2' du module json standard
-            handle.write(orjson.dumps(state, option=orjson.OPT_INDENT_2))
 
     @staticmethod
     def is_game_incomplete(game, require_deep):

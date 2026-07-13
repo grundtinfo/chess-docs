@@ -59,15 +59,31 @@ def split_move_options(moves_text):
     return [m.strip() for m in re.split(r'\s+ou\s+|\s*,\s*', moves_text) if m.strip()]
 
 def generate_moves_table(piege):
+    from classes.json_cache import CacheManager
     Logger.debug_log(f"Génération table des coups pour le piège {piege.get('nom', 'sans nom')}", "INFO")
     moves = ChessUtils.parse_moves(piege.get("coups", ""))
     rows, board, current_row = [], chess.Board(), None
+
+    # Chargement du cache
+    cache = CacheManager.load_cache()
+    cache_updated = False
 
     for i, move in enumerate(moves):
         move_san = move.get("san", "")
         future_moves = [m.get("san", "") for m in moves[i+1:]]
         
-        commentaire, coup_annote = AIAnalyzer.generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves)
+        # Clé unique basée sur la position exacte (FEN) et le coup joué
+        fen_before = board.fen()
+        cache_key = f"trap_{fen_before}_{move_san}"
+        
+        # Vérification du cache : si vide ou absent, on regénère
+        if cache_key in cache and cache[cache_key].get("commentaire") and cache[cache_key].get("coup_annote"):
+            commentaire = cache[cache_key]["commentaire"]
+            coup_annote = cache[cache_key]["coup_annote"]
+        else:
+            commentaire, coup_annote = AIAnalyzer.generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves)
+            cache[cache_key] = {"commentaire": commentaire, "coup_annote": coup_annote}
+            cache_updated = True
         
         try: board.push(board.parse_san(move_san))
         except Exception: pass
@@ -82,6 +98,11 @@ def generate_moves_table(piege):
                 rows.append(current_row)
             else:
                 current_row.update({"black": coup_annote, "black_comment": commentaire, "black_fen": fen_after})
+                
+    # Sauvegarde uniquement s'il y a eu des modifications
+    if cache_updated:
+        CacheManager.save_cache(cache)
+        
     return rows
 
 def generate_fen_positions(piege):

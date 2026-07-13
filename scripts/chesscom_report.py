@@ -27,6 +27,7 @@ from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer, OllamaManager
 from classes.ai_analyzer import AIAnalyzer
 from classes.pdf_components import ChessboardFlowable, EloProgressionChart, PDFUtils
+from classes.json_cache import CacheManager
 
 def parse_game_record(game, username, deep_analysis=False, progress_callback=None, existing_game=None):
     pgn_text = game.get("pgn")
@@ -78,6 +79,27 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         Logger.debug_log(f"Reprise de l'analyse de {game.get('url')} au coup {len(details) + 1}", "INFO")
 
     max_deep_moves = len(moves) if deep_analysis else 0
+    # Recherche de l'ouverture via Openix ---
+    board_for_opening = game_obj.board()
+    best_opening_name = "Ouverture Inconnue"
+    
+    # On joue les coups un par un et on teste le nom de l'ouverture
+    for m in moves[:20]:
+        try:
+            board_for_opening.push(m)
+            # On passe le plateau complet, pas le coup individuel
+            op_name = ChessUtils.get_opening_name(board_for_opening)
+            if op_name != "Ouverture Inconnue":
+                best_opening_name = op_name
+        except Exception as e:
+            # On ignore les erreurs de lookup pour ne pas interrompre le rapport
+            continue
+            
+    # Fallback sur les headers du PGN
+    if best_opening_name == "Ouverture Inconnue":
+        best_opening_name = game_obj.headers.get("Opening", game_obj.headers.get("ECO", "Ouverture Inconnue"))
+
+    max_deep_moves = len(moves) if deep_analysis else 0
     result_data = {
         "id": game.get("url"),
         "is_complete": False,
@@ -88,7 +110,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         "opponent_type": ChessUtils.classify_opponent_type(black_name if white_name == username else white_name),
         "white": {"username": white_name, "elo": game.get("white", {}).get("rating")},
         "black": {"username": black_name, "elo": game.get("black", {}).get("rating")},
-        "opening": game_obj.headers.get("Opening", game_obj.headers.get("ECO", ChessUtils.get_opening_name(game_obj.board()))),
+        "opening": best_opening_name,  # ICI : On utilise notre variable Openix
         "deep_analysis": deep_analysis,
         "analysis": {
             "summary": {"opening": {}, "middlegame": {}, "endgame": {}}, 
@@ -372,7 +394,7 @@ def main():
         out_name = re.sub(r'[^a-zA-Z0-9._-]+', '_', f"{args.player}_vs_{args.opponent}" if args.opponent else args.player).strip('_')
         output_path = base_dir / f"{out_name}_report_avance.pdf"
         
-        state = ChessUtils.load_state(str(state_path))
+        state = CacheManager.load_state(str(state_path))
         if (state.get("player") or "").lower() != args.player.lower():
             state = {"player": args.player, "games": {}}
         
@@ -393,12 +415,12 @@ def main():
                 def save_progress(partial_parsed):
                     existing_games[game_id] = partial_parsed
                     state["games"] = existing_games
-                    ChessUtils.save_state(str(state_path), state)
+                    CacheManager.save_state(str(state_path), state)
                 
                 parse_game_record(g, args.player, deep_analysis=True, progress_callback=save_progress, existing_game=existing_games.get(game_id))
         
         state.update({"player": args.player, "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-        ChessUtils.save_state(str(state_path), state)
+        CacheManager.save_state(str(state_path), state)
         build_pdf(str(output_path), state, args.player, args.opponent)
 
     finally:
