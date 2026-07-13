@@ -10,16 +10,24 @@ from classes.engines import StockfishAnalyzer
 class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
-            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\n\nCOMMENTAIRE :"},
+            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\nCOMMENTAIRE :"},
             {"role": "assistant", "content": "Un bon coup qui est le plus précis dans cette position."}
         ],
-        "erreur": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse.\nÉvénement : Expose à une perte matérielle.\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Ce coup est une erreur sérieuse car il expose à une perte matérielle."}
+        "erreur_avec_alternative": [
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse qui fait perdre un avantage significatif.\nMeilleure alternative : Cf6\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "Ce coup est une erreur sérieuse qui fait perdre un avantage significatif, la meilleure alternative étant Cf6."}
         ],
         "perte_materielle": [
             {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"},
             {"role": "assistant", "content": "Ce coup expose le Cavalier à une perte matérielle forcée selon la suite : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5."}
+        ],
+        "gaffe_tactique_alternative": [
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Fg4\nQualité : C'est une gaffe majeure entraînant une perte catastrophique.\nÉvénement : Tactique Fourchette par Cavalier en e5 sur : Roi en e8, Tour en h8\nMeilleure alternative : 0-0\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "C'est une gaffe majeure entraînant une perte catastrophique en permettant une fourchette du Cavalier en e5 sur le Roi et la Tour, alors que le meilleur coup était le petit roque (0-0)."}
+        ],
+        "imprecision": [
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Df6\nQualité : C'est une imprécision qui dégrade légèrement la position.\nMeilleure alternative : Cf6\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "Ce coup est une imprécision qui dégrade légèrement la position, la meilleure alternative étant Cf6."}
         ]
     }
 
@@ -62,12 +70,28 @@ class AIAnalyzer:
             return opening_name
             
         messages = [
-            {"role": "system", "content": "Tu es un expert en échecs. Si le nom de l'ouverture fournie est en anglais, traduis-le en français avec la terminologie officielle (ex: 'Queen's Gambit' -> 'Gambit Dame'). Si c'est déjà en français, renvoie-le tel quel sans rien ajouter d'autre. Ne mets pas de guillemets."},
-            {"role": "user", "content": f"Nom : {opening_name}"}
+            {
+                "role": "system",
+                "content": (
+                    "Tu es un traducteur robotique et strict d'ouvertures d'échecs. Ton SEUL rôle est de traduire de l'anglais vers le français.\n"
+                    "RÈGLES ABSOLUES :\n"
+                    "1. 'Opening' se traduit EXCLUSIVEMENT par 'Ouverture' (JAMAIS par Ouvrière).\n"
+                    "2. 'Bishop' = 'Fou', 'Knight' = 'Cavalier', 'Queen' = 'Dame', 'Draw' = 'Nulle'.\n"
+                    "3. Renvoie UNIQUEMENT la traduction. Aucun préfixe 'Nom:', aucun commentaire, aucune note entre parenthèses."
+                )
+            },
+            {
+                "role": "user",
+                "content": f"{opening_name}"
+            }
         ]
         
-        # Température à 0.0 pour forcer une traduction déterministe et factuelle
         traduction = AIAnalyzer.query_llm(messages, options={'temperature': 0.0}, context_log=f"Traduction de {opening_name}", fallback=opening_name)
+        
+        # Nettoyage programmatique post-LLM pour forcer le format
+        traduction = traduction.replace("Nom :", "").replace("Nom:", "").strip()
+        traduction = traduction.split("(")[0].strip() # Enlève tout blabla entre parenthèses
+        
         return traduction
 
     @staticmethod
@@ -294,13 +318,15 @@ class AIAnalyzer:
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, future_moves)
                     
                     if tactics != "Continuité":
-                        if "mat" in tactics.lower():
+                        # CORRECTION : On vérifie "mat inévitable" ou "mat par" pour éviter le faux positif sur "matérielle"
+                        if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
                             status = "C'est une gaffe majeure entraînant un mat inévitable."
                         elif "perte matérielle" in tactics.lower():
                             status = "C'est une erreur sérieuse causant une perte matérielle forcée."
                         else:
                             status = f"C'est un coup tactique significatif."
                     else:
+                        # TA LOGIQUE SUR LES DELTAS EST BIEN CONSERVÉE ICI
                         if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
                         elif delta <= -300: status = "C'est une gaffe majeure entraînant une perte catastrophique."
                         elif delta <= -150: status = "C'est une erreur sérieuse qui fait perdre un avantage significatif."
@@ -324,16 +350,22 @@ RÈGLES :
 3. Si la mention "via :" apparaît dans les faits, tu dois obligatoirement la mentionner telle quelle avec la pièce concernée.
 4. Génère uniquement la phrase finale, sans aucune introduction, conclusion ou justification.
 5. RÈGLE ABSOLUE : utilise l'expression "mettre en échec" ou le mot "échec" uniquement pour le Roi. Cet échec peut être direct ou indirect mais ne doit jamais être utilisé pour d'autres pièces.
-6. RÈGLE ABSOLUE : Si l'événement est une simple capture de pion sans tactique associée, ce n'est pas un coup tactique significatif.{alt_rule}"""
+6. RÈGLE ABSOLUE : Si l'événement est une simple capture de pion sans tactique associée, ce n'est pas un coup tactique significatif.
+7. RÈGLE ABSOLUE : Tu as l'INTERDICTION d'inventer des menaces, des échecs ou des conséquences tactiques qui ne sont pas explicitement écrites dans les FAITS.{alt_rule}"""
 
                     messages = [{"role": "system", "content": system_prompt}]
                     
                     if "bon coup" in status.lower() or "solide" in status.lower():
                         messages.extend(AIAnalyzer.FEW_SHOT_BANK["bon_coup"])
-                        
+                    elif "imprécision" in status.lower():
+                        messages.extend(AIAnalyzer.FEW_SHOT_BANK["imprecision"])
                     elif "erreur" in status.lower() or "gaffe" in status.lower():
-                        messages.extend(AIAnalyzer.FEW_SHOT_BANK["erreur"])
-                        
+                        # Utilisation dynamique de la bonne clé selon la gravité
+                        if alt_context:
+                            if "gaffe" in status.lower():
+                                messages.extend(AIAnalyzer.FEW_SHOT_BANK["gaffe_tactique_alternative"])
+                            else:
+                                messages.extend(AIAnalyzer.FEW_SHOT_BANK["erreur_avec_alternative"])
                         # Injection croisée si l'erreur implique une perte matérielle tactique
                         if tactics != "Continuité" and "perte matérielle" in tactics.lower():
                             messages.extend(AIAnalyzer.FEW_SHOT_BANK["perte_materielle"])
