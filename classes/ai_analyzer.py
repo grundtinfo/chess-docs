@@ -68,32 +68,48 @@ class AIAnalyzer:
     def translate_opening_name(opening_name):
         if not opening_name or opening_name == "Ouverture Inconnue":
             return opening_name
+
+        # 1. Définir les traductions spécifiques des modificateurs
+        translations = {
+            "Bishop's": "du Fou",
+            "King's": "du Roi",
+            "Queen's": "de la Dame",
+            "Sicilian": "Sicilienne",
+            "Zukertort": "de Zukertort",
+            "Tennison": "Tennison",
+            "Jalalabad": "de Jalalabad"
+        }
+
+        # 2. Cas spécifique : "Opening"
+        if "Opening" in opening_name:
+            # On extrait le nom de l'ouverture (tout ce qui n'est pas "Opening" ou ":")
+            name_part = opening_name.replace("Opening", "").replace(":", "").strip()
             
+            # On récupère la traduction du modificateur ou on garde le nom original
+            translated_name = translations.get(name_part, name_part)
+            
+            # On reconstruit dans le bon ordre : Ouverture + [nom]
+            return f"Ouverture {translated_name}"
+
+        # 3. Pour le reste (Défense, Gambit, etc.)
+        result = opening_name
+        for eng, fr in translations.items():
+            result = result.replace(eng, fr)
+
+        if result == opening_name:
+            # Si aucune traduction n'a été faite, on utilise le LLM comme fallback
+            result = AIAnalyzer._translate_with_llm_fallback(opening_name)
+            
+        return result
+
+    @staticmethod
+    def _translate_with_llm_fallback(opening_name):
+        # N'utilisez ce LLM que pour les cas non gérés par le dictionnaire
         messages = [
-            {
-                "role": "system",
-                "content": (
-                    "Tu es un traducteur robotique et strict d'ouvertures d'échecs. Ton SEUL rôle est de traduire de l'anglais vers le français.\n"
-                    "RÈGLES ABSOLUES :\n"
-                    "1. 'Opening' se traduit EXCLUSIVEMENT par 'Ouverture' (JAMAIS par Ouvrière).\n"
-                    "2. 'Bishop' = 'Fou', 'Knight' = 'Cavalier', 'Queen' = 'Dame', 'Draw' = 'Nulle'.\n"
-                    "3. Renvoie EXCLUSIVEMENT la traduction, sans aucun autre caractère, sans parenthèses, sans notes, sans 'Nom :', sans introduction.\n"
-                    "Si tu ajoutes le moindre commentaire, la base de données sera corrompue.\n"
-                )
-            },
-            {
-                "role": "user",
-                "content": f"{opening_name}"
-            }
+            {"role": "system", "content": "Tu es un outil de conversion. Remplace UNIQUEMENT les mots techniques (Opening->Ouverture, Defense->Défense, Variation->Variante). NE JAMAIS TRADUIRE les noms propres (Zukertort, Tennison, Jalalabad). NE JAMAIS AJOUTER DE COMMENTAIRE."},
+            {"role": "user", "content": opening_name}
         ]
-        
-        traduction = AIAnalyzer.query_llm(messages, options={'temperature': 0.0}, context_log=f"Traduction de {opening_name}", fallback=opening_name)
-        
-        # Nettoyage programmatique post-LLM pour forcer le format
-        traduction = traduction.replace("Nom :", "").replace("Nom:", "").strip()
-        traduction = traduction.split("(")[0].strip() # Enlève tout blabla entre parenthèses
-        
-        return traduction
+        return AIAnalyzer.query_llm(messages, options={'temperature': 0.0, 'num_predict': 20}, context_log="Fallback Traduction")
 
     @staticmethod
     def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
