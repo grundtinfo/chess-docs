@@ -471,6 +471,10 @@ def main():
     parser.add_argument("--opponent", default=None, help="Adversaire spécifique pour un rapport Head-to-Head")
     parser.add_argument("--months", type=int, default=1, help="Nombre de mois d'historique à récupérer")
     parser.add_argument("--verbose", nargs="?", const=1, default=0, type=int, help="Active les logs")
+    parser.add_argument("--max-games", type=int, default=5, help="Nombre max de parties à analyser (0 pour toutes, 5 par défaut)")
+    parser.add_argument("--game-id", type=str, default=None, help="ID ou URL spécifique de la partie à forcer dans l'analyse")
+    # --------------------------------------
+    
     args = parser.parse_args()
 
     Logger.set_debug_enabled(bool(args.verbose), level=max(int(args.verbose or 0), 1))
@@ -495,27 +499,41 @@ def main():
 
         existing_games = state.get("games", {})
         
+        # --- NOUVELLE LOGIQUE DE FILTRAGE ET DE LIMITE ---
+        games_to_process = []
         for g in ChessUtils.fetch_player_games(args.player, months=args.months):
             game_id = g.get("url")
             if not game_id: continue
             
+            # Filtre 1 : ID de la partie si fourni (vérifie si l'ID passé est dans l'URL)
+            if args.game_id and args.game_id not in game_id:
+                continue
+            
+            # Filtre 2 : Adversaire
             if args.opponent and args.opponent.lower() not in (g.get("white", {}).get("username", "").lower(), g.get("black", {}).get("username", "").lower()):
                 continue
-            # Vérifie si le jeu est incomplet OU si l'ouverture a besoin d'être corrigée
+                
             existing_g = existing_games.get(game_id)
             needs_full_analysis = ChessUtils.is_game_incomplete(existing_g, require_deep=True)
             needs_opening_fix = existing_g and ChessUtils.is_raw_opening(existing_g.get("opening", ""))
             
+            # On stocke uniquement les parties qui requièrent un traitement
             if needs_full_analysis or needs_opening_fix:
-                def save_progress(partial_parsed):
-                    existing_games[game_id] = partial_parsed
-                    state["games"] = existing_games
-                    CacheManager.save_state(str(state_path), state)
-                
-                # On lance l'analyse. 
-                # Si c'est juste un fix d'ouverture, deep_analysis sera False (via is_game_incomplete)
-                # et le script sera très rapide.
-                parse_game_record(g, args.player, deep_analysis=needs_full_analysis, progress_callback=save_progress, existing_game=existing_g)
+                games_to_process.append((g, game_id, existing_g, needs_full_analysis))
+        
+        # Application de la limite du nombre de parties (uniquement si > 0)
+        if args.max_games > 0:
+            games_to_process = games_to_process[:args.max_games]
+            
+        # Lancement de l'analyse sur la liste restreinte
+        for g, game_id, existing_g, needs_full_analysis in games_to_process:
+            def save_progress(partial_parsed):
+                existing_games[game_id] = partial_parsed
+                state["games"] = existing_games
+                CacheManager.save_state(str(state_path), state)
+            
+            parse_game_record(g, args.player, deep_analysis=needs_full_analysis, progress_callback=save_progress, existing_game=existing_g)
+        # -------------------------------------------------
         
         state.update({"player": args.player, "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
         CacheManager.save_state(str(state_path), state)
