@@ -88,6 +88,14 @@ class ChessUtils:
 
         # Fallback
         return opening_name
+    
+    @staticmethod
+    def is_raw_opening(name):
+        # Liste des valeurs "vides" classiques
+        if name in ["Ouverture Inconnue", "None", ""]: return True
+        # Détection des codes ECO (format A00 à E99) souvent considérés comme "bruts"
+        if re.match(r'^[A-E]\d{2}$', name): return True
+        return False
 
     @staticmethod
     def resolve_stockfish_depth(explicit_depth=None):

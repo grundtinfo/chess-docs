@@ -79,25 +79,28 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         Logger.debug_log(f"Reprise de l'analyse de {game.get('url')} au coup {len(details) + 1}", "INFO")
 
     max_deep_moves = len(moves) if deep_analysis else 0
-    # Recherche de l'ouverture via Openix ---
-    board_for_opening = game_obj.board()
-    best_opening_name = "Ouverture Inconnue"
+    cached_opening = existing_game.get("opening", "Ouverture Inconnue") if existing_game else "Ouverture Inconnue"
     
-    # On joue les coups un par un et on teste le nom de l'ouverture
-    for m in moves[:20]:
-        try:
-            board_for_opening.push(m)
-            # On passe le plateau complet, pas le coup individuel
-            op_name = ChessUtils.get_opening_name(board_for_opening)
-            if op_name != "Ouverture Inconnue":
-                best_opening_name = op_name
-        except Exception as e:
-            # On ignore les erreurs de lookup pour ne pas interrompre le rapport
-            continue
-            
-    # Fallback sur les headers du PGN
-    if best_opening_name == "Ouverture Inconnue":
-        best_opening_name = game_obj.headers.get("Opening", game_obj.headers.get("ECO", "Ouverture Inconnue"))
+    # Utilisation de la nouvelle détection intelligente
+    needs_recalc = ChessUtils.is_raw_opening(cached_opening)
+    
+    best_opening_name = cached_opening
+
+    # Si le nom est "brut" ou "inconnu", on relance la détection
+    if needs_recalc:
+        board_for_opening = game_obj.board()
+        found_name = "Ouverture Inconnue"
+        
+        for m in moves[:20]:
+            try:
+                board_for_opening.push(m)
+                op_name = ChessUtils.get_opening_name(board_for_opening)
+                if op_name != "Ouverture Inconnue" and not ChessUtils.is_raw_opening(op_name):
+                    found_name = op_name
+            except Exception:
+                continue
+        
+        best_opening_name = found_name if found_name != "Ouverture Inconnue" else cached_opening
 
     max_deep_moves = len(moves) if deep_analysis else 0
     result_data = {
@@ -410,14 +413,21 @@ def main():
             
             if args.opponent and args.opponent.lower() not in (g.get("white", {}).get("username", "").lower(), g.get("black", {}).get("username", "").lower()):
                 continue
+            # Vérifie si le jeu est incomplet OU si l'ouverture a besoin d'être corrigée
+            existing_g = existing_games.get(game_id)
+            needs_full_analysis = ChessUtils.is_game_incomplete(existing_g, require_deep=True)
+            needs_opening_fix = existing_g and ChessUtils.is_raw_opening(existing_g.get("opening", ""))
             
-            if ChessUtils.is_game_incomplete(existing_games.get(game_id), require_deep=True):
+            if needs_full_analysis or needs_opening_fix:
                 def save_progress(partial_parsed):
                     existing_games[game_id] = partial_parsed
                     state["games"] = existing_games
                     CacheManager.save_state(str(state_path), state)
                 
-                parse_game_record(g, args.player, deep_analysis=True, progress_callback=save_progress, existing_game=existing_games.get(game_id))
+                # On lance l'analyse. 
+                # Si c'est juste un fix d'ouverture, deep_analysis sera False (via is_game_incomplete)
+                # et le script sera très rapide.
+                parse_game_record(g, args.player, deep_analysis=needs_full_analysis, progress_callback=save_progress, existing_game=existing_g)
         
         state.update({"player": args.player, "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
         CacheManager.save_state(str(state_path), state)
