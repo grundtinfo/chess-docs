@@ -8,6 +8,21 @@ from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer
 
 class AIAnalyzer:
+    FEW_SHOT_BANK = {
+        "bon_coup": [
+            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "Un bon coup qui est le plus précis dans cette position."}
+        ],
+        "erreur": [
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse.\nÉvénement : Expose à une perte matérielle.\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "Ce coup est une erreur sérieuse car il expose à une perte matérielle."}
+        ],
+        "perte_materielle": [
+            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "Ce coup expose le Cavalier à une perte matérielle forcée selon la suite : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5."}
+        ]
+    }
+
     @staticmethod
     def query_llm(messages, options=None, context_log="LLM", fallback=""):
         Logger.debug_log(f"Appel d'Ollama ({Config.OLLAMA_MODEL}) pour : {context_log}...", "INFO")
@@ -302,10 +317,7 @@ class AIAnalyzer:
                     
                     events_text = f"Événement : {tactics}" if tactics != "Continuité" else ""
                     
-                    messages = [
-                        {
-                            "role": "system",
-                            "content": f"""Tu es un parseur de données strict. Ton unique objectif est de transformer les variables brutes fournies dans la section "FAITS" en une seule phrase naturelle en français.
+                    system_prompt = f"""Tu es un parseur de données strict. Ton unique objectif est de transformer les variables brutes fournies dans la section "FAITS" en une seule phrase naturelle en français.
 RÈGLES :
 1. Utilise EXCLUSIVEMENT le vocabulaire, les pièces et les événements fournis dans les "FAITS".
 2. Si un attribut est vide ou absent, n'en parle pas.
@@ -313,15 +325,24 @@ RÈGLES :
 4. Génère uniquement la phrase finale, sans aucune introduction, conclusion ou justification.
 5. RÈGLE ABSOLUE : utilise l'expression "mettre en échec" ou le mot "échec" uniquement pour le Roi. Cet échec peut être direct ou indirect mais ne doit jamais être utilisé pour d'autres pièces.
 6. RÈGLE ABSOLUE : Si l'événement est une simple capture de pion sans tactique associée, ce n'est pas un coup tactique significatif.{alt_rule}"""
-                        },
-                        {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\n\nCOMMENTAIRE :"},
-                        {"role": "assistant", "content": "Un bon coup qui est le plus précis dans cette position."},
-                        {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse.\nÉvénement : Expose à une perte matérielle.\n\nCOMMENTAIRE :"},
-                        {"role": "assistant", "content": "Ce coup est une erreur sérieuse car il expose à une perte matérielle."},
-                        {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"},
-                        {"role": "assistant", "content": "Ce coup expose le Cavalier à une perte matérielle forcée selon la suite : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5."},
-                        {"role": "user", "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {san_fr}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"}
-                    ]
+
+                    messages = [{"role": "system", "content": system_prompt}]
+                    
+                    if "bon coup" in status.lower() or "solide" in status.lower():
+                        messages.extend(AIAnalyzer.FEW_SHOT_BANK["bon_coup"])
+                        
+                    elif "erreur" in status.lower() or "gaffe" in status.lower():
+                        messages.extend(AIAnalyzer.FEW_SHOT_BANK["erreur"])
+                        
+                        # Injection croisée si l'erreur implique une perte matérielle tactique
+                        if tactics != "Continuité" and "perte matérielle" in tactics.lower():
+                            messages.extend(AIAnalyzer.FEW_SHOT_BANK["perte_materielle"])
+
+                    # 3. Ajout de la requête finale (le vrai coup à analyser)
+                    messages.append({
+                        "role": "user", 
+                        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {san_fr}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
+                    })
                     
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 70, 'repeat_penalty': 1.0}
                     
