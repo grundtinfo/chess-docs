@@ -77,7 +77,8 @@ class AIAnalyzer:
                     "RÈGLES ABSOLUES :\n"
                     "1. 'Opening' se traduit EXCLUSIVEMENT par 'Ouverture' (JAMAIS par Ouvrière).\n"
                     "2. 'Bishop' = 'Fou', 'Knight' = 'Cavalier', 'Queen' = 'Dame', 'Draw' = 'Nulle'.\n"
-                    "3. Renvoie UNIQUEMENT la traduction. Aucun préfixe 'Nom:', aucun commentaire, aucune note entre parenthèses."
+                    "3. Renvoie EXCLUSIVEMENT la traduction, sans aucun autre caractère, sans parenthèses, sans notes, sans 'Nom :', sans introduction.\n"
+                    "Si tu ajoutes le moindre commentaire, la base de données sera corrompue.\n"
                 )
             },
             {
