@@ -181,8 +181,17 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             move_label = f"{san_fr}{suffix}" if suffix else san_fr
             llm_comment = ""
 
+        # On capture les informations de la gaffe pour le rapport détaillé
         if idx <= 12 and swing <= -250 and pv_san:
-            opening_blunders_data.append({"played_move": move_raw_en, "stockfish_pv": pv_san, "fen": board_before.fen()})
+            opening_blunders_data.append({
+                "move_number": (idx + 1) // 2,
+                "color": "white" if idx % 2 != 0 else "black",
+                "played_move": move_raw_en,
+                "played_uci": move.uci(),
+                "best_uci": best_uci,
+                "stockfish_pv": pv_san,
+                "fen": board_before.fen()
+            })
 
         if swing <= -300: blunders += 1
         elif precision >= -30 and swing > -100: good_moves += 1
@@ -192,12 +201,16 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             "move": move_label, "swing": swing, "precision": precision
         })
 
+        # On vérifie la capture AVANT de pousser le coup
+        is_capture = board_before.is_capture(move)
         board_before.push(move)
         
         details.append({
             "ply": idx, "move_number": (idx + 1) // 2, "color": "white" if idx % 2 != 0 else "black",
             "move": move_label, "raw_san": move_raw_en, "comment": llm_comment, "fen": board_before.fen(),
             "delta": round(swing, 2), "precision": round(precision, 2), "phase": phase,
+            "uci": move.uci(),
+            "is_capture": is_capture
         })
 
         result_data["analysis"]["summary"] = {
@@ -236,20 +249,53 @@ def render_game_analysis_table(game, normal_style, bold_style):
     for ply in game.get("analysis", {}).get("details", []):
         move_num = ply["move_number"]
         if ply["color"] == "white":
-            current_row = {"move_number": move_num, "white": ply["move"], "white_comment": ply["comment"], "white_fen": ply["fen"], "black": "", "black_comment": "", "black_fen": None}
+            current_row = {
+                "move_number": move_num, 
+                "white": ply["move"], "white_comment": ply["comment"], "white_fen": ply["fen"], 
+                "white_uci": ply.get("uci"), "white_is_capture": ply.get("is_capture", False),
+                "black": "", "black_comment": "", "black_fen": None, 
+                "black_uci": None, "black_is_capture": False
+            }
             rows.append(current_row)
         else:
             if not current_row or current_row["move_number"] != move_num:
-                current_row = {"move_number": move_num, "white": "", "white_comment": "", "white_fen": None, "black": ply["move"], "black_comment": ply["comment"], "black_fen": ply["fen"]}
+                current_row = {
+                    "move_number": move_num, 
+                    "white": "", "white_comment": "", "white_fen": None, "white_uci": None, "white_is_capture": False,
+                    "black": ply["move"], "black_comment": ply["comment"], "black_fen": ply["fen"],
+                    "black_uci": ply.get("uci"), "black_is_capture": ply.get("is_capture", False)
+                }
                 rows.append(current_row)
             else:
-                current_row.update({"black": ply["move"], "black_comment": ply["comment"], "black_fen": ply["fen"]})
+                current_row.update({
+                    "black": ply["move"], "black_comment": ply["comment"], "black_fen": ply["fen"],
+                    "black_uci": ply.get("uci"), "black_is_capture": ply.get("is_capture", False)
+                })
 
     orientation = chess.WHITE if game["white"]["username"].lower() == game.get("player_focus", "").lower() else chess.BLACK
 
     for row in rows:
         fen = row.get("black_fen") or row.get("white_fen")
-        diag = ChessboardFlowable(fen, size=110, orientation=orientation) if fen else ""
+        
+        fleches_blanches, fleches_noires, fleches_rouges = [], [], []
+        
+        # Attribution des flèches selon la couleur et si c'est une prise
+        if row.get("white_uci"):
+            if row.get("white_is_capture"): fleches_rouges.append(row["white_uci"])
+            else: fleches_blanches.append(row["white_uci"])
+                
+        if row.get("black_uci"):
+            if row.get("black_is_capture"): fleches_rouges.append(row["black_uci"])
+            else: fleches_noires.append(row["black_uci"])
+
+        diag = ChessboardFlowable(
+            fen, size=110, 
+            fleches_blanches=fleches_blanches, 
+            fleches_noires=fleches_noires, 
+            fleches_rouges=fleches_rouges, 
+            orientation=orientation
+        ) if fen else ""
+        
         parts = []
         if row.get("white_comment"): parts.append(f"<b>Blancs :</b> {row['white_comment']}")
         if row.get("black_comment"): parts.append(f"<b>Noirs :</b> {row['black_comment']}")
@@ -349,14 +395,56 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         elements.append(Paragraph("Aucune erreur critique d'ouverture n'a été détectée dans cet échantillon.", normal_style))
     else:
         for op_name, blunders_list in [item for item in top_weak if item[0] != "Inconnue"]:
-            sample = blunders_list[0] 
-            elements.extend([
-                Paragraph(f"Ouverture : {op_name} ({len(blunders_list)} erreurs récentes)", subsection_style),
-                Paragraph(f"<i>Analyse de l'ordinateur :</i><br/>{AIAnalyzer.get_stockfish_theory_summary(op_name, sample['played_move'], sample['stockfish_pv'])}", normal_style),
-                Spacer(1, 15)
-            ])
-
-    elements.extend([PageBreak(), Paragraph("4. Analyses Détaillées des Parties", section_style), Spacer(1, 15)])
+            elements.append(Paragraph(f"Ouverture : {op_name} ({len(blunders_list)} erreurs récentes)", subsection_style))
+            
+            blunder_data = [[
+                Paragraph("<b>Diag</b>", normal_style), 
+                Paragraph("<b>N°</b>", normal_style),
+                Paragraph("<b>Gaffe (Orange)</b>", normal_style),
+                Paragraph("<b>Meilleure (Bleue)</b>", normal_style),
+                Paragraph("<b>Analyse de l'IA</b>", normal_style)
+            ]]
+            
+            # On génère une ligne de tableau pour chaque gaffe liée à cette ouverture
+            for sample in blunders_list:
+                fen = sample.get("fen")
+                played_uci = sample.get("played_uci")
+                best_uci = sample.get("best_uci")
+                
+                # Formatage du numéro de coup (ex: 4B ou 4N)
+                color_letter = "B" if sample.get("color") == "white" else "N"
+                move_num = f"{sample.get('move_number', '?')} {color_letter}"
+                
+                fleches_oranges = [played_uci] if played_uci else []
+                fleches_bleues = [best_uci] if best_uci else []
+                orient = chess.WHITE if sample.get("color") == "white" else chess.BLACK
+                
+                diag = ChessboardFlowable(
+                    fen, size=110, 
+                    fleches_oranges=fleches_oranges, 
+                    fleches_bleues=fleches_bleues, 
+                    orientation=orient
+                ) if fen else ""
+                
+                summary = AIAnalyzer.get_stockfish_theory_summary(op_name, sample['played_move'], sample['stockfish_pv'])
+                best_reply_san = sample['stockfish_pv'].split()[0] if sample.get('stockfish_pv') else "N/A"
+                
+                blunder_data.append([
+                    diag,
+                    Paragraph(move_num, normal_style),
+                    Paragraph(sample.get('played_move', ''), normal_style),
+                    Paragraph(best_reply_san, normal_style),
+                    Paragraph(summary, normal_style)
+                ])
+                
+            t_blunder = Table(blunder_data, colWidths=[120, 30, 60, 60, 230], repeatRows=1)
+            t_blunder.setStyle(TableStyle([
+                ('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
+                ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, Config.COLOR_BG_LIGHT]),
+                ('LINEBELOW', (0,0), (-1,-1), 0.5, Config.COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6)
+            ]))
+            
+            elements.extend([t_blunder, Spacer(1, 15)])
 
     for idx, g in enumerate([g for g in games if g.get("deep_analysis")]):
         if idx > 0: elements.append(Spacer(1, 20))

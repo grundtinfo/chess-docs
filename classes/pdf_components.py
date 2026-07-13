@@ -8,12 +8,17 @@ from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
 
 class ChessboardFlowable(Flowable):
-    def __init__(self, fen, size=150, fleches_defense=None, fleches_menace=None, orientation=chess.WHITE):
+    def __init__(self, fen, size=150, fleches_defense=None, fleches_menace=None, fleches_oranges=None, fleches_bleues=None, fleches_blanches=None, fleches_noires=None, fleches_rouges=None, orientation=chess.WHITE):
         Flowable.__init__(self)
         self.fen = fen
         self.size = size
         self.fleches_defense = fleches_defense or []
         self.fleches_menace = fleches_menace or []
+        self.fleches_oranges = fleches_oranges or []
+        self.fleches_bleues = fleches_bleues or []
+        self.fleches_blanches = fleches_blanches or []
+        self.fleches_noires = fleches_noires or []
+        self.fleches_rouges = fleches_rouges or []
         self.orientation = orientation
 
     def wrap(self, availWidth, availHeight): 
@@ -24,17 +29,28 @@ class ChessboardFlowable(Flowable):
             if not self.fen: return
             board = chess.Board(self.fen)
             arrows = []
-            for notation in self.fleches_menace:
-                try: arrows.append(chess.svg.Arrow(chess.parse_square(notation[:2]), chess.parse_square(notation[2:]), color="#FF0000"))
-                except ValueError: pass
-            for notation in self.fleches_defense:
-                try: arrows.append(chess.svg.Arrow(chess.parse_square(notation[:2]), chess.parse_square(notation[2:]), color="#00AA00"))
-                except ValueError: pass
+            
+            # Fonction utilitaire pour parser et ajouter la flèche
+            def add_arrows(notations, hex_color):
+                for notation in notations:
+                    if not notation or len(notation) < 4: continue
+                    try: arrows.append(chess.svg.Arrow(chess.parse_square(notation[:2]), chess.parse_square(notation[2:4]), color=hex_color))
+                    except ValueError: pass
+
+            add_arrows(self.fleches_menace, "#FF0000")
+            add_arrows(self.fleches_defense, "#00AA00")
+            add_arrows(self.fleches_oranges, "orange")
+            add_arrows(self.fleches_bleues, "blue")
+            add_arrows(self.fleches_blanches, "white")
+            add_arrows(self.fleches_noires, "black")
+            add_arrows(self.fleches_rouges, "red")
 
             svg = chess.svg.board(board=board, size=self.size, arrows=arrows, orientation=self.orientation)
             drawing = svg2rlg(StringIO(svg))
             if drawing: renderPDF.draw(drawing, self.canv, 0, 0)
-        except Exception: pass
+        except Exception as e: 
+            pass
+
 class PDFUtils:
     @staticmethod
     def ajouter_pied_page(canvas, doc, title):
