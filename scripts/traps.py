@@ -18,7 +18,7 @@ from classes.logger import Logger
 from classes.chess_utils import ChessUtils
 from classes.engines import OllamaManager
 from classes.ai_analyzer import AIAnalyzer
-from classes.pdf_components import ChessboardFlowable
+from classes.pdf_components import ChessboardFlowable, PDFUtils
 
 def classify_trap(piege):
     coups = piege["coups"]
@@ -195,7 +195,8 @@ def generer_pdf(stockfish_depth=18, verbose=1):
             t_diags.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('BACKGROUND', (0,0), (-1,0), Config.COLOR_BG_LIGHT), ('BOX', (0,0), (-1,-1), 1, Config.COLOR_BORDER)]))
             elements.extend([KeepTogether([t_diags, Spacer(1, 15)]), Paragraph(f"<b>Idée :</b> {piege.get('conseil_defense', '')}", normal_style), Paragraph(f"<b>Défense :</b> {piege.get('coup_defense', '')} - {piege.get('explication_defense', '')}", normal_style)])
 
-        doc.build(elements, onFirstPage=ajouter_pied_page, onLaterPages=ajouter_pied_page)
+        footer = lambda c, d: PDFUtils.ajouter_pied_page(c, d, "Guide des 20 Pièges d'Ouverture")
+        doc.build(elements, onFirstPage=footer, onLaterPages=footer)
         Logger.debug_log("PDF généré avec succès", "ESSENTIAL")
     
     finally:

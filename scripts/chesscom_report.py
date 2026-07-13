@@ -26,153 +26,7 @@ from classes.logger import Logger
 from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer, OllamaManager
 from classes.ai_analyzer import AIAnalyzer
-from classes.pdf_components import ChessboardFlowable
-
-# =====================================================================
-# COMPOSANTS GRAPHIQUES : GRAPHIQUE ELO
-# =====================================================================
-
-class EloProgressionChart(Flowable):
-    def __init__(self, values_player, values_opponent, labels=None, width=460, height=200):
-        super().__init__()
-        self.vp = values_player or []
-        self.vo = values_opponent or []
-        self.labels = labels or []
-        self.width = width
-        self.height = height
-
-    def wrap(self, available_width, available_height):
-        return self.width, self.height
-
-    def draw(self):
-        if not self.vp or len(self.vp) < 2: return
-        x0, y0, x1, y1 = 40, 25, self.width - 20, self.height - 15
-        
-        self.canv.setStrokeColor(Config.COLOR_BORDER)
-        self.canv.setLineWidth(0.6)
-        self.canv.rect(x0, y0, x1 - x0, y1 - y0)
-        
-        all_vals = self.vp + self.vo
-        min_value, max_value = max(0, min(all_vals) - 150), max(all_vals) + 150
-        span = max_value - min_value or 1
-
-        self.canv.setFont("Helvetica", 8)
-        self.canv.setFillColor(Config.COLOR_TEXT)
-        num_steps = 5
-        
-        for i in range(num_steps + 1):
-            y_pos = y0 + (i / num_steps) * (y1 - y0)
-            val = min_value + (i / num_steps) * span
-            self.canv.drawRightString(x0 - 5, y_pos - 3, str(int(val)))
-            if 0 < i < num_steps:
-                self.canv.setStrokeColor(Config.COLOR_BORDER)
-                self.canv.setDash(2, 2)
-                self.canv.line(x0, y_pos, x1, y_pos)
-                self.canv.setDash()
-
-        def draw_line(values, color_hex):
-            points = [(x0 + (idx / max(len(values) - 1, 1)) * (x1 - x0), 
-                       y0 + ((value - min_value) / span) * (y1 - y0)) 
-                      for idx, value in enumerate(values)]
-
-            segments = [(points[i][0], points[i][1], points[i+1][0], points[i+1][1]) for i in range(len(points) - 1)]
-            self.canv.setStrokeColor(colors.HexColor(color_hex))
-            self.canv.setLineWidth(1.8)
-            self.canv.lines(segments)
-            
-            self.canv.setFillColor(colors.HexColor(color_hex))
-            for x, y in points: self.canv.circle(x, y, 2.5, stroke=0, fill=1)
-
-        draw_line(self.vo, "#f97316")
-        draw_line(self.vp, "#0284c7")
-
-        if self.labels:
-            self.canv.setFont("Helvetica", 8)
-            self.canv.setFillColor(Config.COLOR_TEXT)
-            step = max(1, len(self.labels) // 6)
-            for idx, label in enumerate(self.labels):
-                if idx % step != 0 and idx != len(self.labels) - 1: continue
-                x = x0 + (idx / max(len(self.vp) - 1, 1)) * (x1 - x0)
-                self.canv.drawString(x - 10, y0 - 12, str(label)[:10])
-
-# =====================================================================
-# UTILITAIRES ET DATA MANAGEMENT
-# =====================================================================
-
-def classify_opponent_type(username):
-    if not username: return "humain"
-    return "robot" if any(token in username.lower() for token in ["bot", "engine", "stockfish", "computer", "ai", "chess.com"]) else "humain"
-
-def infer_move_suffix(is_check=False, is_checkmate=False, delta=None):
-    if is_checkmate: return "#"
-    if is_check: return "+"
-    if delta is None: return ""
-    if delta <= -400: return "??"
-    if delta <= -120: return "?"
-    if delta >= 400: return "!!"
-    if delta >= 160: return "!"
-    return ""
-
-def build_player_state_path(base_dir, player_name):
-    safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", player_name).strip("_") or "player"
-    return os.path.join(base_dir, "json", f"player_{safe_name}.json")
-
-def load_state(path):
-    if not path or not os.path.exists(path): return {"player": "", "games": {}}
-    try:
-        with open(path, "r", encoding="utf-8") as handle:
-            data = json.load(handle)
-            if isinstance(data.get("games"), list):
-                data["games"] = {g["id"]: g for g in data["games"] if "id" in g}
-            elif not isinstance(data.get("games"), dict):
-                data["games"] = {}
-            return data
-    except Exception: return {"player": "", "games": {}}
-
-def save_state(path, state):
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as handle:
-        json.dump(state, handle, ensure_ascii=False, separators=(",", ":"), indent=2)
-
-def is_game_incomplete(game, require_deep):
-    if not game or not game.get("is_complete", False) or not game.get("result") or game.get("result") == "*": return True
-    if not game.get("date") or not game.get("end_time") or not game.get("analysis", {}).get("summary"): return True
-    return require_deep and (not game.get("deep_analysis") or not game.get("analysis", {}).get("details"))
-
-# =====================================================================
-# FETCH ET PARSING DES PARTIES
-# =====================================================================
-
-def fetch_player_games(username, months=6):
-    headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ChessDocs/1.0"}
-    Logger.debug_log(f"Récupération des archives Chess.com pour {username} (mois={months})", "INFO")
-
-    def request_with_retry(url, retries=3):
-        for attempt in range(retries):
-            try:
-                response = requests.get(url, timeout=25, headers=headers)
-                if response.status_code in {403, 429} and attempt < retries - 1:
-                    time.sleep(2 ** attempt)
-                    continue
-                response.raise_for_status()
-                return response
-            except requests.RequestException as exc:
-                if attempt < retries - 1: time.sleep(2 ** attempt)
-                else: raise exc
-
-    archives_url = f"https://api.chess.com/pub/player/{username}/games/archives"
-    try:
-        archives = request_with_retry(archives_url).json().get("archives", [])
-    except Exception as e:
-        Logger.debug_log(f"Erreur API archives: {e}", "ERROR")
-        return []
-
-    recent_archives = archives[-months:] if months and months > 0 else archives
-    games = []
-    for archive_url in recent_archives:
-        try: games.extend(request_with_retry(archive_url).json().get("games", []))
-        except Exception: pass
-    return games
+from classes.pdf_components import ChessboardFlowable, EloProgressionChart, PDFUtils
 
 def parse_game_record(game, username, deep_analysis=False, progress_callback=None, existing_game=None):
     pgn_text = game.get("pgn")
@@ -342,14 +196,6 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
 # RENDU PDF
 # =====================================================================
 
-def ajouter_pied_page_rapport(canvas, doc):
-    canvas.saveState()
-    canvas.setFont('Helvetica', 9)
-    canvas.setFillColor(Config.COLOR_TEXT)
-    canvas.drawString(36, 20, "Rapport Analytique Complet - Chess Docs")
-    canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
-    canvas.restoreState()
-
 def render_game_analysis_table(game, normal_style, bold_style):
     elements = []
     w_est, b_est = game["analysis"].get("est_elo_white", "N/A"), game["analysis"].get("est_elo_black", "N/A")
@@ -498,7 +344,8 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
             Spacer(1, 10)
         ] + render_game_analysis_table(g, normal_style, bold_style)))
 
-    doc.build(elements, onFirstPage=ajouter_pied_page_rapport, onLaterPages=ajouter_pied_page_rapport)
+    footer = lambda c, d: PDFUtils.ajouter_pied_page(c, d, "Rapport Analytique Complet - Chess Docs")
+    doc.build(elements, onFirstPage=footer, onLaterPages=footer)
     Logger.debug_log(f"PDF généré avec succès : {output_path}", "ESSENTIAL")
 
 # =====================================================================
@@ -520,12 +367,12 @@ def main():
     
     try:
         base_dir = Path(__file__).resolve().parent.parent
-        state_path = build_player_state_path(str(base_dir), args.player)
+        state_path = ChessUtils.build_player_state_path(str(base_dir), args.player)
         
         out_name = re.sub(r'[^a-zA-Z0-9._-]+', '_', f"{args.player}_vs_{args.opponent}" if args.opponent else args.player).strip('_')
         output_path = base_dir / f"{out_name}_report_avance.pdf"
         
-        state = load_state(str(state_path))
+        state = ChessUtils.load_state(str(state_path))
         if (state.get("player") or "").lower() != args.player.lower():
             state = {"player": args.player, "games": {}}
         
@@ -535,23 +382,23 @@ def main():
 
         existing_games = state.get("games", {})
         
-        for g in fetch_player_games(args.player, months=args.months):
+        for g in ChessUtils.fetch_player_games(args.player, months=args.months):
             game_id = g.get("url")
             if not game_id: continue
             
             if args.opponent and args.opponent.lower() not in (g.get("white", {}).get("username", "").lower(), g.get("black", {}).get("username", "").lower()):
                 continue
             
-            if is_game_incomplete(existing_games.get(game_id), require_deep=True):
+            if ChessUtils.is_game_incomplete(existing_games.get(game_id), require_deep=True):
                 def save_progress(partial_parsed):
                     existing_games[game_id] = partial_parsed
                     state["games"] = existing_games
-                    save_state(str(state_path), state)
+                    ChessUtils.save_state(str(state_path), state)
                 
                 parse_game_record(g, args.player, deep_analysis=True, progress_callback=save_progress, existing_game=existing_games.get(game_id))
         
         state.update({"player": args.player, "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})
-        save_state(str(state_path), state)
+        ChessUtils.save_state(str(state_path), state)
         build_pdf(str(output_path), state, args.player, args.opponent)
 
     finally:

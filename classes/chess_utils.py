@@ -2,6 +2,11 @@ import re
 import string
 import chess
 import math
+import os
+import json
+import time
+import requests
+from datetime import datetime
 from classes.config import Config
 from classes.logger import Logger
 
@@ -162,3 +167,81 @@ class ChessUtils:
         else:
             cp_val = (val * player_multiplier) / 100.0
             return f"{cp_val:+.1f}"
+
+    @staticmethod
+    def classify_opponent_type(username):
+        if not username: return "humain"
+        return "robot" if any(token in username.lower() for token in ["bot", "engine", "stockfish", "computer", "ai", "chess.com"]) else "humain"
+
+    @staticmethod
+    def infer_move_suffix(is_check=False, is_checkmate=False, delta=None):
+        if is_checkmate: return "#"
+        if is_check: return "+"
+        if delta is None: return ""
+        if delta <= -400: return "??"
+        if delta <= -120: return "?"
+        if delta >= 400: return "!!"
+        if delta >= 160: return "!"
+        return ""
+
+    @staticmethod
+    def build_player_state_path(base_dir, player_name):
+        safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", player_name).strip("_") or "player"
+        return os.path.join(base_dir, "json", f"player_{safe_name}.json")
+
+    @staticmethod
+    def load_state(path):
+        if not path or not os.path.exists(path): return {"player": "", "games": {}}
+        try:
+            with open(path, "r", encoding="utf-8") as handle:
+                data = json.load(handle)
+                if isinstance(data.get("games"), list):
+                    data["games"] = {g["id"]: g for g in data["games"] if "id" in g}
+                elif not isinstance(data.get("games"), dict):
+                    data["games"] = {}
+                return data
+        except Exception: return {"player": "", "games": {}}
+
+    @staticmethod
+    def save_state(path, state):
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w", encoding="utf-8") as handle:
+            json.dump(state, handle, ensure_ascii=False, separators=(",", ":"), indent=2)
+
+    @staticmethod
+    def is_game_incomplete(game, require_deep):
+        if not game or not game.get("is_complete", False) or not game.get("result") or game.get("result") == "*": return True
+        if not game.get("date") or not game.get("end_time") or not game.get("analysis", {}).get("summary"): return True
+        return require_deep and (not game.get("deep_analysis") or not game.get("analysis", {}).get("details"))
+
+    @staticmethod
+    def fetch_player_games(username, months=6):
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ChessDocs/1.0"}
+        Logger.debug_log(f"Récupération des archives Chess.com pour {username} (mois={months})", "INFO")
+
+        def request_with_retry(url, retries=3):
+            for attempt in range(retries):
+                try:
+                    response = requests.get(url, timeout=25, headers=headers)
+                    if response.status_code in {403, 429} and attempt < retries - 1:
+                        time.sleep(2 ** attempt)
+                        continue
+                    response.raise_for_status()
+                    return response
+                except requests.RequestException as exc:
+                    if attempt < retries - 1: time.sleep(2 ** attempt)
+                    else: raise exc
+
+        archives_url = f"https://api.chess.com/pub/player/{username}/games/archives"
+        try:
+            archives = request_with_retry(archives_url).json().get("archives", [])
+        except Exception as e:
+            Logger.debug_log(f"Erreur API archives: {e}", "ERROR")
+            return []
+
+        recent_archives = archives[-months:] if months and months > 0 else archives
+        games = []
+        for archive_url in recent_archives:
+            try: games.extend(request_with_retry(archive_url).json().get("games", []))
+            except Exception: pass
+        return games

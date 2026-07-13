@@ -17,7 +17,7 @@ from classes.logger import Logger
 from classes.chess_utils import ChessUtils
 from classes.engines import OllamaManager
 from classes.ai_analyzer import AIAnalyzer
-from classes.pdf_components import ChessboardFlowable
+from classes.pdf_components import ChessboardFlowable, PDFUtils
 
 def get_orientation(item):
     orientation = item.get("Orientation", "Blancs")
@@ -144,7 +144,8 @@ def build_pdf(output_path, source_name, data):
         ]))
         elements.extend([table, Spacer(1, 12)])
 
-    doc.build(elements, onFirstPage=ajouter_pied_page, onLaterPages=ajouter_pied_page)
+    footer = lambda c, d: PDFUtils.ajouter_pied_page(c, d, "Guide d'Ouvertures - Chess Docs")
+    doc.build(elements, onFirstPage=footer, onLaterPages=footer)
 
 def collect_source_files(base_dir):
     files = set()
