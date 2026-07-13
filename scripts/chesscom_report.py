@@ -85,7 +85,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         "end_time": game.get("end_time"),
         "result": result_text,
         "time_class": game.get("time_class", "inconnu"),
-        "opponent_type": classify_opponent_type(black_name if white_name == username else white_name),
+        "opponent_type": ChessUtils.classify_opponent_type(black_name if white_name == username else white_name),
         "white": {"username": white_name, "elo": game.get("white", {}).get("rating")},
         "black": {"username": black_name, "elo": game.get("black", {}).get("rating")},
         "opening": game_obj.headers.get("Opening", game_obj.headers.get("ECO", ChessUtils.get_opening_name(game_obj.board()))),
@@ -151,7 +151,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         else:
             board_test = board_before.copy()
             board_test.push(move)
-            suffix = infer_move_suffix(is_check=board_test.is_check(), is_checkmate=board_test.is_checkmate(), delta=swing)
+            suffix = ChessUtils.infer_move_suffix(is_check=board_test.is_check(), is_checkmate=board_test.is_checkmate(), delta=swing)
             san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             move_label = f"{san_fr}{suffix}" if suffix else san_fr
             llm_comment = ""

@@ -3,7 +3,7 @@ import string
 import chess
 import math
 import os
-import json
+import orjson
 import time
 import requests
 from datetime import datetime
@@ -191,22 +191,25 @@ class ChessUtils:
 
     @staticmethod
     def load_state(path):
-        if not path or not os.path.exists(path): return {"player": "", "games": {}}
+        if not path or not os.path.exists(path): 
+            return {"player": "", "games": {}}
         try:
-            with open(path, "r", encoding="utf-8") as handle:
-                data = json.load(handle)
+            with open(path, "rb") as handle: # Mode binaire 'rb'
+                data = orjson.loads(handle.read()) # orjson gère les bytes directement
                 if isinstance(data.get("games"), list):
                     data["games"] = {g["id"]: g for g in data["games"] if "id" in g}
                 elif not isinstance(data.get("games"), dict):
                     data["games"] = {}
                 return data
-        except Exception: return {"player": "", "games": {}}
+        except Exception: 
+            return {"player": "", "games": {}}
 
     @staticmethod
     def save_state(path, state):
         os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w", encoding="utf-8") as handle:
-            json.dump(state, handle, ensure_ascii=False, separators=(",", ":"), indent=2)
+        with open(path, "wb") as handle: # Mode binaire 'wb'
+            # OPT_INDENT_2 remplace le paramètre 'indent=2' du module json standard
+            handle.write(orjson.dumps(state, option=orjson.OPT_INDENT_2))
 
     @staticmethod
     def is_game_incomplete(game, require_deep):
