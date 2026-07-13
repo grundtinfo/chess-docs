@@ -311,7 +311,7 @@ RÈGLES :
 2. Si un attribut est vide ou absent, n'en parle pas.
 3. Si la mention "via :" apparaît dans les faits, tu dois obligatoirement la mentionner telle quelle avec la pièce concernée.
 4. Génère uniquement la phrase finale, sans aucune introduction, conclusion ou justification.
-5. RÈGLE ABSOLUE : utilise l'expression "mettre en échec" ou le mot "échec" que pour le Roi. Cet echec peut être direct ou indirect mais ne doit jamais être utilisé pour d'autres pièces.
+5. RÈGLE ABSOLUE : utilise l'expression "mettre en échec" ou le mot "échec" uniquement pour le Roi. Cet échec peut être direct ou indirect mais ne doit jamais être utilisé pour d'autres pièces.
 6. RÈGLE ABSOLUE : Si l'événement est une simple capture de pion sans tactique associée, ce n'est pas un coup tactique significatif.{alt_rule}"""
                         },
                         {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\n\nCOMMENTAIRE :"},
