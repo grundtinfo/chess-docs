@@ -71,6 +71,15 @@ class AIAnalyzer:
 
         # 1. Définir les traductions spécifiques des modificateurs
         translations = {
+            "Defense": "Défense",
+            "Variation": "Variante",
+            "Attack": "Attaque",
+            "Gambit": "Gambit",
+            "System": "Système",
+            "Accepted": "Accepté",
+            "Declined": "Refusé",
+            "English": "Anglaise",
+            "Symmetrical": "Symétrique",
             "Bishop's": "du Fou",
             "King's": "du Roi",
             "Queen's": "de la Dame",
@@ -95,6 +104,10 @@ class AIAnalyzer:
         result = opening_name
         for eng, fr in translations.items():
             result = result.replace(eng, fr)
+            
+        # 4. Corrections syntaxiques post-traduction pour le français
+        result = result.replace("Sicilienne Défense", "Défense Sicilienne")
+        result = result.replace("Anglaise Ouverture", "Ouverture Anglaise")
 
         if result == opening_name:
             # Si aucune traduction n'a été faite, on utilise le LLM comme fallback
@@ -337,7 +350,11 @@ class AIAnalyzer:
                     if tactics != "Continuité":
                         # CORRECTION : On vérifie "mat inévitable" ou "mat par" pour éviter le faux positif sur "matérielle"
                         if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
-                            status = "C'est une gaffe majeure entraînant un mat inévitable."
+                            # Si val_after_raw est négatif, c'est le joueur qui vient de jouer qui force le mat
+                            if val_after_raw < 0:
+                                status = "Ce coup est excellent, le joueur force le mat. Décris comment il gagne."
+                            else:
+                                status = "C'est une gaffe majeure qui entraîne un mat inévitable contre le joueur."
                         elif "perte matérielle" in tactics.lower():
                             status = "C'est une erreur sérieuse causant une perte matérielle forcée."
                         else:
@@ -368,7 +385,8 @@ RÈGLES :
 4. Génère uniquement la phrase finale, sans aucune introduction, conclusion ou justification.
 5. RÈGLE ABSOLUE : utilise l'expression "mettre en échec" ou le mot "échec" uniquement pour le Roi. Cet échec peut être direct ou indirect mais ne doit jamais être utilisé pour d'autres pièces.
 6. RÈGLE ABSOLUE : Si l'événement est une simple capture de pion sans tactique associée, ce n'est pas un coup tactique significatif.
-7. RÈGLE ABSOLUE : Tu as l'INTERDICTION d'inventer des menaces, des échecs ou des conséquences tactiques qui ne sont pas explicitement écrites dans les FAITS.{alt_rule}"""
+7. RÈGLE ABSOLUE : Tu as l'INTERDICTION d'inventer des menaces, des échecs ou des conséquences tactiques qui ne sont pas explicitement écrites dans les FAITS.
+8. RÈGLE ABSOLUE : Interdiction formelle d'inventer des règles impossibles (ex: un joueur ne peut pas mettre son propre roi en échec). N'utilise JAMAIS le terme hors contexte "maturation".{alt_rule}"""
 
                     messages = [{"role": "system", "content": system_prompt}]
                     
@@ -393,7 +411,7 @@ RÈGLES :
                         "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {san_fr}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
                     })
                     
-                    options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 70, 'repeat_penalty': 1.0}
+                    options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.0}
                     
                     fallback_comment = "Analyse LLM échouée."
                     if delta < -50: fallback_comment = "Coup très mauvais : menace grave non évitée."

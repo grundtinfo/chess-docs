@@ -8,6 +8,7 @@ import requests
 from datetime import datetime
 from classes.config import Config
 from classes.logger import Logger
+from classes.json_cache import CacheManager
 
 try:
     from Openix import ChessOpeningsLibrary
@@ -54,7 +55,6 @@ class ChessUtils:
         return est_w, est_b
 
     @staticmethod
-    @staticmethod
     def get_opening_name(board):
         """Récupère le nom de l'ouverture intelligemment avec Openix, traduit via LLM si nécessaire."""
         opening_name = "Ouverture Inconnue"
@@ -77,16 +77,25 @@ class ChessUtils:
                 Logger.debug_log(f"Erreur lookup Openix: {e}", "ERROR")
 
         if opening_name != "Ouverture Inconnue":
-            # Import local pour éviter l'erreur d'import circulaire avec AIAnalyzer
             from classes.ai_analyzer import AIAnalyzer
             
+            # Chargement initial du cache persistant
+            if ChessUtils._translation_cache is None:
+                cache_global = CacheManager.load_cache()
+                ChessUtils._translation_cache = cache_global.get("openings_translations", {})
+            
+            # Si la traduction n'est pas en cache, on appelle le LLM et on sauvegarde
             if opening_name not in ChessUtils._translation_cache:
                 traduit = AIAnalyzer.translate_opening_name(opening_name)
                 ChessUtils._translation_cache[opening_name] = traduit
+                
+                # Sauvegarde immédiate dans cache_analyses.json
+                cache_global = CacheManager.load_cache()
+                cache_global["openings_translations"] = ChessUtils._translation_cache
+                CacheManager.save_cache(cache_global)
             
             return ChessUtils._translation_cache[opening_name]
 
-        # Fallback
         return opening_name
     
     @staticmethod
