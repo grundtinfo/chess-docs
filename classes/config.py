@@ -2,7 +2,7 @@ from reportlab.lib import colors
 
 class Config:
     OLLAMA_URL = "http://localhost:11434/api/generate"
-    OLLAMA_MODEL = "dolphin-llama3:8b"
+    OLLAMA_MODEL = "llama3.1:8b"
     DEFAULT_STOCKFISH_DEPTH = 18
 
     COLOR_PRIMARY = colors.HexColor("#1e293b")

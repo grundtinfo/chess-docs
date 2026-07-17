@@ -12,23 +12,23 @@ class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
             {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Suite prévue : Aucune\nCommentaire : Un coup très solide qui optimise la position avec précision."}
+            {"role": "assistant", "content": "Commentaire : Un coup très solide qui optimise la position avec précision."}
         ],
         "erreur_avec_alternative": [
             {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4?\nQualité : C'est une erreur sérieuse qui fait perdre un avantage significatif.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\nMeilleure alternative : Cf6\n  \n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Suite prévue : Aucune\nCommentaire : Une erreur sérieuse qui dégrade la position, jouer le Cavalier en f6 était préférable."}
+            {"role": "assistant", "content": "Commentaire : Une erreur sérieuse qui dégrade la position, jouer le Cavalier en f6 était préférable."}
         ],
         "perte_materielle": [
-            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5??\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Expose cette pièce Cavalier à une perte matérielle forcée via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Suite prévue : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\nCommentaire : Ce coup condamne le Cavalier à une perte matérielle inévitable face à la séquence adverse."}
+            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5??\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Expose cette pièce Cavalier à une perte matérielle forcée.\n\nRÉPONSE :"},
+            {"role": "assistant", "content": "Commentaire : Ce coup condamne le Cavalier à une perte matérielle inévitable face à la séquence adverse."}
         ],
         "gaffe_tactique_alternative": [
             {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Fg4??\nQualité : C'est une gaffe majeure entraînant une perte catastrophique.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Le Cavalier en e5 réalise une fourchette attaquant simultanément : Roi en e8, Tour en h8\nMeilleure alternative : 0-0\n  \n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Suite prévue : Aucune\nCommentaire : Une gaffe critique qui permet au Cavalier adverse d'attaquer simultanément le Roi et la Tour, le petit roque (0-0) était le seul coup salvateur."}
+            {"role": "assistant", "content": "Commentaire : Une gaffe critique qui permet au Cavalier adverse d'attaquer simultanément le Roi et la Tour, le petit roque (0-0) était le seul coup salvateur."}
         ],
         "imprecision": [
             {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Df6?!\nQualité : C'est une imprécision qui dégrade légèrement la position.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\nMeilleure alternative : Cf6\n  \n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Suite prévue : Aucune\nCommentaire : Une imprécision qui cède un peu de terrain, la meilleure option étant de développer le Cavalier en f6."}
+            {"role": "assistant", "content": "Commentaire : Une imprécision qui cède un peu de terrain, la meilleure option étant de développer le Cavalier en f6."}
         ]
     }
 
@@ -353,6 +353,18 @@ class AIAnalyzer:
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, future_moves)
                     
+                    # --- NOUVEAU : Interception Python de la séquence Stockfish ---
+                    stockfish_seq = "Aucune"
+                    if "via :" in tactics:
+                        parts = tactics.split("via :")
+                        stockfish_seq = parts[1].strip()
+                        # Nettoie les FAITS pour ne pas embrouiller le LLM avec des coups bruts
+                        tactics = parts[0].strip()
+                    elif "suite illustrée" in tactics:
+                        stockfish_seq = "Illustrée dans le rapport"
+                        tactics = tactics.replace("(suite illustrée)", "").strip()
+                    # ---------------------------------------------------------------
+                    
                     if tactics != "Continuité":
                         if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
                             if val_after_raw < 0:
@@ -373,7 +385,7 @@ class AIAnalyzer:
                     
                     if raw != best_move_fr and delta < -20:
                         alt_context = f"Meilleure alternative : {best_move_fr}\n  "
-                        alt_rule = "\n6. Inclus le meilleur coup alternatif de manière fluide dans la section Commentaire."
+                        alt_rule = "\n5. Inclus le meilleur coup alternatif de manière fluide dans ton commentaire."
                     else:
                         alt_context = ""
                         alt_rule = ""
@@ -383,17 +395,16 @@ class AIAnalyzer:
                     else:
                         events_text = "ÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité)."
                     
-                    system_prompt = f"""Tu es un commentateur d'échecs expert et strictement factuel. Ta mission est de générer une réponse structurée en deux parties, basée EXCLUSIVEMENT sur les "FAITS".
+                    # --- NOUVEAU : Prompt strict et allégé ---
+                    system_prompt = f"""Tu es un commentateur d'échecs expert et strictement factuel. Ta mission est de générer une réponse structurée basée EXCLUSIVEMENT sur les "FAITS".
 
 DIRECTIVES DE RÉDACTION :
-1. Rédige directement ta réponse en respectant rigoureusement le FORMAT DE SORTIE IMPOSÉ, sans aucune phrase d'introduction.
-2. Utilise exclusivement le vocabulaire standard français : Échiquier, Cavalier, Fou, Tour, Dame, Roi, Pion.
+1. Rédige directement ta réponse en commençant par "Commentaire : ", sans aucune introduction.
+2. Utilise exclusivement le vocabulaire standard français : Échiquier, Cavalier, Fou, Tour, Dame, Roi, Pion. N'INVENTE JAMAIS de coordonnées ou de nouvelles pièces.
 3. Décris uniquement les tactiques et les pièces explicitement mentionnées dans les FAITS.
-4. Réserve le terme "échec" aux attaques directes sur le Roi.
-5. Isole la suite de coups Stockfish (si présente dans les événements) de manière brute dans le champ "Suite prévue".{alt_rule}
+4. Réserve le terme "échec" aux attaques directes sur le Roi.{alt_rule}
 
 FORMAT DE SORTIE IMPOSÉ :
-Suite prévue : [Insère ici la séquence de coups brute si présente dans les événements, sinon écris "Aucune"]
 Commentaire : [Insère ici UNE SEULE phrase fluide en français résumant le coup et l'événement]"""
 
                     messages = [{"role": "system", "content": system_prompt}]
@@ -416,8 +427,8 @@ Commentaire : [Insère ici UNE SEULE phrase fluide en français résumant le cou
                         "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {final_move_str}\nQualité : {status}\n{events_text}\n{alt_context}\n\nRÉPONSE :"
                     })
                     
-                    # Réduction de num_predict pour forcer la concision demandée
-                    options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 90, 'repeat_penalty': 1.1}
+                    # --- NOUVEAU : num_predict augmenté à 150 pour éviter les coupures ---
+                    options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.1}
                     
                     fallback_comment = "Analyse LLM échouée."
                     if delta < -50: fallback_comment = "Coup très mauvais : menace grave non évitée."
@@ -430,8 +441,11 @@ Commentaire : [Insère ici UNE SEULE phrase fluide en français résumant le cou
                         trap_id = hashlib.md5(f"trap_{board_state.fen()}_{san_fr}".encode()).hexdigest()
                         cache_k = f"trap_{trap_id}"
 
-                    comment = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment, cache_key=cache_k)
-                    return comment, final_move_str
+                    comment_llm = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment, cache_key=cache_k)
+                    
+                    # --- NOUVEAU : Injection du résultat Python propre ---
+                    final_comment = f"Suite prévue : {stockfish_seq}\n{comment_llm}"
+                    return final_comment, final_move_str
 
             except Exception as e:
                 Logger.debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")
