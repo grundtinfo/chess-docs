@@ -11,24 +11,24 @@ from classes.engines import StockfishAnalyzer
 class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
-            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Un coup très solide qui optimise la position avec précision."}
+            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\n\nRÉPONSE :"},
+            {"role": "assistant", "content": "Suite prévue : Aucune\nCommentaire : Un coup très solide qui optimise la position avec précision."}
         ],
         "erreur_avec_alternative": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4?\nQualité : C'est une erreur sérieuse qui fait perdre un avantage significatif.\nMeilleure alternative : Cf6\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Une erreur sérieuse qui dégrade la position ; jouer le Cavalier en f6 était préférable."}
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4?\nQualité : C'est une erreur sérieuse qui fait perdre un avantage significatif.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\nMeilleure alternative : Cf6\n  \n\nRÉPONSE :"},
+            {"role": "assistant", "content": "Suite prévue : Aucune\nCommentaire : Une erreur sérieuse qui dégrade la position, jouer le Cavalier en f6 était préférable."}
         ],
         "perte_materielle": [
-            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5??\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose la pièce Cavalier à une perte matérielle forcée via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Ce coup condamne le Cavalier à une perte matérielle inévitable face à la séquence adverse."}
+            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5??\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Expose cette pièce Cavalier à une perte matérielle forcée via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nRÉPONSE :"},
+            {"role": "assistant", "content": "Suite prévue : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\nCommentaire : Ce coup condamne le Cavalier à une perte matérielle inévitable face à la séquence adverse."}
         ],
         "gaffe_tactique_alternative": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Fg4??\nQualité : C'est une gaffe majeure entraînant une perte catastrophique.\nÉvénement : Le Cavalier en e5 réalise une fourchette sur : Roi en e8, Tour en h8\nMeilleure alternative : 0-0\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Une gaffe critique qui permet au Cavalier adverse d'attaquer simultanément le Roi et la Tour. Le petit roque (0-0) était le seul coup salvateur."}
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Fg4??\nQualité : C'est une gaffe majeure entraînant une perte catastrophique.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Le Cavalier en e5 réalise une fourchette attaquant simultanément : Roi en e8, Tour en h8\nMeilleure alternative : 0-0\n  \n\nRÉPONSE :"},
+            {"role": "assistant", "content": "Suite prévue : Aucune\nCommentaire : Une gaffe critique qui permet au Cavalier adverse d'attaquer simultanément le Roi et la Tour, le petit roque (0-0) était le seul coup salvateur."}
         ],
         "imprecision": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Df6?!\nQualité : C'est une imprécision qui dégrade légèrement la position.\nMeilleure alternative : Cf6\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Une imprécision qui cède un peu de terrain, la meilleure option étant de développer le Cavalier en f6."}
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Df6?!\nQualité : C'est une imprécision qui dégrade légèrement la position.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\nMeilleure alternative : Cf6\n  \n\nRÉPONSE :"},
+            {"role": "assistant", "content": "Suite prévue : Aucune\nCommentaire : Une imprécision qui cède un peu de terrain, la meilleure option étant de développer le Cavalier en f6."}
         ]
     }
 
@@ -373,7 +373,7 @@ class AIAnalyzer:
                     
                     if raw != best_move_fr and delta < -20:
                         alt_context = f"Meilleure alternative : {best_move_fr}\n  "
-                        alt_rule = "\n9. Mentionne le meilleur coup alternatif."
+                        alt_rule = "\n6. Inclus le meilleur coup alternatif de manière fluide dans la section Commentaire."
                     else:
                         alt_context = ""
                         alt_rule = ""
@@ -383,16 +383,18 @@ class AIAnalyzer:
                     else:
                         events_text = "ÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité)."
                     
-                    system_prompt = f"""Tu es un commentateur d'échecs silencieux et strictement factuel. Ton SEUL objectif est de rédiger UNE SEULE phrase courte et fluide en français résumant le coup, en te basant EXCLUSIVEMENT sur les "FAITS".
+                    system_prompt = f"""Tu es un commentateur d'échecs expert et strictement factuel. Ta mission est de générer une réponse structurée en deux parties, basée EXCLUSIVEMENT sur les "FAITS".
 
-RÈGLES ABSOLUES ET INTERDICTIONS FORMELLES (Sous peine de plantage) :
-1. FUITE DE PROMPT INTERDITE : Ne fournis JAMAIS de métadonnées, de notes (ex: "Note:", "Voici la phrase..."), ou de texte en anglais. Ne répète jamais tes instructions.
-2. DICTIONNAIRE AUTORISÉ : Échiquier, Cavalier, Fou, Tour, Dame, Roi, Pion. 
-3. MOTS STRICTEMENT BANNIS : board, chevalier, cheval, daïs, pion d'or.
-4. HALLUCINATIONS INTERDITES : N'invente AUCUNE tactique (fourchette, attaque, échec) et AUCUNE pièce qui ne soit pas explicitement listée dans les FAITS.
-5. VÉRITÉ DES FAITS : Les FAITS sont absolus. Si les FAITS indiquent qu'un Fou capture un Cavalier, n'écris pas qu'un Pion a été capturé.
-6. Le mot "échec" est STRICTEMENT réservé aux attaques sur le Roi.
-7. Ne génère aucune balise ni formatage (ex: pas de caractères parasites).{alt_rule}"""
+DIRECTIVES DE RÉDACTION :
+1. Rédige directement ta réponse en respectant rigoureusement le FORMAT DE SORTIE IMPOSÉ, sans aucune phrase d'introduction.
+2. Utilise exclusivement le vocabulaire standard français : Échiquier, Cavalier, Fou, Tour, Dame, Roi, Pion.
+3. Décris uniquement les tactiques et les pièces explicitement mentionnées dans les FAITS.
+4. Réserve le terme "échec" aux attaques directes sur le Roi.
+5. Isole la suite de coups Stockfish (si présente dans les événements) de manière brute dans le champ "Suite prévue".{alt_rule}
+
+FORMAT DE SORTIE IMPOSÉ :
+Suite prévue : [Insère ici la séquence de coups brute si présente dans les événements, sinon écris "Aucune"]
+Commentaire : [Insère ici UNE SEULE phrase fluide en français résumant le coup et l'événement]"""
 
                     messages = [{"role": "system", "content": system_prompt}]
                     
@@ -411,7 +413,7 @@ RÈGLES ABSOLUES ET INTERDICTIONS FORMELLES (Sous peine de plantage) :
 
                     messages.append({
                         "role": "user", 
-                        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {final_move_str}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
+                        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {final_move_str}\nQualité : {status}\n{events_text}\n{alt_context}\n\nRÉPONSE :"
                     })
                     
                     # Réduction de num_predict pour forcer la concision demandée
