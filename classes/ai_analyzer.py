@@ -1,6 +1,7 @@
 import json
 import chess
 import requests
+import re
 import ollama
 from classes.config import Config
 from classes.logger import Logger
@@ -11,28 +12,35 @@ class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
             {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : e4\nQualité : C'est un bon coup, le plus précis.\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Un bon coup qui est le plus précis dans cette position."}
+            {"role": "assistant", "content": "Un coup très solide qui optimise la position avec précision."}
         ],
         "erreur_avec_alternative": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4\nQualité : C'est une erreur sérieuse qui fait perdre un avantage significatif.\nMeilleure alternative : Cf6\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Ce coup est une erreur sérieuse qui fait perdre un avantage significatif, la meilleure alternative étant Cf6."}
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cxd4?\nQualité : C'est une erreur sérieuse qui fait perdre un avantage significatif.\nMeilleure alternative : Cf6\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "Une erreur sérieuse qui dégrade la position ; jouer le Cavalier en f6 était préférable."}
         ],
         "perte_materielle": [
-            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Ce coup expose le Cavalier à une perte matérielle forcée selon la suite : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5."}
+            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cg5??\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉvénement : Expose la pièce Cavalier à une perte matérielle forcée via : Tf7 Cxf7 Rxf7 Dxh7+ Re8 dxe5\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "Ce coup condamne le Cavalier à une perte matérielle inévitable face à la séquence adverse."}
         ],
         "gaffe_tactique_alternative": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Fg4\nQualité : C'est une gaffe majeure entraînant une perte catastrophique.\nÉvénement : Tactique Fourchette par Cavalier en e5 sur : Roi en e8, Tour en h8\nMeilleure alternative : 0-0\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "C'est une gaffe majeure entraînant une perte catastrophique en permettant une fourchette du Cavalier en e5 sur le Roi et la Tour, alors que le meilleur coup était le petit roque (0-0)."}
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Fg4??\nQualité : C'est une gaffe majeure entraînant une perte catastrophique.\nÉvénement : Le Cavalier en e5 réalise une fourchette sur : Roi en e8, Tour en h8\nMeilleure alternative : 0-0\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "Une gaffe critique qui permet au Cavalier adverse d'attaquer simultanément le Roi et la Tour. Le petit roque (0-0) était le seul coup salvateur."}
         ],
         "imprecision": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Df6\nQualité : C'est une imprécision qui dégrade légèrement la position.\nMeilleure alternative : Cf6\n\nCOMMENTAIRE :"},
-            {"role": "assistant", "content": "Ce coup est une imprécision qui dégrade légèrement la position, la meilleure alternative étant Cf6."}
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Df6?!\nQualité : C'est une imprécision qui dégrade légèrement la position.\nMeilleure alternative : Cf6\n\nCOMMENTAIRE :"},
+            {"role": "assistant", "content": "Une imprécision qui cède un peu de terrain, la meilleure option étant de développer le Cavalier en f6."}
         ]
     }
 
     @staticmethod
-    def query_llm(messages, options=None, context_log="LLM", fallback=""):
+    def query_llm(messages, options=None, context_log="LLM", fallback="", cache_key=None):
+        if cache_key:
+            from classes.json_cache import CacheManager
+            cache_global = CacheManager.load_cache()
+            if cache_key in cache_global:
+                Logger.debug_log(f"Réponse récupérée depuis le cache pour : {context_log}", "INFO")
+                return cache_global[cache_key]
+                
         Logger.debug_log(f"Appel d'Ollama ({Config.OLLAMA_MODEL}) pour : {context_log}...", "INFO")
         Logger.debug_log(f"Prompt envoyé au LLM : {json.dumps(messages, ensure_ascii=False)}", "DEBUG")
         
@@ -45,6 +53,12 @@ class AIAnalyzer:
             if result and 'message' in result and 'content' in result['message']:
                 content = result['message']['content'].strip().replace("\n", " ")
                 Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
+                
+                if cache_key and content and content != fallback:
+                    cache_global = CacheManager.load_cache()
+                    cache_global[cache_key] = content
+                    CacheManager.save_cache(cache_global)
+                    
                 return content
         except requests.exceptions.RequestException as e:
             Logger.debug_log(f"Ollama injoignable ({context_log}) sur {Config.OLLAMA_URL}: {str(e)}. Fallback.", "WARNING")
@@ -61,7 +75,8 @@ class AIAnalyzer:
         ]
         
         fallback_text = "Erreur de génération LLM."
-        content = AIAnalyzer.query_llm(messages, context_log=f"Théorie {opening_name}", fallback=fallback_text)
+        # Le cache est intentionnellement désactivé ici pour le réserver strictement à openings/traps
+        content = AIAnalyzer.query_llm(messages, context_log=f"Théorie {opening_name}", fallback=fallback_text, cache_key=None)
         return f"<b>Ligne Stockfish : {stockfish_line}</b><br/><br/>{content}"
 
     @staticmethod
@@ -69,63 +84,54 @@ class AIAnalyzer:
         if not opening_name or opening_name == "Ouverture Inconnue":
             return opening_name
 
-        # 1. Définir les traductions spécifiques des modificateurs
         translations = {
-            "Defense": "Défense",
-            "Variation": "Variante",
-            "Attack": "Attaque",
-            "Gambit": "Gambit",
-            "System": "Système",
-            "Accepted": "Accepté",
-            "Declined": "Refusé",
-            "English": "Anglaise",
-            "Symmetrical": "Symétrique",
-            "Bishop's": "du Fou",
-            "King's": "du Roi",
-            "Queen's": "de la Dame",
-            "Sicilian": "Sicilienne",
-            "Zukertort": "de Zukertort",
-            "Tennison": "Tennison",
+            "Defense": "Défense", "Variation": "Variante", "Attack": "Attaque",
+            "Gambit": "Gambit", "System": "Système", "Accepted": "Accepté",
+            "Declined": "Refusé", "English": "Anglaise", "Symmetrical": "Symétrique",
+            "Bishop's": "du Fou", "King's": "du Roi", "Queen's": "de la Dame",
+            "Sicilian": "Sicilienne", "Zukertort": "de Zukertort", "Tennison": "Tennison",
             "Jalalabad": "de Jalalabad"
         }
 
-        # 2. Cas spécifique : "Opening"
         if "Opening" in opening_name:
-            # On extrait le nom de l'ouverture (tout ce qui n'est pas "Opening" ou ":")
             name_part = opening_name.replace("Opening", "").replace(":", "").strip()
-            
-            # On récupère la traduction du modificateur ou on garde le nom original
             translated_name = translations.get(name_part, name_part)
-            
-            # On reconstruit dans le bon ordre : Ouverture + [nom]
             return f"Ouverture {translated_name}"
 
-        # 3. Pour le reste (Défense, Gambit, etc.)
         result = opening_name
         for eng, fr in translations.items():
             result = result.replace(eng, fr)
             
-        # 4. Corrections syntaxiques post-traduction pour le français
-        result = result.replace("Sicilienne Défense", "Défense Sicilienne")
-        result = result.replace("Anglaise Ouverture", "Ouverture Anglaise")
+        # Formatage strict de la typographie française
+        result = result.replace(":", " : ").replace("  ", " ")
+        # Inversion dynamique des termes via Regex
+        result = re.sub(r'\b(\w+)\s+(Défense|Ouverture|Variante|Attaque|Gambit|Système)\b', r'\2 \1', result, flags=re.IGNORECASE)
+
+        # --- AJOUT : Normalisation stricte de la casse ---
+        result = result.title() # Force la majuscule sur chaque mot
+        mots_de_liaison = [" De ", " Du ", " Des ", " La ", " Le ", " Les ", " À ", " En ", " Et ", " D'"]
+        for mot in mots_de_liaison:
+            result = result.replace(mot, mot.lower())
+        # Correction des espacements autour des deux points
+        result = result.replace(" :", ":").replace(":", " : ").strip()
+        # ------------------------------------------------
 
         if result == opening_name:
-            # Si aucune traduction n'a été faite, on utilise le LLM comme fallback
             result = AIAnalyzer._translate_with_llm_fallback(opening_name)
             
         return result
 
     @staticmethod
     def _translate_with_llm_fallback(opening_name):
-        # N'utilisez ce LLM que pour les cas non gérés par le dictionnaire
         messages = [
-            {"role": "system", "content": "Tu es un outil de conversion. Remplace UNIQUEMENT les mots techniques (Opening->Ouverture, Defense->Défense, Variation->Variante). NE JAMAIS TRADUIRE les noms propres (Zukertort, Tennison, Jalalabad). NE JAMAIS AJOUTER DE COMMENTAIRE."},
+            {"role": "system", "content": "Tu es un outil de conversion d'ouvertures. Traduis vers le français en respectant la syntaxe (ex: 'Scandinavian Defense: Valencian Variation' -> 'Défense Scandinave : Variante Valencienne'). Conserve les noms propres. NE FAIS AUCUN COMMENTAIRE, retourne UNIQUEMENT la traduction."},
             {"role": "user", "content": opening_name}
         ]
-        return AIAnalyzer.query_llm(messages, options={'temperature': 0.0, 'num_predict': 20}, context_log="Fallback Traduction")
+        return AIAnalyzer.query_llm(messages, options={'temperature': 0.0, 'num_predict': 25}, context_log="Fallback Traduction")
 
     @staticmethod
     def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
+        # (La logique reste identique à celle de l'original)
         Logger.debug_log(f"Détection des tactiques pour le coup {move_obj.uci()}...", "INFO")
         tactics = []
         moving_piece = board_before.piece_at(move_obj.from_square)
@@ -155,11 +161,11 @@ class AIAnalyzer:
                 checker_sq = list(checkers)[0]
                 checker_piece = board_after.piece_at(checker_sq)
                 checker_name = ChessUtils.get_piece_name_fr(checker_piece)
-                tactics.append(f"Tactique Échec à la découverte par {checker_name} (démasqué par {moving_piece_name})")
+                tactics.append(f"Découverte d'une attaque menant à un échec par {checker_name} (démasqué par {moving_piece_name})")
             elif len(checkers) > 1:
-                tactics.append(f"Tactique Échec double impliquant {moving_piece_name} en {to_square_name}")
+                tactics.append(f"Échec double impliquant {moving_piece_name} en {to_square_name}")
             else:
-                tactics.append(f"Échec par {moving_piece_name} en {to_square_name}")
+                tactics.append(f"Échec direct par {moving_piece_name} en {to_square_name}")
             
         if not board_after.is_checkmate():
             attacks = board_after.attacks(move_obj.to_square)
@@ -171,7 +177,7 @@ class AIAnalyzer:
             
             if len(targets) > 1:
                 targets_str = ", ".join(targets)
-                tactics.append(f"Tactique Fourchette par {moving_piece_name} en {to_square_name} sur : {targets_str}")
+                tactics.append(f"{moving_piece_name} en {to_square_name} réalise une fourchette attaquant simultanément : {targets_str}")
 
         defender_color = board_after.turn
         pinned_pieces = []
@@ -183,7 +189,7 @@ class AIAnalyzer:
                         pinned_pieces.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
                         
         if pinned_pieces:
-            tactics.append(f"Tactique Clouage imposé sur : {', '.join(pinned_pieces)}")
+            tactics.append(f"Le coup crée un clouage immobilisant : {', '.join(pinned_pieces)}")
 
         if eval_after and not board_after.is_checkmate():
             if hasattr(eval_after, 'value'):
@@ -348,9 +354,7 @@ class AIAnalyzer:
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, future_moves)
                     
                     if tactics != "Continuité":
-                        # CORRECTION : On vérifie "mat inévitable" ou "mat par" pour éviter le faux positif sur "matérielle"
                         if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
-                            # Si val_after_raw est négatif, c'est le joueur qui vient de jouer qui force le mat
                             if val_after_raw < 0:
                                 status = "Ce coup est excellent, le joueur force le mat. Décris comment il gagne."
                             else:
@@ -360,7 +364,6 @@ class AIAnalyzer:
                         else:
                             status = f"C'est un coup tactique significatif."
                     else:
-                        # TA LOGIQUE SUR LES DELTAS EST BIEN CONSERVÉE ICI
                         if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
                         elif delta <= -300: status = "C'est une gaffe majeure entraînant une perte catastrophique."
                         elif delta <= -150: status = "C'est une erreur sérieuse qui fait perdre un avantage significatif."
@@ -370,23 +373,26 @@ class AIAnalyzer:
                     
                     if raw != best_move_fr and delta < -20:
                         alt_context = f"Meilleure alternative : {best_move_fr}\n  "
-                        alt_rule = "\n7. Mentionne le meilleur coup alternatif"
+                        alt_rule = "\n9. Mentionne le meilleur coup alternatif."
                     else:
                         alt_context = ""
                         alt_rule = ""
                     
-                    events_text = f"Événement : {tactics}" if tactics != "Continuité" else ""
+                    if tactics != "Continuité":
+                        events_text = f"ÉVÉNEMENT FACTUEL CERTIFIÉ : {tactics}"
+                    else:
+                        events_text = "ÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité)."
                     
-                    system_prompt = f"""Tu es un parseur de données strict. Ton unique objectif est de transformer les variables brutes fournies dans la section "FAITS" en une seule phrase naturelle en français.
-RÈGLES :
-1. Utilise EXCLUSIVEMENT le vocabulaire, les pièces et les événements fournis dans les "FAITS".
-2. Si un attribut est vide ou absent, n'en parle pas.
-3. Si la mention "via :" apparaît dans les faits, tu dois obligatoirement la mentionner telle quelle avec la pièce concernée.
-4. Génère uniquement la phrase finale, sans aucune introduction, conclusion ou justification.
-5. RÈGLE ABSOLUE : utilise l'expression "mettre en échec" ou le mot "échec" uniquement pour le Roi. Cet échec peut être direct ou indirect mais ne doit jamais être utilisé pour d'autres pièces.
-6. RÈGLE ABSOLUE : Si l'événement est une simple capture de pion sans tactique associée, ce n'est pas un coup tactique significatif.
-7. RÈGLE ABSOLUE : Tu as l'INTERDICTION d'inventer des menaces, des échecs ou des conséquences tactiques qui ne sont pas explicitement écrites dans les FAITS.
-8. RÈGLE ABSOLUE : Interdiction formelle d'inventer des règles impossibles (ex: un joueur ne peut pas mettre son propre roi en échec). N'utilise JAMAIS le terme hors contexte "maturation".{alt_rule}"""
+                    system_prompt = f"""Tu es un commentateur d'échecs silencieux et strictement factuel. Ton SEUL objectif est de rédiger UNE SEULE phrase courte et fluide en français résumant le coup, en te basant EXCLUSIVEMENT sur les "FAITS".
+
+RÈGLES ABSOLUES ET INTERDICTIONS FORMELLES (Sous peine de plantage) :
+1. FUITE DE PROMPT INTERDITE : Ne fournis JAMAIS de métadonnées, de notes (ex: "Note:", "Voici la phrase..."), ou de texte en anglais. Ne répète jamais tes instructions.
+2. DICTIONNAIRE AUTORISÉ : Échiquier, Cavalier, Fou, Tour, Dame, Roi, Pion. 
+3. MOTS STRICTEMENT BANNIS : board, chevalier, cheval, daïs, pion d'or.
+4. HALLUCINATIONS INTERDITES : N'invente AUCUNE tactique (fourchette, attaque, échec) et AUCUNE pièce qui ne soit pas explicitement listée dans les FAITS.
+5. VÉRITÉ DES FAITS : Les FAITS sont absolus. Si les FAITS indiquent qu'un Fou capture un Cavalier, n'écris pas qu'un Pion a été capturé.
+6. Le mot "échec" est STRICTEMENT réservé aux attaques sur le Roi.
+7. Ne génère aucune balise ni formatage (ex: pas de caractères parasites).{alt_rule}"""
 
                     messages = [{"role": "system", "content": system_prompt}]
                     
@@ -395,30 +401,34 @@ RÈGLES :
                     elif "imprécision" in status.lower():
                         messages.extend(AIAnalyzer.FEW_SHOT_BANK["imprecision"])
                     elif "erreur" in status.lower() or "gaffe" in status.lower():
-                        # Utilisation dynamique de la bonne clé selon la gravité
                         if alt_context:
                             if "gaffe" in status.lower():
                                 messages.extend(AIAnalyzer.FEW_SHOT_BANK["gaffe_tactique_alternative"])
                             else:
                                 messages.extend(AIAnalyzer.FEW_SHOT_BANK["erreur_avec_alternative"])
-                        # Injection croisée si l'erreur implique une perte matérielle tactique
                         if tactics != "Continuité" and "perte matérielle" in tactics.lower():
                             messages.extend(AIAnalyzer.FEW_SHOT_BANK["perte_materielle"])
 
-                    # 3. Ajout de la requête finale (le vrai coup à analyser)
                     messages.append({
                         "role": "user", 
-                        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {san_fr}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
+                        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {final_move_str}\nQualité : {status}\n{events_text}\n{alt_context}\n\nCOMMENTAIRE :"
                     })
                     
-                    options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.0}
+                    # Réduction de num_predict pour forcer la concision demandée
+                    options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 90, 'repeat_penalty': 1.1}
                     
                     fallback_comment = "Analyse LLM échouée."
                     if delta < -50: fallback_comment = "Coup très mauvais : menace grave non évitée."
                     elif delta == 0 or delta > -10: fallback_comment = "Coup bon : maintient la pression."
                     else: fallback_comment = "Coup neutre : pas de menace immédiate."
                     
-                    comment = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment)
+                    cache_k = None
+                    if is_trap:
+                        import hashlib
+                        trap_id = hashlib.md5(f"trap_{board_state.fen()}_{san_fr}".encode()).hexdigest()
+                        cache_k = f"trap_{trap_id}"
+
+                    comment = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment, cache_key=cache_k)
                     return comment, final_move_str
 
             except Exception as e:

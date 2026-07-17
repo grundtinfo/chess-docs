@@ -8,11 +8,9 @@ import requests
 from datetime import datetime
 from classes.config import Config
 from classes.logger import Logger
-from classes.json_cache import CacheManager
 
 try:
     from Openix import ChessOpeningsLibrary
-    # Initialisation de la bibliothèque d'ouvertures
     _op_lib = ChessOpeningsLibrary()
     _op_lib.load_builtin_openings()
     OPENIX_AVAILABLE = True
@@ -25,30 +23,26 @@ class ChessUtils:
 
     @staticmethod
     def calculate_elo_from_details(details):
-        """Calcule l'ELO estimé basé sur les précisions des coups (ACPL) avec une courbe exponentielle."""
+        # (La logique reste identique à celle de l'original)
         weights = {"opening": 0.7, "middlegame": 1.2, "endgame": 1.0}
         w_cpl, b_cpl = 0.0, 0.0
         w_sum, b_sum = 0.0, 0.0
         
         for ply in details:
             w = weights.get(ply.get("phase", "opening"), 1.0)
-            # Utilise la précision stockée (loss) pour le calcul
             loss = min(1000, max(0, -ply.get("precision", 0)))
             if ply.get("color") == "white":
                 w_cpl += (loss * w); w_sum += w
             else:
                 b_cpl += (loss * w); b_sum += w
                 
-        # Paramètres du modèle exponentiel
         MAX_ELO = 3200
         FLOOR_ELO = 400
         DECAY_CONSTANT = 0.019
         
-        # Fonction locale pour appliquer la courbe exponentielle
         def apply_exponential_curve(acpl):
             return int(FLOOR_ELO + (MAX_ELO - FLOOR_ELO) * math.exp(-DECAY_CONSTANT * acpl))
 
-        # Calcul final des ELOs estimés
         est_w = apply_exponential_curve(w_cpl / w_sum) if w_sum > 0 else 1200
         est_b = apply_exponential_curve(b_cpl / b_sum) if b_sum > 0 else 1200
         
@@ -56,20 +50,16 @@ class ChessUtils:
 
     @staticmethod
     def get_opening_name(board):
-        """Récupère le nom de l'ouverture intelligemment avec Openix, traduit via LLM si nécessaire."""
         opening_name = "Ouverture Inconnue"
         
         if OPENIX_AVAILABLE:
             try:
-                # CORRECTION : Reconstitution correcte de la liste des coups en SAN
-                # On utilise un plateau temporaire pour générer les SAN selon l'historique
                 temp_board = chess.Board()
                 move_stack = []
                 for move in board.move_stack:
                     move_stack.append(temp_board.san(move))
                     temp_board.push(move)
                 
-                # Recherche l'ouverture correspondante
                 matches = _op_lib.find_openings_after_moves(move_stack)
                 if matches:
                     opening_name = matches[0].name
@@ -79,20 +69,13 @@ class ChessUtils:
         if opening_name != "Ouverture Inconnue":
             from classes.ai_analyzer import AIAnalyzer
             
-            # Chargement initial du cache persistant
             if ChessUtils._translation_cache is None:
-                cache_global = CacheManager.load_cache()
-                ChessUtils._translation_cache = cache_global.get("openings_translations", {})
+                ChessUtils._translation_cache = {}
             
-            # Si la traduction n'est pas en cache, on appelle le LLM et on sauvegarde
             if opening_name not in ChessUtils._translation_cache:
                 traduit = AIAnalyzer.translate_opening_name(opening_name)
+                # Utilisation stricte de la RAM sans CacheManager pour conserver l'isolement du cache
                 ChessUtils._translation_cache[opening_name] = traduit
-                
-                # Sauvegarde immédiate dans cache_analyses.json
-                cache_global = CacheManager.load_cache()
-                cache_global["openings_translations"] = ChessUtils._translation_cache
-                CacheManager.save_cache(cache_global)
             
             return ChessUtils._translation_cache[opening_name]
 
@@ -100,9 +83,7 @@ class ChessUtils:
     
     @staticmethod
     def is_raw_opening(name):
-        # Liste des valeurs "vides" classiques
         if name in ["Ouverture Inconnue", "None", ""]: return True
-        # Détection des codes ECO (format A00 à E99) souvent considérés comme "bruts"
         if re.match(r'^[A-E]\d{2}$', name): return True
         return False
 
