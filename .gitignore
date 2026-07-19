@@ -20,3 +20,4 @@ json/player_*.json
 json/cache_analyses.json
 .continue
 .venv
+.aider*
