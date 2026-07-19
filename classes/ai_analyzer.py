@@ -29,6 +29,10 @@ class AIAnalyzer:
         "imprecision": [
             {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Df6?!\nQualité : C'est une imprécision qui dégrade légèrement la position.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\nMeilleure alternative : Cf6\n  \n\nRÉPONSE :"},
             {"role": "assistant", "content": "Commentaire : Une imprécision qui cède un peu de terrain, la meilleure option étant de développer le Cavalier en f6."}
+        ],
+        "suite_stockfish": [
+            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cavalier (Cxd4?)\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Dxd4\nMeilleure alternative : Cf6\n\nRÉPONSE :"},
+            {"role": "assistant", "content": "Commentaire : Une erreur sérieuse qui condamne le Cavalier à être perdu après la réplique Dxd4, il aurait mieux valu privilégier Cf6."}
         ]
     }
 
@@ -332,6 +336,9 @@ class AIAnalyzer:
 
                     is_sacrifice = False
                     piece_moved = board.piece_at(move_obj.from_square)
+                    # --- NOUVEAU : Extraction explicite du nom de la pièce ---
+                    piece_name = ChessUtils.get_piece_name_fr(piece_moved) if piece_moved else "Pièce"
+                    
                     if piece_moved and piece_moved.piece_type in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT]:
                         if board.is_attacked_by(not board.turn, move_obj.to_square):
                             is_sacrifice = True
@@ -348,7 +355,8 @@ class AIAnalyzer:
                     elif delta <= -30: eval_symbol = "!?"
                     elif delta == 0 and swing >= 300: eval_symbol = "!"
                     
-                    final_move_str = f"{san_fr}{eval_symbol}"
+                    # --- NOUVEAU : Formatage du coup avec la pièce ---
+                    final_move_str = f"{piece_name} ({san_fr}{eval_symbol})"
                     
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, future_moves)
@@ -391,21 +399,46 @@ class AIAnalyzer:
                         alt_rule = ""
                     
                     if tactics != "Continuité":
+                        if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
+                            if val_after_raw < 0:
+                                status = "Ce coup est excellent, le joueur force le mat. Décris comment il gagne."
+                            else:
+                                status = "C'est une gaffe majeure qui entraîne un mat inévitable contre le joueur."
+                        elif "perte matérielle" in tactics.lower():
+                            status = "C'est une erreur sérieuse causant une perte matérielle forcée."
+                        else:
+                            status = f"C'est un coup tactique significatif."
+                    else:
+                        if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
+                        elif delta <= -300: status = "C'est une gaffe majeure entraînant une perte catastrophique."
+                        elif delta <= -150: status = "C'est une erreur sérieuse qui fait perdre un avantage significatif."
+                        elif delta <= -80: status = "C'est une imprécision qui dégrade légèrement la position."
+                        elif delta <= -30: status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
+                        else: status = "C'est un coup solide et tout à fait correct."
+                    
+                    if raw != best_move_fr and delta < -20:
+                        alt_context = f"Meilleure alternative : {best_move_fr}\n  "
+                        alt_rule = "\n5. Inclus le meilleur coup alternatif de manière fluide dans ton commentaire."
+                    else:
+                        alt_context = ""
+                        alt_rule = ""
+                    
+                    if tactics != "Continuité":
                         events_text = f"ÉVÉNEMENT FACTUEL CERTIFIÉ : {tactics}"
                     else:
                         events_text = "ÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité)."
                     
-                    # --- NOUVEAU : Prompt strict et allégé ---
+                    # --- NOUVEAU : Prompt strict optimisé pour Llama 8B ---
                     system_prompt = f"""Tu es un commentateur d'échecs expert et strictement factuel. Ta mission est de générer une réponse structurée basée EXCLUSIVEMENT sur les "FAITS".
 
-DIRECTIVES DE RÉDACTION :
+DIRECTIVES DE RÉDACTION IMPÉRATIVES :
 1. Rédige directement ta réponse en commençant par "Commentaire : ", sans aucune introduction.
-2. Utilise exclusivement le vocabulaire standard français : Échiquier, Cavalier, Fou, Tour, Dame, Roi, Pion. N'INVENTE JAMAIS de coordonnées ou de nouvelles pièces.
-3. Décris uniquement les tactiques et les pièces explicitement mentionnées dans les FAITS.
-4. Réserve le terme "échec" aux attaques directes sur le Roi.{alt_rule}
+2. DÉCRIS EXACTEMENT ET UNIQUEMENT les pièces et les événements fournis. N'invente jamais d'attaques, de défenses ou de "fin de partie" non mentionnées.
+3. Si les FAITS indiquent qu'une pièce spécifique se déplace, nomme cette pièce correctement sans la transformer.
+4. Si une suite de coups est annoncée par "via :" dans les faits, tu DOIS obligatoirement restituer ces coups de façon fluide dans ton commentaire.{alt_rule}
 
 FORMAT DE SORTIE IMPOSÉ :
-Commentaire : [Insère ici UNE SEULE phrase fluide en français résumant le coup et l'événement]"""
+Commentaire : [Une ou deux phrases fluides en français résumant le coup, l'événement exact, et la suite de coups prévue si applicable]."""
 
                     messages = [{"role": "system", "content": system_prompt}]
                     
@@ -414,12 +447,14 @@ Commentaire : [Insère ici UNE SEULE phrase fluide en français résumant le cou
                     elif "imprécision" in status.lower():
                         messages.extend(AIAnalyzer.FEW_SHOT_BANK["imprecision"])
                     elif "erreur" in status.lower() or "gaffe" in status.lower():
-                        if alt_context:
+                        if "via :" in tactics:
+                            messages.extend(AIAnalyzer.FEW_SHOT_BANK["suite_stockfish"])
+                        elif alt_context:
                             if "gaffe" in status.lower():
                                 messages.extend(AIAnalyzer.FEW_SHOT_BANK["gaffe_tactique_alternative"])
                             else:
                                 messages.extend(AIAnalyzer.FEW_SHOT_BANK["erreur_avec_alternative"])
-                        if tactics != "Continuité" and "perte matérielle" in tactics.lower():
+                        elif tactics != "Continuité" and "perte matérielle" in tactics.lower():
                             messages.extend(AIAnalyzer.FEW_SHOT_BANK["perte_materielle"])
 
                     messages.append({
@@ -427,7 +462,6 @@ Commentaire : [Insère ici UNE SEULE phrase fluide en français résumant le cou
                         "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {final_move_str}\nQualité : {status}\n{events_text}\n{alt_context}\n\nRÉPONSE :"
                     })
                     
-                    # --- NOUVEAU : num_predict augmenté à 150 pour éviter les coupures ---
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.1}
                     
                     fallback_comment = "Analyse LLM échouée."
@@ -443,9 +477,7 @@ Commentaire : [Insère ici UNE SEULE phrase fluide en français résumant le cou
 
                     comment_llm = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment, cache_key=cache_k)
                     
-                    # --- NOUVEAU : Injection du résultat Python propre ---
-                    final_comment = f"Suite prévue : {stockfish_seq}\n{comment_llm}"
-                    return final_comment, final_move_str
+                    return comment_llm, final_move_str
 
             except Exception as e:
                 Logger.debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")
