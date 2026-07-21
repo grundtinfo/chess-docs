@@ -11,32 +11,28 @@ from classes.engines import StockfishAnalyzer
 class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
-            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Roi (Rd3)\nQualité : C'est un bon coup, le plus précis.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Commentaire : Le Roi se déplace en d3 pour centraliser sa position de manière solide."}
-        ],
-        "echec_simple": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Dame (Dh4+)\nQualité : C'est un coup tactique significatif.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Échec direct par Dame en h4\n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Commentaire : La Dame noire se place en h4 et met le Roi en échec, forçant une réponse défensive immédiate."}
-        ],
-        "erreur_avec_alternative": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cavalier (Cxd4?)\nQualité : C'est une erreur sérieuse qui fait perdre un avantage significatif.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\nMeilleure alternative : Cf6\n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Commentaire : Une erreur sérieuse qui dégrade la position, jouer le Cavalier en f6 était préférable."}
-        ],
-        "perte_materielle": [
-            {"role": "user", "content": "FAITS :\nJoueur : Blancs\nCoup : Cavalier (Cg5??)\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Expose cette pièce Cavalier à une perte matérielle forcée.\n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Commentaire : Ce coup condamne le Cavalier à une perte matérielle inévitable face à la réponse adverse."}
-        ],
-        "gaffe_tactique_alternative": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Fou (Fg4??)\nQualité : C'est une gaffe majeure entraînant une perte catastrophique.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Le Cavalier en e5 réalise une fourchette attaquant simultanément : Roi en e8, Tour en h8\nMeilleure alternative : 0-0\n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Commentaire : Une gaffe critique qui permet au Cavalier adverse d'attaquer simultanément le Roi et la Tour, le petit roque (0-0) était le seul coup salvateur."}
+            {"role": "user", "content": "Coup : Tour (Tf8). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Déplacement standard."},
+            {"role": "assistant", "content": "La Tour se replace logiquement sur la colonne f pour soutenir la défense."}
         ],
         "imprecision": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Dame (Df6?!)\nQualité : C'est une imprécision qui dégrade légèrement la position.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité).\nMeilleure alternative : Cf6\n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Commentaire : Une imprécision qui cède du terrain, la meilleure option étant de développer le Cavalier en f6."}
+            {"role": "user", "content": "Coup : Pion (h3?!). Évaluation : C'est une imprécision qui dégrade légèrement la position. Tactique détectée : Déplacement standard."},
+            {"role": "assistant", "content": "Une petite imprécision avec cette poussée de pion qui fait perdre un tempo précieux."}
         ],
         "suite_stockfish": [
-            {"role": "user", "content": "FAITS :\nJoueur : Noirs\nCoup : Cavalier (Cxd4?)\nQualité : C'est une erreur sérieuse causant une perte matérielle forcée.\nÉVÉNEMENT FACTUEL CERTIFIÉ : Expose cette pièce Cavalier à une perte matérielle forcée en quelques coups via : Dxd4\nMeilleure alternative : Cf6\n\nRÉPONSE :"},
-            {"role": "assistant", "content": "Commentaire : Une erreur sérieuse qui condamne le Cavalier à être perdu après la réplique Dxd4, il aurait mieux valu privilégier Cf6."}
+            {"role": "user", "content": "Coup : Roi (Rxd3??). Évaluation : C'est une gaffe majeure entraînant un mat inévitable contre le joueur. Tactique détectée : Mat inévitable via : Df3+ Rg2 Df2#."},
+            {"role": "assistant", "content": "Quelle gaffe fatale du Roi qui s'expose à une attaque directe menant au mat !"}
+        ],
+        "gaffe_tactique_alternative": [
+            {"role": "user", "content": "Coup : Cavalier (Cxd4??). Évaluation : C'est une gaffe majeure entraînant une perte catastrophique. Tactique détectée : Déplacement standard. Meilleure alternative : Fc4."},
+            {"role": "assistant", "content": "Une grave erreur du Cavalier qui s'aventure trop loin, il aurait été préférable de développer le Fou en c4."}
+        ],
+        "erreur_avec_alternative": [
+            {"role": "user", "content": "Coup : Fou (Fd3?). Évaluation : C'est une erreur sérieuse qui fait perdre un avantage significatif. Tactique détectée : Déplacement standard. Meilleure alternative : O-O."},
+            {"role": "assistant", "content": "Un placement douteux du Fou sur d3, le roque était une option bien plus sécurisante ici."}
+        ],
+        "perte_materielle": [
+            {"role": "user", "content": "Coup : Dame (Db5??). Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : Expose cette pièce Dame à une perte matérielle forcée en quelques coups."},
+            {"role": "assistant", "content": "Une décision désastreuse qui expose directement la Dame à une capture inévitable !"}
         ]
     }
 
@@ -59,7 +55,17 @@ class AIAnalyzer:
                 options=options or {'temperature': 0.0}
             )
             if result and 'message' in result and 'content' in result['message']:
-                content = result['message']['content'].strip().replace("\n", " ")
+                content = result['message']['content']
+                
+                # 1. Suppression des balises de bavardage (ex: "Note : ...")
+                content = re.sub(r'\(?Note\s*:.*?\)?', '', content, flags=re.IGNORECASE).strip()
+                # 2. Remplacement des sauts de ligne
+                content = re.sub(r'\n+', ' ', content)
+                # 3. Suppression des guillemets parasites en début et fin
+                content = content.strip(' "\'')
+                # 4. Nettoyage de l'ancien préfixe
+                content = content.replace("Commentaire : ", "").replace("Commentaire :", "").strip()
+                
                 Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
                 
                 if cache_key and content and content != fallback:
@@ -361,7 +367,7 @@ class AIAnalyzer:
                     elif delta == 0 and swing >= 300: eval_symbol = "!"
                     
                     # --- NOUVEAU : Formatage du coup avec la pièce ---
-                    final_move_str = f"{piece_name} ({san_fr}{eval_symbol})"
+                    final_move_str = f"{piece_name} des {turn_color} ({san_fr}{eval_symbol})"
                     
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, future_moves)
@@ -429,20 +435,24 @@ class AIAnalyzer:
                         alt_rule = ""
                     
                     if tactics != "Continuité":
-                        events_text = f"ÉVÉNEMENT FACTUEL CERTIFIÉ : {tactics}"
+                        events_text = f"Tactique détectée : {tactics}"
                     else:
-                        events_text = "ÉVÉNEMENT FACTUEL CERTIFIÉ : Aucun événement tactique (Continuité)."
+                        events_text = "Tactique détectée : Déplacement standard."
                     
-                    system_prompt = f"""Tu es un commentateur d'échecs expert et strictly factuel. Ta mission est de générer une réponse basée EXCLUSIVEMENT sur les "FAITS".
+                    system_prompt = """Tu es un Grand Maître d'échecs commentant une partie pour un public de débutants. Ton rôle est de transformer l'analyse brute de l'ordinateur en un commentaire naturel, vivant et pédagogique.
 
-RÈGLES DÉFINITIVES :
-1. DÉSAMBIGUÏSATION : La lettre 'R' désigne le ROI (King) et JAMAIS la Tour (Rook).
-2. FIN DE PARTIE : N'annonce JAMAIS la fin de la partie ou un mat, sauf si les FAITS mentionnent explicitement 'Échec et mat' ou le symbole '#'. Un échec '+' signifie que la partie continue.
-3. STRICTE FIDÉLITÉ : Rédige directement en commençant par "Commentaire : ". N'invente aucun coup alternatif non présent dans "Meilleure alternative". N'ajoute aucun prétexte comme "Suite prévue :".
-4. DÉCRIS EXACTEMENT ET UNIQUEMENT les pièces et les événements fournis. Si les FAITS indiquent qu'une suite de coups est annoncée par "via :", tu DOIS la restituer de façon fluide.{alt_rule}
+Directives de rédaction à suivre impérativement :
+1. Adopte un ton expert, fluide et direct. 
+2. Rédige une seule phrase courte et percutante (maximum 20 mots).
+3. Commence toujours par décrire l'action sur l'échiquier ou par le nom de la pièce (ex: "Le Cavalier bondit...", "Une excellente poussée de pion...").
+4. Intègre l'évaluation et l'événement tactique de manière organique dans ta phrase.
 
-FORMAT IMPOSÉ :
-Commentaire : [Une ou deux phrases synthétiques en français]."""
+RÈGLES ABSOLUES (Sous peine d'échec) :
+- Tu ne dois produire AUCUNE note, justification, ni réflexion. Livre UNIQUEMENT le commentaire final.
+- N'utilise JAMAIS de guillemets pour encapsuler ta phrase.
+- N'écris jamais l'évaluation brute entre parenthèses à la fin de ta phrase, intègre le concept dans ta syntaxe.
+- Ne formule aucune hypothèse sur les coups futurs ou variantes non jouées.
+"""
 
                     messages = [{"role": "system", "content": system_prompt}]
                     
@@ -461,9 +471,12 @@ Commentaire : [Une ou deux phrases synthétiques en français]."""
                         elif tactics != "Continuité" and "perte matérielle" in tactics.lower():
                             messages.extend(AIAnalyzer.FEW_SHOT_BANK["perte_materielle"])
 
+                    # Nettoyage de alt_context pour éviter les sauts de ligne inutiles
+                    alt_str = alt_context.strip() if alt_context else ""
+                    
                     messages.append({
                         "role": "user", 
-                        "content": f"FAITS :\nJoueur : {turn_color}\nCoup : {final_move_str}\nQualité : {status}\n{events_text}\n{alt_context}\n\nRÉPONSE :"
+                        "content": f"Coup : {final_move_str}. Évaluation : {status}. {events_text} {alt_str}"
                     })
                     
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.1}
