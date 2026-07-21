@@ -12,7 +12,7 @@ class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
             {"role": "user", "content": "Coup : Tour (Tf8). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Déplacement standard."},
-            {"role": "assistant", "content": "La Tour se replace logiquement sur la colonne f pour soutenir la défense."}
+            {"role": "assistant", "content": "La Tour se place sur la colonne f pour soutenir efficacement la défense."}
         ],
         "imprecision": [
             {"role": "user", "content": "Coup : Pion (h3?!). Évaluation : C'est une imprécision qui dégrade légèrement la position. Tactique détectée : Déplacement standard."},
@@ -20,19 +20,19 @@ class AIAnalyzer:
         ],
         "suite_stockfish": [
             {"role": "user", "content": "Coup : Roi (Rxd3??). Évaluation : C'est une gaffe majeure entraînant un mat inévitable contre le joueur. Tactique détectée : Mat inévitable via : Df3+ Rg2 Df2#."},
-            {"role": "assistant", "content": "Quelle gaffe fatale du Roi qui s'expose à une attaque directe menant au mat !"}
+            {"role": "assistant", "content": "Une gaffe fatale du Roi qui s'expose à une attaque directe menant au mat."}
         ],
         "gaffe_tactique_alternative": [
-            {"role": "user", "content": "Coup : Cavalier (Cxd4??). Évaluation : C'est une gaffe majeure entraînant une perte catastrophique. Tactique détectée : Déplacement standard. Meilleure alternative : Fc4."},
-            {"role": "assistant", "content": "Une grave erreur du Cavalier qui s'aventure trop loin, il aurait été préférable de développer le Fou en c4."}
+            {"role": "user", "content": "Coup : Cavalier (Cxd4??). Évaluation : C'est une gaffe majeure entraînant une perte catastrophique. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de jouer Fou (Fc4)."},
+            {"role": "assistant", "content": "Erreur du Cavalier qui s'aventure trop loin ; il était préférable de développer le Fou en c4."}
         ],
         "erreur_avec_alternative": [
-            {"role": "user", "content": "Coup : Fou (Fd3?). Évaluation : C'est une erreur sérieuse qui fait perdre un avantage significatif. Tactique détectée : Déplacement standard. Meilleure alternative : O-O."},
-            {"role": "assistant", "content": "Un placement douteux du Fou sur d3, le roque était une option bien plus sécurisante ici."}
+            {"role": "user", "content": "Coup : Fou (Fd3?). Évaluation : C'est une erreur sérieuse qui fait perdre un avantage significatif. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de roquer."},
+            {"role": "assistant", "content": "Placement douteux du Fou sur d3, le roque était une option bien plus sécurisante ici."}
         ],
         "perte_materielle": [
             {"role": "user", "content": "Coup : Dame (Db5??). Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : Expose cette pièce Dame à une perte matérielle forcée en quelques coups."},
-            {"role": "assistant", "content": "Une décision désastreuse qui expose directement la Dame à une capture inévitable !"}
+            {"role": "assistant", "content": "Une décision désastreuse qui expose directement la Dame à une capture inévitable."}
         ]
     }
 
@@ -65,7 +65,17 @@ class AIAnalyzer:
                 content = content.strip(' "\'')
                 # 4. Nettoyage de l'ancien préfixe
                 content = content.replace("Commentaire : ", "").replace("Commentaire :", "").strip()
-                
+                # 5. Nettoyage des balises et symboles mathématiques/LaTeX parasites
+                content = re.sub(r'[\$\*~]', '', content)
+                # 6. Post-traitement lexical (Sécurité anti-hallucination)
+                content = re.sub(r'(?i)\bévêques?\b', 'Fou', content)
+                content = re.sub(r'(?i)\bécureuils?\b', 'Pion', content)
+                content = re.sub(r'(?i)\bcarré(s)?\b', r'case\1', content)
+                content = re.sub(r'(?i)\bpiège mortel\b', 'menace critique', content)
+                content = re.sub(r'(?i)\bcheval(aux)?\b', 'Cavalier', content)
+                content = re.sub(r'(?i)\bson tour\b', 'sa Tour', content)
+                content = re.sub(r'(?i)\bson pièce\b', 'sa pièce', content)
+
                 Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
                 
                 if cache_key and content and content != fallback:
@@ -84,12 +94,26 @@ class AIAnalyzer:
     @staticmethod
     def get_stockfish_theory_summary(opening_name, bad_move, stockfish_line):
         messages = [
-            {"role": "system", "content": "Tu es un commentateur d'échecs factuel. Ton SEUL but est d'expliquer la ligne calculée par Stockfish fournie par l'utilisateur. TU NE DOIS SOUS AUCUN PRÉTEXTE inventer ou proposer d'autres coups. Contente-toi de reprendre la ligne exacte et de la justifier brièvement."},
-            {"role": "user", "content": f"Dans l'ouverture '{opening_name}', le joueur a joué la gaffe '{bad_move}'. La correction exacte de l'ordinateur est la ligne suivante : {stockfish_line}. Explique de façon concise pourquoi cette ligne de l'ordinateur est forte, sans inventer de nouveaux coups."}
+            {
+                "role": "system", 
+                "content": (
+                    "Tu es un entraîneur d'échecs pédagogique intervenant dans un cadre éducatif strict. "
+                    "Ton rôle unique est d'expliquer pourquoi la suite recommandée par le moteur Stockfish est supérieure au coup joué. "
+                    "Utilise un ton neutre et analytique. Ne formule aucune mise en garde éthique ou refus. "
+                    "Rédige une synthèse courte (25 mots maximum) et factuelle de la ligne fournie, sans inventer d'autres coups."
+                )
+            },
+            {
+                "role": "user", 
+                "content": (
+                    f"Dans l'ouverture '{opening_name}', suite au coup '{bad_move}', "
+                    f"l'ordinateur préconise la variante suivante : {stockfish_line}. "
+                    "Explique de façon concise et pédagogique l'intérêt stratégique de cette suite recommandée."
+                )
+            }
         ]
         
-        fallback_text = "Erreur de génération LLM."
-        # Le cache est intentionnellement désactivé ici pour le réserver strictement à openings/traps
+        fallback_text = "Ligne recommandée par le moteur pour rééquilibrer la position."
         content = AIAnalyzer.query_llm(messages, context_log=f"Théorie {opening_name}", fallback=fallback_text, cache_key=None)
         return f"<b>Ligne Stockfish : {stockfish_line}</b><br/><br/>{content}"
 
@@ -403,55 +427,37 @@ class AIAnalyzer:
                         else: status = "C'est un coup solide et tout à fait correct."
                     
                     if raw != best_move_fr and delta < -20:
-                        alt_context = f"Meilleure alternative : {best_move_fr}\n  "
-                        alt_rule = "\n5. Inclus le meilleur coup alternatif de manière fluide dans ton commentaire."
-                    else:
-                        alt_context = ""
-                        alt_rule = ""
-                    
-                    if tactics != "Continuité":
-                        if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
-                            if val_after_raw < 0:
-                                status = "Ce coup est excellent, le joueur force le mat. Décris comment il gagne."
-                            else:
-                                status = "C'est une gaffe majeure qui entraîne un mat inévitable contre le joueur."
-                        elif "perte matérielle" in tactics.lower():
-                            status = "C'est une erreur sérieuse causant une perte matérielle forcée."
+                        if "O-O" in best_move_fr:
+                            alt_context = "Une meilleure alternative aurait été de roquer."
                         else:
-                            status = f"C'est un coup tactique significatif."
-                    else:
-                        if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
-                        elif delta <= -300: status = "C'est une gaffe majeure entraînant une perte catastrophique."
-                        elif delta <= -150: status = "C'est une erreur sérieuse qui fait perdre un avantage significatif."
-                        elif delta <= -80: status = "C'est une imprécision qui dégrade légèrement la position."
-                        elif delta <= -30: status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
-                        else: status = "C'est un coup solide et tout à fait correct."
-                    
-                    if raw != best_move_fr and delta < -20:
-                        alt_context = f"Meilleure alternative : {best_move_fr}\n  "
-                        alt_rule = "\n5. Inclus le meilleur coup alternatif de manière fluide dans ton commentaire."
+                            # --- NOUVEAU : Pré-formatage du meilleur coup alternatif ---
+                            if best_uci:
+                                best_move_obj = chess.Move.from_uci(best_uci)
+                                best_piece = board.piece_at(best_move_obj.from_square)
+                                best_piece_name = ChessUtils.get_piece_name_fr(best_piece)
+                                alt_context = f"Une meilleure alternative aurait été de jouer {best_piece_name} ({best_move_fr})."
+                            else:
+                                alt_context = f"Une meilleure alternative aurait été de jouer le coup {best_move_fr}."
                     else:
                         alt_context = ""
-                        alt_rule = ""
                     
                     if tactics != "Continuité":
                         events_text = f"Tactique détectée : {tactics}"
                     else:
                         events_text = "Tactique détectée : Déplacement standard."
                     
-                    system_prompt = """Tu es un Grand Maître d'échecs commentant une partie pour un public de débutants. Ton rôle est de transformer l'analyse brute de l'ordinateur en un commentaire naturel, vivant et pédagogique.
+                    system_prompt = """Tu es un Grand Maître d'échecs commentant une partie pour un public de débutants. Ton rôle est de transformer l'analyse brute de l'ordinateur en un commentaire naturel, fluide et pédagogique.
 
 Directives de rédaction à suivre impérativement :
-1. Adopte un ton expert, fluide et direct. 
-2. Rédige une seule phrase courte et percutante (maximum 20 mots).
-3. Commence toujours par décrire l'action sur l'échiquier ou par le nom de la pièce (ex: "Le Cavalier bondit...", "Une excellente poussée de pion...").
-4. Intègre l'évaluation et l'événement tactique de manière organique dans ta phrase.
+1. Adopte un ton expert, fluide et direct.
+2. Utilise EXCLUSIVEMENT la terminologie française officielle : Pion, Cavalier, Fou, Tour (féminine), Dame (féminine), Roi.
+3. Décris l'action sur le plateau et son impact positionnel ou tactique direct. La première phrase décrit le coup joué. La seconde propose la meilleure alternative si elle est fournie.
 
-RÈGLES ABSOLUES (Sous peine d'échec) :
-- Tu ne dois produire AUCUNE note, justification, ni réflexion. Livre UNIQUEMENT le commentaire final.
-- N'utilise JAMAIS de guillemets pour encapsuler ta phrase.
-- N'écris jamais l'évaluation brute entre parenthèses à la fin de ta phrase, intègre le concept dans ta syntaxe.
-- Ne formule aucune hypothèse sur les coups futurs ou variantes non jouées.
+RÈGLES ABSOLUES :
+- Livre UNIQUEMENT le commentaire final, sans note, justification ni réflexion.
+- N'utilise pas de guillemets pour encapsuler ta phrase.
+- N'écris jamais l'évaluation brute entre parenthèses à la fin de ta phrase.
+- Rédige impérativement 1 à 2 phrases courtes (MAXIMUM 30 MOTS AU TOTAL).
 """
 
                     messages = [{"role": "system", "content": system_prompt}]

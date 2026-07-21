@@ -61,6 +61,9 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
     blunders, good_moves = 0, 0
     opening_phase, middlegame_phase, endgame_phase = [], [], []
     
+    est_elo_white = None
+    est_elo_black = None
+
     if existing_game and "analysis" in existing_game:
         old_analysis = existing_game["analysis"]
         details = old_analysis.get("details", [])
@@ -78,7 +81,6 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
 
         Logger.debug_log(f"Reprise de l'analyse de {game.get('url')} au coup {len(details) + 1}", "INFO")
 
-    max_deep_moves = len(moves) if deep_analysis else 0
     cached_opening = existing_game.get("opening", "Ouverture Inconnue") if existing_game else "Ouverture Inconnue"
     
     # Utilisation de la nouvelle détection intelligente
@@ -113,14 +115,14 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         "opponent_type": ChessUtils.classify_opponent_type(black_name if white_name == username else white_name),
         "white": {"username": white_name, "elo": game.get("white", {}).get("rating")},
         "black": {"username": black_name, "elo": game.get("black", {}).get("rating")},
-        "opening": best_opening_name,  # ICI : On utilise notre variable Openix
+        "opening": best_opening_name,
         "deep_analysis": deep_analysis,
         "analysis": {
             "summary": {"opening": {}, "middlegame": {}, "endgame": {}}, 
             "details": details, "blunders": blunders, "good_moves": good_moves,
             "opening_blunders": opening_blunders_data,
-            "est_elo_white": est_elo_white if 'est_elo_white' in locals() else None,
-            "est_elo_black": est_elo_black if 'est_elo_black' in locals() else None
+            "est_elo_white": est_elo_white,
+            "est_elo_black": est_elo_black
         }
     }
 

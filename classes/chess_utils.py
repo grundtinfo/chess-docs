@@ -161,8 +161,12 @@ class ChessUtils:
     def get_piece_name_fr(piece):
         if not piece: return "Pièce"
         names = {
-            chess.PAWN: "Pion", chess.KNIGHT: "Cavalier", chess.BISHOP: "Fou",
-            chess.ROOK: "Tour", chess.QUEEN: "Dame", chess.KING: "Roi"
+            chess.PAWN: "Pion",
+            chess.KNIGHT: "Cavalier",
+            chess.BISHOP: "Fou",
+            chess.ROOK: "Tour",
+            chess.QUEEN: "Dame",
+            chess.KING: "Roi"
         }
         return names.get(piece.piece_type, "Pièce")
 
