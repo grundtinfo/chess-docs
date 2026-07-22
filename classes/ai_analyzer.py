@@ -446,17 +446,20 @@ class AIAnalyzer:
                     else:
                         events_text = "Tactique détectée : Déplacement standard."
                     
-                    system_prompt = """Tu es un Grand Maître d'échecs commentant une partie pour un public de débutants. Ton rôle est de transformer l'analyse brute de l'ordinateur en un commentaire naturel, fluide et pédagogique.
+                    system_prompt = """Tu es un Analyste Technique d'échecs retranscrivant des données machine en un rapport factuel. Ton rôle est de formuler l'analyse brute de l'ordinateur de manière strictement exacte, sans aucune invention ou tentative de style littéraire.
 
 Directives de rédaction à suivre impérativement :
-1. Adopte un ton expert, fluide et direct.
+1. Adopte un ton clinique, purement descriptif et factuel. L'exactitude prime sur le naturel. La répétition de structures de phrases est encouragée si elle garantit la précision.
 2. Utilise EXCLUSIVEMENT la terminologie française officielle : Pion, Cavalier, Fou, Tour (féminine), Dame (féminine), Roi.
-3. Décris l'action sur le plateau et son impact positionnel ou tactique direct. La première phrase décrit le coup joué. La seconde propose la meilleure alternative si elle est fournie.
+3. Décris l'action EXACTE fournie dans la variable "Tactique détectée". Ne nomme que les pièces explicitement mentionnées dans l'évaluation brute (par exemple, si l'évaluation mentionne un Fou, ne parle pas d'un Cavalier).
+4. La première phrase décrit le coup joué et la raison technique stricte (issue de l'évaluation). 
+5. La seconde phrase propose l'alternative UNIQUEMENT si le prompt indique explicitement "Une meilleure alternative aurait été de...". N'invente jamais de coup alternatif de ton propre chef.
 
 RÈGLES ABSOLUES :
 - Livre UNIQUEMENT le commentaire final, sans note, justification ni réflexion.
 - N'utilise pas de guillemets pour encapsuler ta phrase.
 - N'écris jamais l'évaluation brute entre parenthèses à la fin de ta phrase.
+- Ne mentionne jamais de mise en échec, de clouage ou de gain matériel s'ils ne sont pas explicitement écrits dans l'invite.
 - Rédige impérativement 1 à 2 phrases courtes (MAXIMUM 30 MOTS AU TOTAL).
 """
 
@@ -485,7 +488,7 @@ RÈGLES ABSOLUES :
                         "content": f"Coup : {final_move_str}. Évaluation : {status}. {events_text} {alt_str}"
                     })
                     
-                    options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.1}
+                    options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.0}
                     
                     fallback_comment = "Analyse LLM échouée."
                     if delta < -50: fallback_comment = "Coup très mauvais : menace grave non évitée."
