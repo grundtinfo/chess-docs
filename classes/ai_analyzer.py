@@ -75,6 +75,10 @@ class AIAnalyzer:
                 content = re.sub(r'(?i)\bcheval(aux)?\b', 'Cavalier', content)
                 content = re.sub(r'(?i)\bson tour\b', 'sa Tour', content)
                 content = re.sub(r'(?i)\bson pièce\b', 'sa pièce', content)
+                
+                # NOUVEAU : Filtres pour prévenir les hallucinations
+                content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
+                content = re.sub(r'(?i)case\s+[A-Z]\b', 'position', content)
 
                 Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
                 
@@ -170,7 +174,6 @@ class AIAnalyzer:
 
     @staticmethod
     def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None):
-        # (La logique reste identique à celle de l'original)
         Logger.debug_log(f"Détection des tactiques pour le coup {move_obj.uci()}...", "INFO")
         tactics = []
         moving_piece = board_before.piece_at(move_obj.from_square)
@@ -190,23 +193,23 @@ class AIAnalyzer:
         
         if board_after.is_checkmate():
             tactics.append(f"Mat par {moving_piece_name} en {to_square_name}")
-        elif board_after.is_check():
-            defender_color = board_after.turn
-            attacker_color = not defender_color
-            king_sq = board_after.king(defender_color)
-            checkers = board_after.attackers(attacker_color, king_sq)
-            
-            if move_obj.to_square not in checkers and len(checkers) > 0:
-                checker_sq = list(checkers)[0]
-                checker_piece = board_after.piece_at(checker_sq)
-                checker_name = ChessUtils.get_piece_name_fr(checker_piece)
-                tactics.append(f"Découverte d'une attaque menant à un échec par {checker_name} (démasqué par {moving_piece_name})")
-            elif len(checkers) > 1:
-                tactics.append(f"Échec double impliquant {moving_piece_name} en {to_square_name}")
-            else:
-                tactics.append(f"Échec direct par {moving_piece_name} en {to_square_name}")
-            
-        if not board_after.is_checkmate():
+        else:
+            if board_after.is_check():
+                defender_color = board_after.turn
+                attacker_color = not defender_color
+                king_sq = board_after.king(defender_color)
+                checkers = board_after.attackers(attacker_color, king_sq)
+                
+                if move_obj.to_square not in checkers and len(checkers) > 0:
+                    checker_sq = list(checkers)[0]
+                    checker_piece = board_after.piece_at(checker_sq)
+                    checker_name = ChessUtils.get_piece_name_fr(checker_piece)
+                    tactics.append(f"Découverte d'une attaque menant à un échec par {checker_name} (démasqué par {moving_piece_name})")
+                elif len(checkers) > 1:
+                    tactics.append(f"Échec double impliquant {moving_piece_name} en {to_square_name}")
+                else:
+                    tactics.append(f"Échec direct par {moving_piece_name} en {to_square_name}")
+                
             attacks = board_after.attacks(move_obj.to_square)
             targets = []
             for sq in attacks:
@@ -218,111 +221,111 @@ class AIAnalyzer:
                 targets_str = ", ".join(targets)
                 tactics.append(f"{moving_piece_name} en {to_square_name} réalise une fourchette attaquant simultanément : {targets_str}")
 
-        defender_color = board_after.turn
-        pinned_pieces = []
-        for sq in chess.SQUARES:
-            piece = board_after.piece_at(sq)
-            if piece and piece.color == defender_color:
-                if board_after.is_pinned(defender_color, sq):
-                    if not board_before.is_pinned(defender_color, sq):
-                        pinned_pieces.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
-                        
-        if pinned_pieces:
-            tactics.append(f"Le coup crée un clouage immobilisant : {', '.join(pinned_pieces)}")
+            defender_color = board_after.turn
+            pinned_pieces = []
+            for sq in chess.SQUARES:
+                piece = board_after.piece_at(sq)
+                if piece and piece.color == defender_color:
+                    if board_after.is_pinned(defender_color, sq):
+                        if not board_before.is_pinned(defender_color, sq):
+                            pinned_pieces.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
+                            
+            if pinned_pieces:
+                tactics.append(f"Le coup crée un clouage immobilisant : {', '.join(pinned_pieces)}")
 
-        if eval_after and not board_after.is_checkmate():
-            if hasattr(eval_after, 'value'):
-                val = eval_after.value if eval_after.value is not None else 0
-                t = getattr(eval_after, 'type', 'cp')
-            else:
-                val = eval_after.get('value', 0) if isinstance(eval_after, dict) else 0
-                t = eval_after.get('type', 'cp') if isinstance(eval_after, dict) else 'cp'
-
-            player_multiplier = 1 if board_before.turn == chess.WHITE else -1
-
-            if t == 'mate':
-                sf = StockfishAnalyzer().get_engine()
-                sf.set_fen_position(board_after.fen())
-                sim_board = board_after.copy()
-                seq_fr = []
-                seq_eng = []
-                for _ in range(abs(val)): 
-                    best_uci = sf.get_best_move()
-                    if not best_uci: break
-                    move_obj_sim = sim_board.parse_uci(best_uci)
-                    san_fr = ChessUtils.convert_english_to_french_notation(sim_board.san(move_obj_sim))
-                    seq_fr.append(san_fr)
-                    san_eng = sim_board.san(move_obj_sim)
-                    seq_eng.append(san_eng)
-                    sim_board.push(move_obj_sim)
-                    sf.set_fen_position(sim_board.fen())
-
-                is_in_trap = False
-                if future_moves:
-                    match_len = min(len(future_moves), len(seq_eng))
-                    if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
-                        is_in_trap = True
-                        
-                if is_in_trap:
-                    tactics.append(f"Mat inévitable (suite illustrée)")
+            if eval_after:
+                if hasattr(eval_after, 'value'):
+                    val = eval_after.value if eval_after.value is not None else 0
+                    t = getattr(eval_after, 'type', 'cp')
                 else:
-                    tactics.append(f"Mat inévitable via : {' '.join(seq_fr)}")
-                
-            elif t == 'cp':
-                cp_val = val * player_multiplier
-                if cp_val >= 300 and "Capture" not in " ".join(tactics):
-                    tactics.append("Prépare un gain matériel décisif imminent")
-                elif cp_val <= -300:
-                    piece_lost = None
-                    seq_eng = []
-                    seq_fr = []
-                    
+                    val = eval_after.get('value', 0) if isinstance(eval_after, dict) else 0
+                    t = eval_after.get('type', 'cp') if isinstance(eval_after, dict) else 'cp'
+
+                player_multiplier = 1 if board_before.turn == chess.WHITE else -1
+
+                if t == 'mate':
+                    sf = StockfishAnalyzer().get_engine()
+                    sf.set_fen_position(board_after.fen())
                     sim_board = board_after.copy()
-                    analyzer = StockfishAnalyzer()
-                    sf = analyzer.get_engine()
-                    original_color = board_after.turn 
-                    
-                    if sf:
-                        for _ in range(6):
-                            if sim_board.is_game_over(): break
-                            sf.set_fen_position(sim_board.fen())
-                            best_uci = sf.get_best_move()
-                            if not best_uci: break
+                    seq_fr = []
+                    seq_eng = []
+                    for _ in range(abs(val)): 
+                        best_uci = sf.get_best_move()
+                        if not best_uci: break
+                        move_obj_sim = sim_board.parse_uci(best_uci)
+                        san_fr = ChessUtils.convert_english_to_french_notation(sim_board.san(move_obj_sim))
+                        seq_fr.append(san_fr)
+                        san_eng = sim_board.san(move_obj_sim)
+                        seq_eng.append(san_eng)
+                        sim_board.push(move_obj_sim)
+                        sf.set_fen_position(sim_board.fen())
+
+                    is_in_trap = False
+                    if future_moves:
+                        match_len = min(len(future_moves), len(seq_eng))
+                        if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
+                            is_in_trap = True
                             
-                            move_obj_sim = sim_board.parse_uci(best_uci)
-                            target_piece = sim_board.piece_at(move_obj_sim.to_square)
-                            
-                            if target_piece and target_piece.color != original_color:
-                                pt = target_piece.piece_type
-                                if pt == chess.QUEEN:
-                                    piece_lost = "Dame"
-                                elif pt == chess.ROOK and piece_lost != "Dame":
-                                    piece_lost = "Tour"
-                                elif pt == chess.BISHOP and piece_lost not in ["Dame", "Tour"]:
-                                    piece_lost = "Fou"
-                                elif pt == chess.KNIGHT and piece_lost not in ["Dame", "Tour", "Fou"]:
-                                    piece_lost = "Cavalier"
-                                    
-                            san_eng = sim_board.san(move_obj_sim)
-                            seq_eng.append(san_eng)
-                            seq_fr.append(ChessUtils.convert_english_to_french_notation(san_eng))
-                            sim_board.push(move_obj_sim)
-                            
-                            if piece_lost == "Dame": break
-                            
-                    if piece_lost:
-                        is_in_trap = False
-                        if future_moves:
-                            match_len = min(len(future_moves), len(seq_eng))
-                            if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
-                                is_in_trap = True
-                                
-                        if is_in_trap:
-                            tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups (suite illustrée)")
-                        else:
-                            tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups via : {' '.join(seq_fr)}")
+                    if is_in_trap:
+                        tactics.append(f"Mat inévitable (suite illustrée)")
                     else:
-                        tactics.append("Expose le joueur à une lourde perte matérielle (gaffe stratégique)")
+                        tactics.append(f"Mat inévitable via : {' '.join(seq_fr)}")
+                    
+                elif t == 'cp':
+                    cp_val = val * player_multiplier
+                    if cp_val >= 300 and "Capture" not in " ".join(tactics):
+                        tactics.append("Prépare un gain matériel décisif imminent")
+                    elif cp_val <= -300:
+                        piece_lost = None
+                        seq_eng = []
+                        seq_fr = []
+                        
+                        sim_board = board_after.copy()
+                        analyzer = StockfishAnalyzer()
+                        sf = analyzer.get_engine()
+                        original_color = board_after.turn 
+                        
+                        if sf:
+                            for _ in range(6):
+                                if sim_board.is_game_over(): break
+                                sf.set_fen_position(sim_board.fen())
+                                best_uci = sf.get_best_move()
+                                if not best_uci: break
+                                
+                                move_obj_sim = sim_board.parse_uci(best_uci)
+                                target_piece = sim_board.piece_at(move_obj_sim.to_square)
+                                
+                                if target_piece and target_piece.color != original_color:
+                                    pt = target_piece.piece_type
+                                    if pt == chess.QUEEN:
+                                        piece_lost = "Dame"
+                                    elif pt == chess.ROOK and piece_lost != "Dame":
+                                        piece_lost = "Tour"
+                                    elif pt == chess.BISHOP and piece_lost not in ["Dame", "Tour"]:
+                                        piece_lost = "Fou"
+                                    elif pt == chess.KNIGHT and piece_lost not in ["Dame", "Tour", "Fou"]:
+                                        piece_lost = "Cavalier"
+                                        
+                                san_eng = sim_board.san(move_obj_sim)
+                                seq_eng.append(san_eng)
+                                seq_fr.append(ChessUtils.convert_english_to_french_notation(san_eng))
+                                sim_board.push(move_obj_sim)
+                                
+                                if piece_lost == "Dame": break
+                                
+                        if piece_lost:
+                            is_in_trap = False
+                            if future_moves:
+                                match_len = min(len(future_moves), len(seq_eng))
+                                if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
+                                    is_in_trap = True
+                                    
+                            if is_in_trap:
+                                tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups (suite illustrée)")
+                            else:
+                                tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups via : {' '.join(seq_fr)}")
+                        else:
+                            tactics.append("Expose le joueur à une lourde perte matérielle (gaffe stratégique)")
                         
         tactics_comment = " ; ".join(tactics) if tactics else "Continuité"
         Logger.debug_log(f"Événement détecté pour le coup : {tactics_comment}", "INFO")
@@ -371,7 +374,6 @@ class AIAnalyzer:
 
                     is_sacrifice = False
                     piece_moved = board.piece_at(move_obj.from_square)
-                    # --- NOUVEAU : Extraction explicite du nom de la pièce ---
                     piece_name = ChessUtils.get_piece_name_fr(piece_moved) if piece_moved else "Pièce"
                     
                     if piece_moved and piece_moved.piece_type in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT]:
@@ -390,23 +392,19 @@ class AIAnalyzer:
                     elif delta <= -30: eval_symbol = "!?"
                     elif delta == 0 and swing >= 300: eval_symbol = "!"
                     
-                    # --- NOUVEAU : Formatage du coup avec la pièce ---
                     final_move_str = f"{piece_name} des {turn_color} ({san_fr}{eval_symbol})"
                     
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, future_moves)
                     
-                    # --- NOUVEAU : Interception Python de la séquence Stockfish ---
                     stockfish_seq = "Aucune"
                     if "via :" in tactics:
                         parts = tactics.split("via :")
                         stockfish_seq = parts[1].strip()
-                        # Nettoie les FAITS pour ne pas embrouiller le LLM avec des coups bruts
                         tactics = parts[0].strip()
                     elif "suite illustrée" in tactics:
                         stockfish_seq = "Illustrée dans le rapport"
                         tactics = tactics.replace("(suite illustrée)", "").strip()
-                    # ---------------------------------------------------------------
                     
                     if tactics != "Continuité":
                         if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
@@ -426,11 +424,10 @@ class AIAnalyzer:
                         elif delta <= -30: status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
                         else: status = "C'est un coup solide et tout à fait correct."
                     
-                    if raw != best_move_fr and delta < -20:
+                    if move_obj and best_uci and move_obj.uci() != best_uci and delta < -20:
                         if "O-O" in best_move_fr:
                             alt_context = "Une meilleure alternative aurait été de roquer."
                         else:
-                            # --- NOUVEAU : Pré-formatage du meilleur coup alternatif ---
                             if best_uci:
                                 best_move_obj = chess.Move.from_uci(best_uci)
                                 best_piece = board.piece_at(best_move_obj.from_square)
@@ -480,7 +477,6 @@ RÈGLES ABSOLUES :
                         elif tactics != "Continuité" and "perte matérielle" in tactics.lower():
                             messages.extend(AIAnalyzer.FEW_SHOT_BANK["perte_materielle"])
 
-                    # Nettoyage de alt_context pour éviter les sauts de ligne inutiles
                     alt_str = alt_context.strip() if alt_context else ""
                     
                     messages.append({
