@@ -290,6 +290,7 @@ class AIAnalyzer:
                         tactics.append("Prépare un gain matériel décisif imminent")
                     elif cp_val <= -300:
                         piece_lost = None
+                        lost_square = None
                         seq_eng = []
                         seq_fr = []
                         
@@ -310,14 +311,22 @@ class AIAnalyzer:
                                 
                                 if target_piece and target_piece.color != original_color:
                                     pt = target_piece.piece_type
+                                    is_new_loss = False
                                     if pt == chess.QUEEN:
                                         piece_lost = "Dame"
+                                        is_new_loss = True
                                     elif pt == chess.ROOK and piece_lost != "Dame":
                                         piece_lost = "Tour"
+                                        is_new_loss = True
                                     elif pt == chess.BISHOP and piece_lost not in ["Dame", "Tour"]:
                                         piece_lost = "Fou"
+                                        is_new_loss = True
                                     elif pt == chess.KNIGHT and piece_lost not in ["Dame", "Tour", "Fou"]:
                                         piece_lost = "Cavalier"
+                                        is_new_loss = True
+                                        
+                                    if is_new_loss:
+                                        lost_square = chess.square_name(move_obj_sim.to_square)
                                         
                                 san_eng = sim_board.san(move_obj_sim)
                                 seq_eng.append(san_eng)
@@ -334,9 +343,9 @@ class AIAnalyzer:
                                     is_in_trap = True
                                     
                             if is_in_trap:
-                                tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups (suite illustrée)")
+                                tactics.append(f"Expose la pièce alliée ({piece_lost} en {lost_square}) à une perte matérielle forcée en quelques coups (suite illustrée)")
                             else:
-                                tactics.append(f"Expose cette pièce {piece_lost} à une perte matérielle forcée en quelques coups via : {' '.join(seq_fr)}")
+                                tactics.append(f"Expose la pièce alliée ({piece_lost} en {lost_square}) à une perte matérielle forcée en quelques coups via : {' '.join(seq_fr)}")
                         else:
                             tactics.append("Expose le joueur à une lourde perte matérielle (gaffe stratégique)")
                         
@@ -474,7 +483,7 @@ class AIAnalyzer:
 Directives de rédaction à suivre impérativement :
 1. Adopte un ton clinique, purement descriptif et factuel. L'exactitude prime sur le naturel. La répétition de structures de phrases est encouragée si elle garantit la précision.
 2. Utilise EXCLUSIVEMENT la terminologie française officielle : Pion, Cavalier, Fou, Tour (féminine), Dame (féminine), Roi.
-3. Décris l'action EXACTE fournie dans la variable "Tactique détectée". Ne nomme que les pièces explicitement mentionnées dans l'évaluation brute (par exemple, si l'évaluation mentionne un Fou, ne parle pas d'un Cavalier).
+3. Intègre factuellement les informations de tactique sans jamais utiliser les mots 'variable' ou 'tactique détectée'. Ne nomme que les pièces explicitement mentionnées dans l'évaluation brute (par exemple, si l'évaluation mentionne un Fou, ne parle pas d'un Cavalier).
 4. La première phrase décrit le coup joué et la raison technique stricte (issue de l'évaluation). 
 5. La seconde phrase propose l'alternative UNIQUEMENT si le prompt indique explicitement "Une meilleure alternative aurait été de...". N'invente jamais de coup alternatif de ton propre chef.
 
@@ -484,7 +493,7 @@ RÈGLES ABSOLUES :
 - N'utilise pas de guillemets pour encapsuler ta phrase.
 - N'écris jamais l'évaluation brute entre parenthèses à la fin de ta phrase.
 - Ne mentionne jamais de mise en échec, de clouage ou de gain matériel s'ils ne sont pas explicitement écrits dans l'invite.
-- Si une variable "Suite forcée" t'est fournie avec des coups, tu DOIS obligatoirement terminer ta réponse par : "Suite : [les coups fournis]."
+- Si, et seulement si, une suite contienne de vrais coups t'est fournie, tu dois obligatoirement terminer ta réponse par : "Suite : [les coups fournis]."
 - Rédige impérativement 1 à 3 phrases courtes.
 """
 
@@ -508,17 +517,24 @@ RÈGLES ABSOLUES :
                     if "échec direct" in tactics.lower() or "échec double" in tactics.lower():
                         messages.extend(AIAnalyzer.FEW_SHOT_BANK["echec_geometrique"])
 
-                    # Formatage conditionnel de la suite de coups
+                    # --- FIX 3: Formatage conditionnel robuste de la suite de coups ---
                     suite_str = ""
-                    if stockfish_seq not in ["Aucune", "Illustrée dans le rapport"]:
+                    if stockfish_seq not in ["Aucune", "Illustrée dans le rapport"] and stockfish_seq.strip() != "":
                         suite_str = f"Suite forcée : {stockfish_seq}"
                     
                     alt_str = alt_context.strip() if alt_context else ""
                     
+                    # Construction du contenu brut envoyé au LLM
+                    user_content = f"Coup : {final_move_str}. Évaluation : {status} {events_text} {alt_str} {suite_str}".strip()
+                    
+                    # --- FIX 3: Nettoyage Python en cas de chaîne vide pour s'assurer de l'absence de résidus ---
+                    if not suite_str:
+                        user_content = user_content.replace("Suite forcée :", "").replace("Suite :", "")
+                        user_content = re.sub(r'\s+', ' ', user_content).strip()
+
                     messages.append({
                         "role": "user", 
-                        # On ajoute suite_str à la fin, proprement espacé
-                        "content": f"Coup : {final_move_str}. Évaluation : {status} {events_text} {alt_str} {suite_str}".strip()
+                        "content": user_content
                     })
                     
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.0}
