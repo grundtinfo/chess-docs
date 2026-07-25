@@ -12,27 +12,31 @@ class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
             {"role": "user", "content": "Coup : Tour (Tf8). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Déplacement standard."},
-            {"role": "assistant", "content": "La Tour se place sur la colonne f pour soutenir efficacement la défense."}
+            {"role": "assistant", "content": "La Tour se place sur la case f8. C'est le coup le plus précis."}
         ],
         "imprecision": [
             {"role": "user", "content": "Coup : Pion (h3?!). Évaluation : C'est une imprécision qui dégrade légèrement la position. Tactique détectée : Déplacement standard."},
-            {"role": "assistant", "content": "Une petite imprécision avec cette poussée de pion qui fait perdre un tempo précieux."}
+            {"role": "assistant", "content": "Le Pion se déplace en h3. C'est une imprécision."}
         ],
         "suite_stockfish": [
-            {"role": "user", "content": "Coup : Roi (Rxd3??). Évaluation : C'est une gaffe majeure entraînant un mat inévitable contre le joueur. Tactique détectée : Mat inévitable via : Df3+ Rg2 Df2#."},
-            {"role": "assistant", "content": "Une gaffe fatale du Roi qui s'expose à une attaque directe menant au mat."}
+            {"role": "user", "content": "Coup : Roi (Rxd3??). Évaluation : C'est une gaffe majeure entraînant un mat inévitable contre le joueur. Tactique détectée : Mat inévitable. Suite forcée : Df3+ Rg2 Df2#"},
+            {"role": "assistant", "content": "Le Roi capture en d3. C'est une gaffe majeure entraînant un mat inévitable. Suite : Df3+ Rg2 Df2#."}
         ],
         "gaffe_tactique_alternative": [
             {"role": "user", "content": "Coup : Cavalier (Cxd4??). Évaluation : C'est une gaffe majeure entraînant une perte catastrophique. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de jouer Fou (Fc4)."},
-            {"role": "assistant", "content": "Erreur du Cavalier qui s'aventure trop loin ; il était préférable de développer le Fou en c4."}
+            {"role": "assistant", "content": "Le Cavalier capture en d4. C'est une gaffe majeure. Une meilleure alternative aurait été de jouer le Fou en c4."}
         ],
         "erreur_avec_alternative": [
             {"role": "user", "content": "Coup : Fou (Fd3?). Évaluation : C'est une erreur sérieuse qui fait perdre un avantage significatif. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de roquer."},
-            {"role": "assistant", "content": "Placement douteux du Fou sur d3, le roque était une option bien plus sécurisante ici."}
+            {"role": "assistant", "content": "Le Fou se déplace en d3. C'est une erreur sérieuse. Une meilleure alternative aurait été de roquer."}
         ],
         "perte_materielle": [
             {"role": "user", "content": "Coup : Dame (Db5??). Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : Expose cette pièce Dame à une perte matérielle forcée en quelques coups."},
-            {"role": "assistant", "content": "Une décision désastreuse qui expose directement la Dame à une capture inévitable."}
+            {"role": "assistant", "content": "La Dame se déplace en b5. C'est une erreur sérieuse causant une perte matérielle forcée."}
+        ],
+        "echec_geometrique": [
+            {"role": "user", "content": "Coup : Dame (Dh4+). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Échec direct par Dame en h4."},
+            {"role": "assistant", "content": "La Dame se déplace en h4 et met le Roi adverse en échec."}
         ]
     }
 
@@ -78,7 +82,21 @@ class AIAnalyzer:
                 
                 # NOUVEAU : Filtres pour prévenir les hallucinations
                 content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
-                content = re.sub(r'(?i)case\s+[A-Z]\b', 'position', content)
+                
+                # RETRAIT DU REGEX DESTRUCTEUR: content = re.sub(r'(?i)case\s+[A-Z]\b', 'position', content)
+                
+                # NOUVEAU : Correction stricte du genre des pièces féminines
+                content = re.sub(r'(?i)\ble\s+Tour\b', 'la Tour', content)
+                content = re.sub(r'(?i)\ble\s+Dame\b', 'la Dame', content)
+                
+                # AJOUT BRUTAL : Filtres supplémentaires anti-hallucination stratégique et géométrique
+                content = re.sub(r'(?i)pour\s+(prendre le contrôle|gagner du terrain|développer|soutenir).*', '', content)
+                content = re.sub(r'(?i)Roi\s+(Blanc|Noir)\s+en\s+[a-h][1-8]', 'Roi adverse', content)
+
+                # Nettoyage final pour corriger les espaces en fin de chaîne dus aux suppressions
+                content = content.strip()
+                if not content.endswith('.'):
+                    content += '.'
 
                 Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
                 
@@ -406,23 +424,31 @@ class AIAnalyzer:
                         stockfish_seq = "Illustrée dans le rapport"
                         tactics = tactics.replace("(suite illustrée)", "").strip()
                     
-                    if tactics != "Continuité":
-                        if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
-                            if val_after_raw < 0:
-                                status = "Ce coup est excellent, le joueur force le mat. Décris comment il gagne."
-                            else:
-                                status = "C'est une gaffe majeure qui entraîne un mat inévitable contre le joueur."
-                        elif "perte matérielle" in tactics.lower():
-                            status = "C'est une erreur sérieuse causant une perte matérielle forcée."
-                        else:
-                            status = f"C'est un coup tactique significatif."
+                    # NOUVEAU : Explicitation des couleurs et syntaxe forcée des gaffes/erreurs
+                    if delta <= -150:
+                        status = f"Le joueur {turn_color} commet une erreur. L'adversaire bénéficie de la tactique suivante : {tactics}"
+                        events_text = ""
                     else:
-                        if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
-                        elif delta <= -300: status = "C'est une gaffe majeure entraînant une perte catastrophique."
-                        elif delta <= -150: status = "C'est une erreur sérieuse qui fait perdre un avantage significatif."
-                        elif delta <= -80: status = "C'est une imprécision qui dégrade légèrement la position."
-                        elif delta <= -30: status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
-                        else: status = "C'est un coup solide et tout à fait correct."
+                        if tactics != "Continuité":
+                            if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
+                                if val_after_raw < 0:
+                                    status = f"Ce coup est excellent, le joueur {turn_color} force le mat. Décris comment il gagne."
+                                else:
+                                    status = f"C'est une gaffe majeure qui entraîne un mat inévitable contre le joueur {turn_color}."
+                            elif "perte matérielle" in tactics.lower():
+                                status = f"C'est une erreur sérieuse causant une perte matérielle forcée pour le joueur {turn_color}."
+                            else:
+                                status = f"C'est un coup tactique significatif pour le joueur {turn_color}."
+                        else:
+                            if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
+                            elif delta <= -80: status = f"C'est une imprécision qui dégrade légèrement la position de {turn_color}."
+                            elif delta <= -30: status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
+                            else: status = "C'est un coup solide et tout à fait correct."
+                        
+                        if tactics != "Continuité":
+                            events_text = f"Tactique détectée : {tactics}"
+                        else:
+                            events_text = "Tactique détectée : Déplacement standard."
                     
                     if move_obj and best_uci and move_obj.uci() != best_uci and delta < -20:
                         if "O-O" in best_move_fr:
@@ -438,10 +464,13 @@ class AIAnalyzer:
                     else:
                         alt_context = ""
                     
-                    if tactics != "Continuité":
-                        events_text = f"Tactique détectée : {tactics}"
-                    else:
-                        events_text = "Tactique détectée : Déplacement standard."
+                    # NOUVEAU : Verrouillage des alternatives inexistantes
+                    if not alt_context:
+                        warning_msg = "AVERTISSEMENT SYSTÈME : Ne propose aucune alternative de coup. Ne fournis aucune suite de coups."
+                        if events_text:
+                            events_text += f" {warning_msg}"
+                        else:
+                            events_text = warning_msg
                     
                     system_prompt = """Tu es un Analyste Technique d'échecs retranscrivant des données machine en un rapport factuel. Ton rôle est de formuler l'analyse brute de l'ordinateur de manière strictement exacte, sans aucune invention ou tentative de style littéraire.
 
@@ -457,7 +486,8 @@ RÈGLES ABSOLUES :
 - N'utilise pas de guillemets pour encapsuler ta phrase.
 - N'écris jamais l'évaluation brute entre parenthèses à la fin de ta phrase.
 - Ne mentionne jamais de mise en échec, de clouage ou de gain matériel s'ils ne sont pas explicitement écrits dans l'invite.
-- Rédige impérativement 1 à 2 phrases courtes (MAXIMUM 30 MOTS AU TOTAL).
+- Si une variable "Suite forcée" t'est fournie avec des coups, tu DOIS obligatoirement terminer ta réponse par : "Suite : [les coups fournis]."
+- Rédige impérativement 1 à 3 phrases courtes.
 """
 
                     messages = [{"role": "system", "content": system_prompt}]
@@ -477,11 +507,20 @@ RÈGLES ABSOLUES :
                         elif tactics != "Continuité" and "perte matérielle" in tactics.lower():
                             messages.extend(AIAnalyzer.FEW_SHOT_BANK["perte_materielle"])
 
+                    if "échec direct" in tactics.lower() or "échec double" in tactics.lower():
+                        messages.extend(AIAnalyzer.FEW_SHOT_BANK["echec_geometrique"])
+
+                    # Formatage conditionnel de la suite de coups
+                    suite_str = ""
+                    if stockfish_seq not in ["Aucune", "Illustrée dans le rapport"]:
+                        suite_str = f"Suite forcée : {stockfish_seq}"
+                    
                     alt_str = alt_context.strip() if alt_context else ""
                     
                     messages.append({
                         "role": "user", 
-                        "content": f"Coup : {final_move_str}. Évaluation : {status}. {events_text} {alt_str}"
+                        # On ajoute suite_str à la fin, proprement espacé
+                        "content": f"Coup : {final_move_str}. Évaluation : {status} {events_text} {alt_str} {suite_str}".strip()
                     })
                     
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.0}
