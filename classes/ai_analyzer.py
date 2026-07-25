@@ -11,32 +11,32 @@ from classes.engines import StockfishAnalyzer
 class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
-            {"role": "user", "content": "Coup : Tour (Tf8). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Déplacement standard."},
-            {"role": "assistant", "content": "La Tour se place sur la case f8. C'est le coup le plus précis."}
+            {"role": "user", "content": "Coup : Tour des Blancs vers la case f8 (Tf8). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Déplacement standard."},
+            {"role": "assistant", "content": "La Tour se déplace sur la case f8. C'est le coup le plus précis."}
         ],
         "imprecision": [
-            {"role": "user", "content": "Coup : Pion (h3?!). Évaluation : C'est une imprécision qui dégrade légèrement la position. Tactique détectée : Déplacement standard."},
-            {"role": "assistant", "content": "Le Pion se déplace en h3. C'est une imprécision."}
+            {"role": "user", "content": "Coup : Pion des Noirs vers la case h3 (h3?!). Évaluation : C'est une imprécision qui dégrade légèrement la position. Tactique détectée : Déplacement standard."},
+            {"role": "assistant", "content": "Le Pion se déplace sur la case h3. C'est une imprécision."}
         ],
         "suite_stockfish": [
-            {"role": "user", "content": "Coup : Roi (Rxd3??). Évaluation : C'est une gaffe majeure entraînant un mat inévitable contre le joueur. Tactique détectée : Mat inévitable. Suite forcée : Df3+ Rg2 Df2#"},
-            {"role": "assistant", "content": "Le Roi capture en d3. C'est une gaffe majeure entraînant un mat inévitable. Suite : Df3+ Rg2 Df2#."}
+            {"role": "user", "content": "Coup : Roi des Blancs vers la case d3 (Rxd3??). Évaluation : C'est une gaffe majeure entraînant un mat inévitable contre le joueur. Tactique détectée : Mat inévitable. Suite forcée : Df3+ Rg2 Df2#"},
+            {"role": "assistant", "content": "Le Roi se déplace sur la case d3. C'est une gaffe majeure entraînant un mat inévitable. Suite : Df3+ Rg2 Df2#."}
         ],
         "gaffe_tactique_alternative": [
-            {"role": "user", "content": "Coup : Cavalier (Cxd4??). Évaluation : C'est une gaffe majeure entraînant une perte catastrophique. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de jouer Fou (Fc4)."},
-            {"role": "assistant", "content": "Le Cavalier capture en d4. C'est une gaffe majeure. Une meilleure alternative aurait été de jouer le Fou en c4."}
+            {"role": "user", "content": "Coup : Cavalier des Blancs vers la case d4 (Cxd4??). Évaluation : C'est une gaffe majeure. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de déplacer le Fou vers la case c4 (Fc4)."},
+            {"role": "assistant", "content": "Le Cavalier se déplace sur la case d4. C'est une gaffe majeure. Une meilleure alternative aurait été de déplacer le Fou sur la case c4."}
         ],
         "erreur_avec_alternative": [
-            {"role": "user", "content": "Coup : Fou (Fd3?). Évaluation : C'est une erreur sérieuse qui fait perdre un avantage significatif. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de roquer."},
-            {"role": "assistant", "content": "Le Fou se déplace en d3. C'est une erreur sérieuse. Une meilleure alternative aurait été de roquer."}
+            {"role": "user", "content": "Coup : Fou des Noirs vers la case d3 (Fd3?). Évaluation : C'est une erreur sérieuse. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de roquer."},
+            {"role": "assistant", "content": "Le Fou se déplace sur la case d3. C'est une erreur sérieuse. Une meilleure alternative aurait été de roquer."}
         ],
         "perte_materielle": [
-            {"role": "user", "content": "Coup : Dame (Db5??). Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : Expose cette pièce Dame à une perte matérielle forcée en quelques coups."},
-            {"role": "assistant", "content": "La Dame se déplace en b5. C'est une erreur sérieuse causant une perte matérielle forcée."}
+            {"role": "user", "content": "Coup : Dame des Blancs vers la case b5 (Db5??). Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : Expose cette pièce Dame à une perte matérielle forcée en quelques coups."},
+            {"role": "assistant", "content": "La Dame se déplace sur la case b5. C'est une erreur sérieuse causant une perte matérielle forcée."}
         ],
         "echec_geometrique": [
-            {"role": "user", "content": "Coup : Dame (Dh4+). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Échec direct par Dame en h4."},
-            {"role": "assistant", "content": "La Dame se déplace en h4 et met le Roi adverse en échec."}
+            {"role": "user", "content": "Coup : Dame des Noirs vers la case h4 (Dh4+). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Échec direct par Dame en h4."},
+            {"role": "assistant", "content": "La Dame se déplace sur la case h4. Elle met le Roi adverse en échec."}
         ]
     }
 
@@ -83,14 +83,9 @@ class AIAnalyzer:
                 # NOUVEAU : Filtres pour prévenir les hallucinations
                 content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
                 
-                # RETRAIT DU REGEX DESTRUCTEUR: content = re.sub(r'(?i)case\s+[A-Z]\b', 'position', content)
+                content = re.sub(r'\b([L|l])e\s+Tour\b', lambda m: f"{m.group(1)}a Tour", content)
+                content = re.sub(r'\b([L|l])e\s+Dame\b', lambda m: f"{m.group(1)}a Dame", content)
                 
-                # NOUVEAU : Correction stricte du genre des pièces féminines
-                content = re.sub(r'(?i)\ble\s+Tour\b', 'la Tour', content)
-                content = re.sub(r'(?i)\ble\s+Dame\b', 'la Dame', content)
-                
-                # AJOUT BRUTAL : Filtres supplémentaires anti-hallucination stratégique et géométrique
-                content = re.sub(r'(?i)pour\s+(prendre le contrôle|gagner du terrain|développer|soutenir).*', '', content)
                 content = re.sub(r'(?i)Roi\s+(Blanc|Noir)\s+en\s+[a-h][1-8]', 'Roi adverse', content)
 
                 # Nettoyage final pour corriger les espaces en fin de chaîne dus aux suppressions
@@ -410,7 +405,8 @@ class AIAnalyzer:
                     elif delta <= -30: eval_symbol = "!?"
                     elif delta == 0 and swing >= 300: eval_symbol = "!"
                     
-                    final_move_str = f"{piece_name} des {turn_color} ({san_fr}{eval_symbol})"
+                    target_square = chess.square_name(move_obj.to_square)
+                    final_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
                     
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, future_moves)
@@ -424,7 +420,7 @@ class AIAnalyzer:
                         stockfish_seq = "Illustrée dans le rapport"
                         tactics = tactics.replace("(suite illustrée)", "").strip()
                     
-                    # NOUVEAU : Explicitation des couleurs et syntaxe forcée des gaffes/erreurs
+                    # Explicitation des couleurs et syntaxe forcée des gaffes/erreurs
                     if delta <= -150:
                         status = f"Le joueur {turn_color} commet une erreur. L'adversaire bénéficie de la tactique suivante : {tactics}"
                         events_text = ""
@@ -458,13 +454,14 @@ class AIAnalyzer:
                                 best_move_obj = chess.Move.from_uci(best_uci)
                                 best_piece = board.piece_at(best_move_obj.from_square)
                                 best_piece_name = ChessUtils.get_piece_name_fr(best_piece)
-                                alt_context = f"Une meilleure alternative aurait été de jouer {best_piece_name} ({best_move_fr})."
+                                best_target_square = chess.square_name(best_move_obj.to_square)
+                                alt_context = f"Une meilleure alternative aurait été de déplacer {best_piece_name} vers la case {best_target_square} ({best_move_fr})."
                             else:
                                 alt_context = f"Une meilleure alternative aurait été de jouer le coup {best_move_fr}."
                     else:
                         alt_context = ""
                     
-                    # NOUVEAU : Verrouillage des alternatives inexistantes
+                    # Verrouillage des alternatives inexistantes
                     if not alt_context:
                         warning_msg = "AVERTISSEMENT SYSTÈME : Ne propose aucune alternative de coup. Ne fournis aucune suite de coups."
                         if events_text:
@@ -482,6 +479,7 @@ Directives de rédaction à suivre impérativement :
 5. La seconde phrase propose l'alternative UNIQUEMENT si le prompt indique explicitement "Une meilleure alternative aurait été de...". N'invente jamais de coup alternatif de ton propre chef.
 
 RÈGLES ABSOLUES :
+- DÉCRIS UNIQUEMENT CE QUI EST DANS LES VARIABLES. NE CRÉE AUCUN LIEN DE CAUSALITÉ (comme 'qui est capturé par' ou 'pour gagner du terrain') SI CELA N'EST PAS FOURNI DANS LA VARIABLE TACTIQUE.
 - Livre UNIQUEMENT le commentaire final, sans note, justification ni réflexion.
 - N'utilise pas de guillemets pour encapsuler ta phrase.
 - N'écris jamais l'évaluation brute entre parenthèses à la fin de ta phrase.
