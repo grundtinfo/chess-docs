@@ -222,7 +222,6 @@ class AIAnalyzer:
                 else:
                     tactics.append(f"Échec direct par {moving_piece_name} en {to_square_name}")
                 
-            # Correction des fourchettes : limitation stricte aux cibles principales (max 2) pour éviter les hallucinations
             attacks = board_after.attacks(move_obj.to_square)
             targets = []
             for sq in attacks:
@@ -230,10 +229,9 @@ class AIAnalyzer:
                 if piece and piece.color == board_after.turn and piece.piece_type != chess.PAWN:
                     targets.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
             
-            if len(targets) > 0:
-                limited_targets = targets[:2]
-                targets_str = " et ".join(limited_targets)
-                tactics.append(f"{moving_piece_name} en {to_square_name} réalise une fourchette attaquant : {targets_str}")
+            if len(targets) > 1:
+                targets_str = ", ".join(targets)
+                tactics.append(f"{moving_piece_name} en {to_square_name} réalise une fourchette attaquant simultanément : {targets_str}")
 
             defender_color = board_after.turn
             pinned_pieces = []
