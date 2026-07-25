@@ -31,7 +31,7 @@ class AIAnalyzer:
             {"role": "assistant", "content": "Le Fou se déplace sur la case d3. C'est une erreur sérieuse. Une meilleure alternative aurait été de roquer."}
         ],
         "perte_materielle": [
-            {"role": "user", "content": "Coup : Dame des Blancs vers la case b5 (Db5??). Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : Expose cette pièce Dame à une perte matérielle forcée en quelques coups."},
+            {"role": "user", "content": "Coup : Dame des Blancs vers la case b5 (Db5??). Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : <b>Dame en b5</b> est exposée à une perte matérielle forcée en quelques coups."},
             {"role": "assistant", "content": "La Dame se déplace sur la case b5. C'est une erreur sérieuse causant une perte matérielle forcée."}
         ],
         "echec_geometrique": [
@@ -69,9 +69,10 @@ class AIAnalyzer:
                 content = content.strip(' "\'')
                 # 4. Nettoyage de l'ancien préfixe
                 content = content.replace("Commentaire : ", "").replace("Commentaire :", "").strip()
-                # 5. Nettoyage des balises et symboles mathématiques/LaTeX parasites
-                content = re.sub(r'[\$\*~]', '', content)
-                # 6. Post-traitement lexical (Sécurité anti-hallucination)
+                # 5. Suppression des balises et symboles mathématiques/LaTeX parasites (sauf balises HTML robustes <b>)
+                content = re.sub(r'[\$~]', '', content)
+                
+                # 6. Post-traitement lexical & Anti-hallucination rigoureux
                 content = re.sub(r'(?i)\bévêques?\b', 'Fou', content)
                 content = re.sub(r'(?i)\bécureuils?\b', 'Pion', content)
                 content = re.sub(r'(?i)\bcarré(s)?\b', r'case\1', content)
@@ -80,15 +81,17 @@ class AIAnalyzer:
                 content = re.sub(r'(?i)\bson tour\b', 'sa Tour', content)
                 content = re.sub(r'(?i)\bson pièce\b', 'sa pièce', content)
                 
-                # NOUVEAU : Filtres pour prévenir les hallucinations
-                content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
+                # Suppression stricte des alternatives aberrantes non sollicitées
+                content = re.sub(r'(?i)une meilleure alternative aurait été.*?\.', '', content).strip()
                 
+                # Nettoyage des fourcriptions multiples incohérentes
+                content = re.sub(r'(?i)attaquant\s+simultanément\s*(?::)?\s*([a-zA-ZÀ-ÿ0-9\s,]+(?:et\s+[a-zA-ZÀ-ÿ0-9\s]+)?)', r'attaquant \1', content)
+                
+                content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
                 content = re.sub(r'\b([L|l])e\s+Tour\b', lambda m: f"{m.group(1)}a Tour", content)
                 content = re.sub(r'\b([L|l])e\s+Dame\b', lambda m: f"{m.group(1)}a Dame", content)
-                
                 content = re.sub(r'(?i)Roi\s+(Blanc|Noir)\s+en\s+[a-h][1-8]', 'Roi adverse', content)
 
-                # Nettoyage final pour corriger les espaces en fin de chaîne dus aux suppressions
                 content = content.strip()
                 if not content.endswith('.'):
                     content += '.'
@@ -157,17 +160,13 @@ class AIAnalyzer:
         for eng, fr in translations.items():
             result = result.replace(eng, fr)
             
-        # Formatage strict de la typographie française
         result = result.replace(":", " : ").replace("  ", " ")
-        # Inversion dynamique des termes via Regex
         result = re.sub(r'\b(\w+)\s+(Défense|Ouverture|Variante|Attaque|Gambit|Système)\b', r'\2 \1', result, flags=re.IGNORECASE)
 
-        # --- AJOUT : Normalisation stricte de la casse ---
-        result = result.title() # Force la majuscule sur chaque mot
+        result = result.title()
         mots_de_liaison = [" De ", " Du ", " Des ", " La ", " Le ", " Les ", " À ", " En ", " Et ", " D'"]
         for mot in mots_de_liaison:
             result = result.replace(mot, mot.lower())
-        # Correction des espacements autour des deux points
         result = re.sub(r'\s+', ' ', result)
         result = result.replace(" :", " :").replace(":", " : ")
         result = re.sub(r'\s+', ' ', result).strip()
@@ -223,6 +222,7 @@ class AIAnalyzer:
                 else:
                     tactics.append(f"Échec direct par {moving_piece_name} en {to_square_name}")
                 
+            # Correction des fourchettes : limitation stricte aux cibles principales (max 2) pour éviter les hallucinations
             attacks = board_after.attacks(move_obj.to_square)
             targets = []
             for sq in attacks:
@@ -230,9 +230,10 @@ class AIAnalyzer:
                 if piece and piece.color == board_after.turn and piece.piece_type != chess.PAWN:
                     targets.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
             
-            if len(targets) > 1:
-                targets_str = ", ".join(targets)
-                tactics.append(f"{moving_piece_name} en {to_square_name} réalise une fourchette attaquant simultanément : {targets_str}")
+            if len(targets) > 0:
+                limited_targets = targets[:2]
+                targets_str = " et ".join(limited_targets)
+                tactics.append(f"{moving_piece_name} en {to_square_name} réalise une fourchette attaquant : {targets_str}")
 
             defender_color = board_after.turn
             pinned_pieces = []
@@ -342,10 +343,12 @@ class AIAnalyzer:
                                 if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
                                     is_in_trap = True
                                     
+                            # Amélioration : La pièce menacée et sa case apparaissent en gras et au début de la description
+                            loss_desc = f"<b>{piece_lost} en {lost_square}</b> est exposée à une perte matérielle forcée en quelques coups"
                             if is_in_trap:
-                                tactics.append(f"Expose la pièce alliée ({piece_lost} en {lost_square}) à une perte matérielle forcée en quelques coups (suite illustrée)")
+                                tactics.append(f"{loss_desc} (suite illustrée)")
                             else:
-                                tactics.append(f"Expose la pièce alliée ({piece_lost} en {lost_square}) à une perte matérielle forcée en quelques coups via : {' '.join(seq_fr)}")
+                                tactics.append(f"{loss_desc} via : {' '.join(seq_fr)}")
                         else:
                             tactics.append("Expose le joueur à une lourde perte matérielle (gaffe stratégique)")
                         
@@ -369,7 +372,7 @@ class AIAnalyzer:
                 Logger.debug_log(f"Stockfish : Évaluation du meilleur coup alternatif pour {raw}", "INFO")
                 best_move_fr, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
                 
-                if eval_before and eval_after and best_move_fr:
+                if eval_before and eval_after and move_obj:
                     board_after = board.copy()
                     board_after.push(move_obj)
                     board_best = board.copy()
@@ -429,7 +432,6 @@ class AIAnalyzer:
                         stockfish_seq = "Illustrée dans le rapport"
                         tactics = tactics.replace("(suite illustrée)", "").strip()
                     
-                    # Explicitation des couleurs et syntaxe forcée des gaffes/erreurs
                     if delta <= -150:
                         status = f"Le joueur {turn_color} commet une erreur. L'adversaire bénéficie de la tactique suivante : {tactics}"
                         events_text = ""
@@ -439,7 +441,7 @@ class AIAnalyzer:
                                 if val_after_raw < 0:
                                     status = f"Ce coup est excellent, le joueur {turn_color} force le mat. Décris comment il gagne."
                                 else:
-                                    status = f"C'est une gaffe majeure qui entraîne un mat inévitable contre le joueur {turn_color}."
+                                    status = f"C'est une gaffe majeure entraînant un mat inévitable contre le joueur {turn_color}."
                             elif "perte matérielle" in tactics.lower():
                                 status = f"C'est une erreur sérieuse causant une perte matérielle forcée pour le joueur {turn_color}."
                             else:
@@ -447,7 +449,7 @@ class AIAnalyzer:
                         else:
                             if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
                             elif delta <= -80: status = f"C'est une imprécision qui dégrade légèrement la position de {turn_color}."
-                            elif delta <= -30: status = "C'est un coup jouable, mais il existe une alternative légèrement plus précise."
+                            elif delta <= -30: status = "C'est un coup jouable."
                             else: status = "C'est un coup solide et tout à fait correct."
                         
                         if tactics != "Continuité":
@@ -455,46 +457,42 @@ class AIAnalyzer:
                         else:
                             events_text = "Tactique détectée : Déplacement standard."
                     
+                    # Gestion stricte des alternatives : si aucune alternative n'est calculée ou pertinente, alt_context reste vide
+                    alt_context = ""
                     if move_obj and best_uci and move_obj.uci() != best_uci and delta < -20:
-                        if "O-O" in best_move_fr:
-                            alt_context = "Une meilleure alternative aurait été de roquer."
-                        else:
-                            if best_uci:
+                        if best_move_fr:
+                            if "O-O" in best_move_fr:
+                                alt_context = "Une meilleure alternative aurait été de roquer."
+                            else:
                                 best_move_obj = chess.Move.from_uci(best_uci)
                                 best_piece = board.piece_at(best_move_obj.from_square)
                                 best_piece_name = ChessUtils.get_piece_name_fr(best_piece)
                                 best_target_square = chess.square_name(best_move_obj.to_square)
                                 alt_context = f"Une meilleure alternative aurait été de déplacer {best_piece_name} vers la case {best_target_square} ({best_move_fr})."
-                            else:
-                                alt_context = f"Une meilleure alternative aurait été de jouer le coup {best_move_fr}."
-                    else:
-                        alt_context = ""
                     
-                    # Verrouillage des alternatives inexistantes
+                    # Interdiction absolue d'alternative inventée si alt_context est vide
                     if not alt_context:
-                        warning_msg = "AVERTISSEMENT SYSTÈME : Ne propose aucune alternative de coup. Ne fournis aucune suite de coups."
+                        warning_msg = "AVERTISSEMENT SYSTÈME : Ne propose aucune alternative de coup. Ne fournis aucune phrase d'alternative."
                         if events_text:
                             events_text += f" {warning_msg}"
                         else:
                             events_text = warning_msg
                     
-                    system_prompt = """Tu es un Analyste Technique d'échecs retranscrivant des données machine en un rapport factuel. Ton rôle est de formuler l'analyse brute de l'ordinateur de manière strictement exacte, sans aucune invention ou tentative de style littéraire.
+                    system_prompt = """Tu es un Analyste Technique d'échecs retranscrivant des données machine en un rapport factuel. Ton rôle est de formuler l'analyse brute de l'ordinateur de manière strictement exacte, sans aucune invention, extrapolation ou tentative de style littéraire.
 
 Directives de rédaction à suivre impérativement :
-1. Adopte un ton clinique, purement descriptif et factuel. L'exactitude prime sur le naturel. La répétition de structures de phrases est encouragée si elle garantit la précision.
+1. Adopte un ton clinique, purement descriptif et factuel. L'exactitude prime sur le naturel. La répétition de structures de phrases rigides est encouragée et obligatoire si elle garantit la précision technique.
 2. Utilise EXCLUSIVEMENT la terminologie française officielle : Pion, Cavalier, Fou, Tour (féminine), Dame (féminine), Roi.
-3. Intègre factuellement les informations de tactique sans jamais utiliser les mots 'variable' ou 'tactique détectée'. Ne nomme que les pièces explicitement mentionnées dans l'évaluation brute (par exemple, si l'évaluation mentionne un Fou, ne parle pas d'un Cavalier).
-4. La première phrase décrit le coup joué et la raison technique stricte (issue de l'évaluation). 
-5. La seconde phrase propose l'alternative UNIQUEMENT si le prompt indique explicitement "Une meilleure alternative aurait été de...". N'invente jamais de coup alternatif de ton propre chef.
+3. Intègre factuellement les informations de tactique sans jamais utiliser les mots 'variable' ou 'tactique détectée'. N'invente aucun élément absent des données.
+4. Si le champ d'alternative est vide ou absent des données, NE MENTIONNE STRICTEMENT AUCUNE ALTERNATIVE et n'invente jamais de coup alternatif de ton propre chef.
+5. Nettoie toute interférence contextuelle : chaque commentaire doit être strictement indépendant et cibler uniquement le tour analysé.
 
 RÈGLES ABSOLUES :
-- DÉCRIS UNIQUEMENT CE QUI EST DANS LES VARIABLES. NE CRÉE AUCUN LIEN DE CAUSALITÉ (comme 'qui est capturé par' ou 'pour gagner du terrain') SI CELA N'EST PAS FOURNI DANS LA VARIABLE TACTIQUE.
+- DÉCRIS UNIQUEMENT CE QUI EST FOURNI DANS LES VARIABLES.
 - Livre UNIQUEMENT le commentaire final, sans note, justification ni réflexion.
 - N'utilise pas de guillemets pour encapsuler ta phrase.
-- N'écris jamais l'évaluation brute entre parenthèses à la fin de ta phrase.
-- Ne mentionne jamais de mise en échec, de clouage ou de gain matériel s'ils ne sont pas explicitement écrits dans l'invite.
-- Si, et seulement si, une suite contienne de vrais coups t'est fournie, tu dois obligatoirement terminer ta réponse par : "Suite : [les coups fournis]."
-- Rédige impérativement 1 à 3 phrases courtes.
+- Si, et seulement si, une suite de coups t'est fournie, termine par : "Suite : [les coups fournis]." Sinon, ne mets rien concernant la suite.
+- Rédige impérativement 1 à 3 phrases courtes et standardisées.
 """
 
                     messages = [{"role": "system", "content": system_prompt}]
@@ -517,17 +515,14 @@ RÈGLES ABSOLUES :
                     if "échec direct" in tactics.lower() or "échec double" in tactics.lower():
                         messages.extend(AIAnalyzer.FEW_SHOT_BANK["echec_geometrique"])
 
-                    # --- FIX 3: Formatage conditionnel robuste de la suite de coups ---
                     suite_str = ""
                     if stockfish_seq not in ["Aucune", "Illustrée dans le rapport"] and stockfish_seq.strip() != "":
                         suite_str = f"Suite forcée : {stockfish_seq}"
                     
                     alt_str = alt_context.strip() if alt_context else ""
                     
-                    # Construction du contenu brut envoyé au LLM
                     user_content = f"Coup : {final_move_str}. Évaluation : {status} {events_text} {alt_str} {suite_str}".strip()
                     
-                    # --- FIX 3: Nettoyage Python en cas de chaîne vide pour s'assurer de l'absence de résidus ---
                     if not suite_str:
                         user_content = user_content.replace("Suite forcée :", "").replace("Suite :", "")
                         user_content = re.sub(r'\s+', ' ', user_content).strip()
