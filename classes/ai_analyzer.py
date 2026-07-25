@@ -418,7 +418,12 @@ class AIAnalyzer:
                     elif delta == 0 and swing >= 300: eval_symbol = "!"
                     
                     target_square = chess.square_name(move_obj.to_square)
-                    final_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
+                    
+                    # Détails complets conservés pour le LLM
+                    detailed_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
+                    
+                    # Format concis standard français avec suffixe pour le rapport PDF
+                    pdf_move_str = f"{san_fr}{eval_symbol}"
                     
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, future_moves)
@@ -457,7 +462,6 @@ class AIAnalyzer:
                         else:
                             events_text = "Tactique détectée : Déplacement standard."
                     
-                    # Gestion stricte des alternatives : si aucune alternative n'est calculée ou pertinente, alt_context reste vide
                     alt_context = ""
                     if move_obj and best_uci and move_obj.uci() != best_uci and delta < -20:
                         if best_move_fr:
@@ -470,7 +474,6 @@ class AIAnalyzer:
                                 best_target_square = chess.square_name(best_move_obj.to_square)
                                 alt_context = f"Une meilleure alternative aurait été de déplacer {best_piece_name} vers la case {best_target_square} ({best_move_fr})."
                     
-                    # Interdiction absolue d'alternative inventée si alt_context est vide
                     if not alt_context:
                         warning_msg = "AVERTISSEMENT SYSTÈME : Ne propose aucune alternative de coup. Ne fournis aucune phrase d'alternative."
                         if events_text:
@@ -521,7 +524,8 @@ RÈGLES ABSOLUES :
                     
                     alt_str = alt_context.strip() if alt_context else ""
                     
-                    user_content = f"Coup : {final_move_str}. Évaluation : {status} {events_text} {alt_str} {suite_str}".strip()
+                    # Le LLM reçoit le détail complet des pièces et des cases pour garder le contexte technique exact
+                    user_content = f"Coup : {detailed_move_str}. Évaluation : {status} {events_text} {alt_str} {suite_str}".strip()
                     
                     if not suite_str:
                         user_content = user_content.replace("Suite forcée :", "").replace("Suite :", "")
@@ -547,13 +551,15 @@ RÈGLES ABSOLUES :
 
                     comment_llm = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment, cache_key=cache_k)
                     
-                    return comment_llm, final_move_str
+                    # On retourne le commentaire de l'IA et la notation concise pour le PDF
+                    return comment_llm, pdf_move_str
 
             except Exception as e:
                 Logger.debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")
-                return "Analyse impossible : erreur de calcul.", move_raw
+                return "Analyse impossible : erreur de calcul.", ChessUtils.convert_english_to_french_notation(move_san)
         
-        if "x" in raw: return "Coup de prise : attention à la position des pièces.", move_raw
-        elif "#" in raw: return "Échec et mat. La partie est terminée.", move_raw
-        elif "+" in raw: return "Coup d'échec : menace immédiate.", move_raw
-        else: return "Coup neutre : pas de menace immédiate.", move_raw
+        san_fr_fb = ChessUtils.convert_english_to_french_notation(move_san)
+        if "x" in raw: return "Coup de prise : attention à la position des pièces.", san_fr_fb
+        elif "#" in raw: return "Échec et mat. La partie est terminée.", san_fr_fb
+        elif "+" in raw: return "Coup d'échec : menace immédiate.", san_fr_fb
+        else: return "Coup neutre : pas de menace immédiate.", san_fr_fb
