@@ -19,7 +19,6 @@ except ImportError:
     Logger.debug_log("Bibliothèque Openix non trouvée. Utilisation du mode restreint.", "WARNING")
 
 class ChessUtils:
-    _translation_cache = {}
 
     @staticmethod
     def calculate_elo_from_details(details):
@@ -68,16 +67,17 @@ class ChessUtils:
 
         if opening_name != "Ouverture Inconnue":
             from classes.ai_analyzer import AIAnalyzer
+            from classes.json_cache import CacheManager
             
-            if ChessUtils._translation_cache is None:
-                ChessUtils._translation_cache = {}
+            cache_global = CacheManager.load_cache()
+            cache_key = f"opening_{opening_name}"
             
-            if opening_name not in ChessUtils._translation_cache:
+            if cache_key not in cache_global:
                 traduit = AIAnalyzer.translate_opening_name(opening_name)
-                # Utilisation stricte de la RAM sans CacheManager pour conserver l'isolement du cache
-                ChessUtils._translation_cache[opening_name] = traduit
+                cache_global[cache_key] = traduit
+                CacheManager.save_cache(cache_global)
             
-            return ChessUtils._translation_cache[opening_name]
+            return cache_global[cache_key]
 
         return opening_name
     

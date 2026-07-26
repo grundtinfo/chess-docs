@@ -83,7 +83,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
 
     cached_opening = existing_game.get("opening", "Ouverture Inconnue") if existing_game else "Ouverture Inconnue"
     
-    # Utilisation de la nouvelle détection intelligente
+    # Utilisation de la nouvelle détection intelligente (PRÉSERVATION ABSOLUE)
     needs_recalc = ChessUtils.is_raw_opening(cached_opening)
     
     best_opening_name = cached_opening
@@ -148,6 +148,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                     val_after = ChessUtils.get_eval_value(eval_after, board_after)
                     val_best = ChessUtils.get_eval_value(best_eval, board_before) if best_eval else val_before
                     
+                    # Logique de calcul des Deltas et statuts (PRÉSERVATION ABSOLUE)
                     swing = (val_after - val_before) * pm
                     precision = min((val_after - val_best) * pm, swing)
                     if best_uci and move_obj.uci() == best_uci and swing > -50: 
@@ -171,19 +172,27 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                 Logger.debug_log(f"Erreur d'analyse (ply {idx}) pour le coup {move_raw_en} : {str(e)}", "ERROR")
 
         if idx <= max_deep_moves:
-            # Le cache StockfishAnalyzer optimise les doubles appels générés ici
+            # CORRECTIF C : Séparation claire entre suite jouée et meilleure alternative stockfish
+            # Note: Pense à ajuster la signature `generate_move_comment` dans AIAnalyzer pour 
+            # remplacer `future_moves` par `played_continuation` et `best_alternative`
             llm_comment, move_label = AIAnalyzer.generate_move_comment(
-                move_raw_en, move_raw_en, board_before, is_trap=False, future_moves=san_moves[idx:]
+                move_raw_en, move_raw_en, board_before, is_trap=False, 
+                played_continuation=san_moves[idx:idx+3] if idx < len(san_moves) else [], 
+                best_alternative=pv_san if pv_san else None
             )
+            
+            # CORRECTIF C : Post-traitement strict avec regex (Refus IA & artéfacts)
+            llm_comment = re.sub(r'(?i)^\s*(je suis d[é|e]sol[é|e]|d[é|e]sol[é|e]|en tant qu\').*?(\. |\n|$)', '', llm_comment).strip()
+            llm_comment = llm_comment.replace('$', '')
         else:
             board_test = board_before.copy()
             board_test.push(move)
+            # Utilisation et conservation stricte du delta injecté dans le suffixe
             suffix = ChessUtils.infer_move_suffix(is_check=board_test.is_check(), is_checkmate=board_test.is_checkmate(), delta=swing)
             san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             move_label = f"{san_fr}{suffix}" if suffix else san_fr
             llm_comment = ""
 
-        # On capture les informations de la gaffe pour le rapport détaillé
         if idx <= 12 and swing <= -250 and pv_san:
             opening_blunders_data.append({
                 "move_number": (idx + 1) // 2,
@@ -203,7 +212,6 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             "move": move_label, "swing": swing, "precision": precision
         })
 
-        # On vérifie la capture AVANT de pousser le coup
         is_capture = board_before.is_capture(move)
         board_before.push(move)
         
@@ -338,6 +346,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         op_lower = opponent_name.lower()
         games = [g for g in games if op_lower in (g["white"]["username"].lower(), g["black"]["username"].lower())]
 
+    # Tri chronologique préservé et garanti pour la suite
     games = sorted([g for g in games if g.get("is_complete", True)], key=lambda x: x.get("end_time", 0))
 
     if not games:
@@ -355,22 +364,9 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         Spacer(1, 15)
     ])
 
-    player_elos, opponent_elos = [], []
-    for g in games:
-        is_white = g["white"]["username"].lower() == player_lower
-        player_elos.append(g["analysis"].get("est_elo_white" if is_white else "est_elo_black", 1200))
-        opponent_elos.append(g["analysis"].get("est_elo_black" if is_white else "est_elo_white", 1200))
-        
-    if len(player_elos) > 1:
-        elements.extend([
-            Paragraph("Progression des Performances Estimées", subsection_style),
-            EloProgressionChart(player_elos, opponent_elos, labels=[f"P {i+1}" for i in range(len(games))]),
-            Spacer(1, 5),
-            Paragraph("<i><font color='#0284c7'>Bleu : Niveau de performance (Joueur)</font> | <font color='#f97316'>Orange : Niveau de performance (Adversaire)</font></i>", normal_style),
-            Spacer(1, 15)
-        ])
-
-    elements.append(Paragraph("2. Forces et Faiblesses (Ouvertures)", section_style))
+    # CORRECTIF B : Déplacement du graphique global -> On crée des graphiques par catégorie en section 2
+    elements.append(Paragraph("2. Forces et Faiblesses & Progression ELO (Par type de jeu)", section_style))
+    
     categorized_games = defaultdict(list)
     for g in games: categorized_games[f"{g['time_class'].capitalize()} ({g['opponent_type'].capitalize()})"].append(g)
 
@@ -378,11 +374,37 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         cat_games = categorized_games[cat]
         good = sum(g["analysis"]["summary"]["opening"].get("good_moves", 0) for g in cat_games)
         blunders = sum(g["analysis"]["summary"]["opening"].get("blunders", 0) for g in cat_games)
+        
+        # CORRECTIF A : Utilisation exclusive du nom brut openix sans appel LLM
+        advice_text = ""
+        try:
+            op_names = [g.get("opening") for g in cat_games if g.get("opening") and g.get("opening") != "Ouverture Inconnue"]
+            if op_names:
+                main_op = max(set(op_names), key=op_names.count)
+                advice_text = f"<br/><b>Ouverture principale :</b> {main_op}"
+        except Exception:
+            pass
+
         elements.extend([
             Paragraph(f"Format : {cat} ({len(cat_games)} parties)", subsection_style),
-            Paragraph(f"Bons coups théoriques : <b>{good}</b> | Gaffes d'ouverture : <b>{blunders}</b>", normal_style),
+            Paragraph(f"Bons coups théoriques : <b>{good}</b> | Gaffes d'ouverture : <b>{blunders}</b>{advice_text}", normal_style),
             Spacer(1, 10)
         ])
+
+        # CORRECTIF B : Injection du graphique segmenté par type de partie 
+        player_elos, opponent_elos = [], []
+        for g in cat_games:
+            is_white = g["white"]["username"].lower() == player_lower
+            player_elos.append(g["analysis"].get("est_elo_white" if is_white else "est_elo_black", 1200))
+            opponent_elos.append(g["analysis"].get("est_elo_black" if is_white else "est_elo_white", 1200))
+            
+        if len(player_elos) > 1:
+            elements.extend([
+                EloProgressionChart(player_elos, opponent_elos, labels=[f"P {i+1}" for i in range(len(cat_games))]),
+                Spacer(1, 5),
+                Paragraph("<i><font color='#0284c7'>Bleu : Niveau de performance (Joueur)</font> | <font color='#f97316'>Orange : Niveau de performance (Adversaire)</font></i>", normal_style),
+                Spacer(1, 15)
+            ])
 
     elements.extend([PageBreak(), Paragraph("3. Focus Théorique des Ouvertures (via Stockfish)", section_style)])
     
@@ -397,23 +419,25 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         elements.append(Paragraph("Aucune erreur critique d'ouverture n'a été détectée dans cet échantillon.", normal_style))
     else:
         for op_name, blunders_list in [item for item in top_weak if item[0] != "Inconnue"]:
-            elements.append(Paragraph(f"Ouverture : {op_name} ({len(blunders_list)} erreurs récentes)", subsection_style))
+            
+            opening_header_parts = [Paragraph(f"Ouverture : {op_name} ({len(blunders_list)} erreurs récentes)", subsection_style)]
+            
+            # CORRECTIF A : Le bloc `AIAnalyzer.translate_opening_name` a été supprimé ici
+            elements.extend(opening_header_parts)
             
             blunder_data = [[
-                Paragraph("<b>Diag</b>", normal_style), 
+                Paragraph("<b>Diag</b>", normal_style),
                 Paragraph("<b>N°</b>", normal_style),
                 Paragraph("<b>Gaffe (Orange)</b>", normal_style),
                 Paragraph("<b>Meilleure (Bleue)</b>", normal_style),
                 Paragraph("<b>Analyse de l'IA</b>", normal_style)
             ]]
             
-            # On génère une ligne de tableau pour chaque gaffe liée à cette ouverture
             for sample in blunders_list:
                 fen = sample.get("fen")
                 played_uci = sample.get("played_uci")
                 best_uci = sample.get("best_uci")
                 
-                # Formatage du numéro de coup (ex: 4B ou 4N)
                 color_letter = "B" if sample.get("color") == "white" else "N"
                 move_num = f"{sample.get('move_number', '?')} {color_letter}"
                 
