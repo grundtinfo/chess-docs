@@ -61,18 +61,25 @@ class AIAnalyzer:
             if result and 'message' in result and 'content' in result['message']:
                 content = result['message']['content']
                 
-                # 1. Suppression des balises de bavardage (ex: "Note : ...")
+                # --- NOUVEAU : Interception stricte des refus et bavardages éthiques de l'IA ---
+                refusals_regex = r"(?i)(je suis désolé|désolé|en tant qu'IA|en tant que modèle|je ne peux pas répondre|je ne suis pas autorisé)"
+                if re.search(refusals_regex, content):
+                    Logger.debug_log(f"Refus IA intercepté ({context_log}). Fallback appliqué.", "WARNING")
+                    return fallback
+                
+                # 1. Suppression des balises de bavardage
                 content = re.sub(r'\(?Note\s*:.*?\)?', '', content, flags=re.IGNORECASE).strip()
                 # 2. Remplacement des sauts de ligne
                 content = re.sub(r'\n+', ' ', content)
-                # 3. Suppression des guillemets parasites en début et fin
+                # 3. Suppression des guillemets parasites
                 content = content.strip(' "\'')
                 # 4. Nettoyage de l'ancien préfixe
                 content = content.replace("Commentaire : ", "").replace("Commentaire :", "").strip()
-                # 5. Suppression des balises et symboles mathématiques/LaTeX parasites (sauf balises HTML robustes <b>)
+                
+                # --- NOUVEAU : Nettoyage strict des symboles mathématiques et artéfacts ($) ---
                 content = re.sub(r'[\$~]', '', content)
                 
-                # 6. Post-traitement lexical & Anti-hallucination rigoureux
+                # 6. Post-traitement lexical & Anti-hallucination rigoureux (Inchangé)
                 content = re.sub(r'(?i)\bévêques?\b', 'Fou', content)
                 content = re.sub(r'(?i)\bécureuils?\b', 'Pion', content)
                 content = re.sub(r'(?i)\bcarré(s)?\b', r'case\1', content)
@@ -80,17 +87,10 @@ class AIAnalyzer:
                 content = re.sub(r'(?i)\bcheval(aux)?\b', 'Cavalier', content)
                 content = re.sub(r'(?i)\bson tour\b', 'sa Tour', content)
                 content = re.sub(r'(?i)\bson pièce\b', 'sa pièce', content)
-                
-                # Ajout des corrections grammaticales strictes pour Ollama
                 content = re.sub(r'(?i)\ba déplacé vers\b', 's\'est déplacé vers', content)
                 content = re.sub(r'(?i)attaque directe contre le [a-zA-ZÀ-ÿ]+ (Blanc|Noir) en [a-h][1-8]', 'capture sur la case', content)
-                
-                # Suppression stricte des alternatives aberrantes non sollicitées
                 content = re.sub(r'(?i)une meilleure alternative aurait été.*?\.', '', content).strip()
-                
-                # Nettoyage des fourcriptions multiples incohérentes
                 content = re.sub(r'(?i)attaquant\s+simultanément\s*(?::)?\s*([a-zA-ZÀ-ÿ0-9\s,]+(?:et\s+[a-zA-ZÀ-ÿ0-9\s]+)?)', r'attaquant \1', content)
-                
                 content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
                 content = re.sub(r'\b([L|l])e\s+Tour\b', lambda m: f"{m.group(1)}a Tour", content)
                 content = re.sub(r'\b([L|l])e\s+Dame\b', lambda m: f"{m.group(1)}a Dame", content)
@@ -102,6 +102,7 @@ class AIAnalyzer:
 
                 Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
                 
+                # Caching limité à ce qui est strictement demandé
                 if cache_key and content and content != fallback:
                     cache_global = CacheManager.load_cache()
                     cache_global[cache_key] = content
@@ -359,7 +360,7 @@ class AIAnalyzer:
         
         if engine:
             try:
-                Logger.debug_log(f"Stockfish : Analyse du coup {raw} (Évaluation position)", "INFO")
+                Logger.debug_log(f"Stockfish : Analyse du coup {raw}", "INFO")
                 eval_before, eval_after, move_obj = analyzer.analyze_move(board, move_san)
                 Logger.debug_log(f"Stockfish : Évaluation du meilleur coup alternatif pour {raw}", "INFO")
                 best_move_fr, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
@@ -475,21 +476,20 @@ Guide d'interprétation strict des suffixes d'échecs :
 - ?? : Gaffe majeure ou perte forcée
 
 Directives de rédaction à suivre impérativement :
-1. Adopte un ton clinique, purement descriptif et factuel. L'exactitude prime sur le naturel. La répétition de structures de phrases rigides est encouragée et obligatoire si elle garantit la précision technique.
+1. Adopte un ton clinique, purement descriptif et factuel. L'exactitude prime sur le naturel. La répétition de structures de phrases rigides est encouragée et obligatoire.
 2. Utilise EXCLUSIVEMENT la terminologie française officielle : Pion, Cavalier, Fou, Tour (féminine), Dame (féminine), Roi.
-3. Intègre factuellement les informations de tactique sans jamais utiliser les mots 'variable' ou 'tactique détectée'. N'invente aucun élément absent des données.
-4. Si le champ d'alternative est vide ou absent des données, NE MENTIONNE STRICTEMENT AUCUNE ALTERNATIVE et n'invente jamais de coup alternatif de ton propre chef.
-5. Nettoie toute interférence contextuelle : chaque commentaire doit être strictement indépendant et cibler uniquement le tour analysé.
+3. Intègre factuellement les informations de tactique sans utiliser l'expression 'tactique détectée'. N'invente aucun élément absent des données.
+4. Distingue rigoureusement la "Suite jouée dans la partie" (les coups réellement joués) de la "Meilleure alternative théorique" (variante de l'ordinateur). Ne mélange jamais les deux.
+5. Si le champ d'alternative est vide, NE MENTIONNE STRICTEMENT AUCUNE ALTERNATIVE et n'invente jamais de coup alternatif.
+6. Nettoie toute interférence contextuelle : chaque commentaire cible uniquement le tour analysé.
 
 RÈGLES ABSOLUES :
 - DÉCRIS UNIQUEMENT CE QUI EST FOURNI DANS LES VARIABLES.
-- Livre UNIQUEMENT le commentaire final, sans note, justification ni réflexion.
-- N'utilise pas de guillemets pour encapsuler ta phrase.
-- Si, et seulement si, une suite de coups t'est fournie, termine par : "Suite : [les coups fournis]." Sinon, ne mets rien concernant la suite.
+- Livre UNIQUEMENT le commentaire final, sans note ni réflexion.
+- Si une "Suite jouée" t'est fournie, cite-la factuellement. Si une "Meilleure alternative théorique" t'est fournie, précise que c'est une recommandation.
 - Rédige impérativement 1 à 3 phrases courtes et standardisées.
-- PENALITÉ MAXIMALE : Si ta réponse dépasse 3 phrases, elle sera rejetée. Ne décris JAMAIS la sécurité des pions ou des pièces de ton propre chef. Limite-toi aux variables injectées.
+- PENALITÉ MAXIMALE : Si ta réponse dépasse 3 phrases, elle sera rejetée. Ne décris JAMAIS la sécurité des pions ou des pièces de ton propre chef.
 """
-
                     messages = [{"role": "system", "content": system_prompt}]
                     
                     if "bon coup" in status.lower() or "solide" in status.lower():
@@ -512,21 +512,16 @@ RÈGLES ABSOLUES :
 
                     suite_str = ""
                     if stockfish_seq not in ["Aucune", "Illustrée dans le rapport"] and stockfish_seq.strip() != "":
-                        suite_str = f"Suite forcée : {stockfish_seq}"
+                        suite_str = f"Suite jouée dans la partie : {stockfish_seq}"
                     
-                    alt_str = alt_context.strip() if alt_context else ""
+                    alt_str = f"Meilleure alternative théorique (recommandation Stockfish) : {alt_context.strip()}" if alt_context else ""
                     
-                    # Le LLM reçoit le détail complet des pièces et des cases pour garder le contexte technique exact
                     user_content = f"Coup : {detailed_move_str}. Évaluation : {status} {events_text} {alt_str} {suite_str}".strip()
                     
                     if not suite_str:
-                        user_content = user_content.replace("Suite forcée :", "").replace("Suite :", "")
                         user_content = re.sub(r'\s+', ' ', user_content).strip()
 
-                    messages.append({
-                        "role": "user", 
-                        "content": user_content
-                    })
+                    messages.append({"role": "user", "content": user_content})
                     
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.0}
                     
