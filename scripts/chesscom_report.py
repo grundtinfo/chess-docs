@@ -398,9 +398,9 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
             player_elos.append(g["analysis"].get("est_elo_white" if is_white else "est_elo_black", 1200))
             opponent_elos.append(g["analysis"].get("est_elo_black" if is_white else "est_elo_white", 1200))
             
-        if len(player_elos) > 1:
+        if len(cat_games) > 1:
             elements.extend([
-                EloProgressionChart(player_elos, opponent_elos, labels=[f"P {i+1}" for i in range(len(cat_games))]),
+                EloProgressionChart(cat_games, player_name),
                 Spacer(1, 5),
                 Paragraph("<i><font color='#0284c7'>Bleu : Niveau de performance (Joueur)</font> | <font color='#f97316'>Orange : Niveau de performance (Adversaire)</font></i>", normal_style),
                 Spacer(1, 15)
@@ -446,7 +446,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                 orient = chess.WHITE if sample.get("color") == "white" else chess.BLACK
                 
                 diag = ChessboardFlowable(
-                    fen, size=110, 
+                    fen, size=110,
                     fleches_oranges=fleches_oranges, 
                     fleches_bleues=fleches_bleues, 
                     orientation=orient

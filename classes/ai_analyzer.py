@@ -61,10 +61,11 @@ class AIAnalyzer:
             if result and 'message' in result and 'content' in result['message']:
                 content = result['message']['content']
                 
-                # --- NOUVEAU : Interception stricte des refus et bavardages éthiques de l'IA ---
+                # --- Interception stricte des refus et bavardages éthiques de l'IA ---
                 refusals_regex = r"(?i)(je suis désolé|désolé|en tant qu'IA|en tant que modèle|je ne peux pas répondre|je ne suis pas autorisé)"
                 if re.search(refusals_regex, content):
                     Logger.debug_log(f"Refus IA intercepté ({context_log}). Fallback appliqué.", "WARNING")
+                    Logger.debug_log(f"Réponse brute du LLM ayant entraîné le refus : {content}", "DEBUG")
                     return fallback
                 
                 # 1. Suppression des balises de bavardage
@@ -350,7 +351,7 @@ class AIAnalyzer:
         return tactics_comment
 
     @staticmethod
-    def generate_move_comment(move_raw, move_san, board_state, is_trap=False, future_moves=None):
+    def generate_move_comment(move_raw, move_san, board_state, is_trap=False, played_continuation=None, best_alternative=None):
         raw = ChessUtils.remove_special_chars(move_raw.strip())
         board = chess.Board(board_state.fen())
         turn_color = "Blancs" if board.turn == chess.WHITE else "Noirs"
@@ -412,14 +413,11 @@ class AIAnalyzer:
                     
                     target_square = chess.square_name(move_obj.to_square)
                     
-                    # Détails complets conservés pour le LLM
                     detailed_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
-                    
-                    # Format concis standard français avec suffixe pour le rapport PDF
                     pdf_move_str = f"{san_fr}{eval_symbol}"
                     
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
-                    tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, future_moves)
+                    tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, played_continuation)
                     
                     stockfish_seq = "Aucune"
                     if "via :" in tactics:
@@ -456,7 +454,16 @@ class AIAnalyzer:
                             events_text = "Tactique détectée : Déplacement standard."
                     
                     alt_context = ""
-                    # ... [Le reste du code des alternatives reste strictement identique] ...
+                    if move_obj and best_uci and move_obj.uci() != best_uci and delta < -20:
+                        if best_move_fr:
+                            if "O-O" in best_move_fr:
+                                alt_context = "Une meilleure alternative aurait été de roquer."
+                            else:
+                                best_move_obj = chess.Move.from_uci(best_uci)
+                                best_piece = board.piece_at(best_move_obj.from_square)
+                                best_piece_name = ChessUtils.get_piece_name_fr(best_piece)
+                                best_target_square = chess.square_name(best_move_obj.to_square)
+                                alt_context = f"Une meilleure alternative aurait été de déplacer {best_piece_name} vers la case {best_target_square} ({best_move_fr})."
                     
                     if not alt_context:
                         warning_msg = "AVERTISSEMENT SYSTÈME : Ne propose aucune alternative de coup. Ne fournis aucune phrase d'alternative."
@@ -538,7 +545,6 @@ RÈGLES ABSOLUES :
 
                     comment_llm = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment, cache_key=cache_k)
                     
-                    # On retourne le commentaire de l'IA et la notation concise pour le PDF
                     return comment_llm, pdf_move_str
 
             except Exception as e:
