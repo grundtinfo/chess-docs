@@ -2,6 +2,7 @@ import json
 import chess
 import requests
 import re
+import time
 import ollama
 from classes.config import Config
 from classes.logger import Logger
@@ -9,7 +10,7 @@ from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer
 
 class AIAnalyzer:
-    # CORRECTION 2 : Réécriture des Few-Shots avec des balises génériques (Anti-Hallucination)
+    # CORRECTION 2 : Suppression stricte des balises HTML (ex: <b>) dans la banque de Few-Shots
     FEW_SHOT_BANK = {
         "bon_coup": [
             {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Déplacement standard."},
@@ -32,8 +33,8 @@ class AIAnalyzer:
             {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une erreur sérieuse."}
         ],
         "perte_materielle": [
-            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : <b>[PIÈCE] en [CASE]</b> est exposée à une perte matérielle forcée en quelques coups."},
-            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une erreur sérieuse causant une perte matérielle forcée."}
+            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est une erreur sérieuse causant une perte matérielle. Tactique détectée : [PIÈCE] en [CASE] est exposée à une perte matérielle en quelques coups."},
+            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une erreur sérieuse causant une perte matérielle."}
         ],
         "echec_geometrique": [
             {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Échec direct par [PIÈCE] en [CASE]."},
@@ -53,64 +54,75 @@ class AIAnalyzer:
         Logger.debug_log(f"Appel d'Ollama ({Config.OLLAMA_MODEL}) pour : {context_log}...", "INFO")
         Logger.debug_log(f"Prompt envoyé au LLM : {json.dumps(messages, ensure_ascii=False)}", "DEBUG")
         
-        try:
-            result = ollama.chat(
-                model=Config.OLLAMA_MODEL,
-                messages=messages,
-                options=options or {'temperature': 0.0}
-            )
-            if result and 'message' in result and 'content' in result['message']:
-                content = result['message']['content']
-                
-                refusals_regex = r"(?i)(je suis désolé|désolé|en tant qu'IA|en tant que modèle|je ne peux pas répondre|je ne suis pas autorisé)"
-                if re.search(refusals_regex, content):
-                    Logger.debug_log(f"Refus IA intercepté ({context_log}). Fallback appliqué.", "WARNING")
-                    Logger.debug_log(f"Réponse brute du LLM ayant entraîné le refus : {content}", "DEBUG")
-                    return fallback
-                
-                content = re.sub(r'\(?Note\s*:.*?\)?', '', content, flags=re.IGNORECASE).strip()
-                content = re.sub(r'\n+', ' ', content)
-                content = content.strip(' "\'')
-                content = content.replace("Commentaire : ", "").replace("Commentaire :", "").strip()
-                content = re.sub(r'[\$~]', '', content)
-                
-                content = re.sub(r'(?i)\bévêques?\b', 'Fou', content)
-                content = re.sub(r'(?i)\bécureuils?\b', 'Pion', content)
-                content = re.sub(r'(?i)\bcarré(s)?\b', r'case\1', content)
-                content = re.sub(r'(?i)\bpiège mortel\b', 'menace critique', content)
-                content = re.sub(r'(?i)\bcheval(aux)?\b', 'Cavalier', content)
-                content = re.sub(r'(?i)\bson tour\b', 'sa Tour', content)
-                content = re.sub(r'(?i)\bson pièce\b', 'sa pièce', content)
-                content = re.sub(r'(?i)\ba déplacé vers\b', 's\'est déplacé vers', content)
-                content = re.sub(r'(?i)attaque directe contre le [a-zA-ZÀ-ÿ]+ (Blanc|Noir) en [a-h][1-8]', 'capture sur la case', content)
-                content = re.sub(r'(?i)attaquant\s+simultanément\s*(?::)?\s*([a-zA-ZÀ-ÿ0-9\s,]+(?:et\s+[a-zA-ZÀ-ÿ0-9\s]+)?)', r'attaquant \1', content)
-                content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
-                content = re.sub(r'\b([L|l])e\s+Tour\b', lambda m: f"{m.group(1)}a Tour", content)
-                content = re.sub(r'\b([L|l])e\s+Dame\b', lambda m: f"{m.group(1)}a Dame", content)
-                content = re.sub(r'(?i)Roi\s+(Blanc|Noir)\s+en\s+[a-h][1-8]', 'Roi adverse', content)
-                content = re.sub(r'\bC-C([a-h][1-8])\b', r'Cavalier en \1', content)
-                content = re.sub(r'\bF-F([a-h][1-8])\b', r'Fou en \1', content)
-                content = re.sub(r'\bT-T([a-h][1-8])\b', r'Tour en \1', content)
-                content = re.sub(r'\bD-D([a-h][1-8])\b', r'Dame en \1', content)
-                content = re.sub(r'\bR-R([a-h][1-8])\b', r'Roi en \1', content)
-
-                content = content.strip()
-                if not content.endswith('.'):
-                    content += '.'
-
-                Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
-                
-                if cache_key and content and content != fallback:
-                    cache_global = CacheManager.load_cache()
-                    cache_global[cache_key] = content
-                    CacheManager.save_cache(cache_global)
+        # CORRECTION 2 : Gestion robuste des exceptions et mécanisme de retry (erreurs 500, CUDA, connexion)
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                result = ollama.chat(
+                    model=Config.OLLAMA_MODEL,
+                    messages=messages,
+                    options=options or {'temperature': 0.0}
+                )
+                if result and 'message' in result and 'content' in result['message']:
+                    content = result['message']['content']
                     
-                return content
-        except requests.exceptions.RequestException as e:
-            Logger.debug_log(f"Ollama injoignable ({context_log}) sur {Config.OLLAMA_URL}: {str(e)}. Fallback.", "WARNING")
-        except Exception as e:
-            Logger.debug_log(f"Erreur Ollama ({context_log}) : {str(e)}", "WARNING")
-            
+                    refusals_regex = r"(?i)(je suis désolé|désolé|en tant qu'IA|en tant que modèle|je ne peux pas répondre|je ne suis pas autorisé)"
+                    if re.search(refusals_regex, content):
+                        Logger.debug_log(f"Refus IA intercepté ({context_log}). Fallback appliqué.", "WARNING")
+                        Logger.debug_log(f"Réponse brute du LLM ayant entraîné le refus : {content}", "DEBUG")
+                        return fallback
+                    
+                    content = re.sub(r'\(?Note\s*:.*?\)?', '', content, flags=re.IGNORECASE).strip()
+                    content = re.sub(r'\n+', ' ', content)
+                    content = content.strip(' "\'')
+                    content = content.replace("Commentaire : ", "").replace("Commentaire :", "").strip()
+                    content = re.sub(r'[\$~]', '', content)
+                    
+                    # Respect strict du lexique français SAN
+                    content = re.sub(r'(?i)\bévêques?\b', 'Fou', content)
+                    content = re.sub(r'(?i)\bécureuils?\b', 'Pion', content)
+                    content = re.sub(r'(?i)\bcarré(s)?\b', r'case\1', content)
+                    content = re.sub(r'(?i)\bpiège mortel\b', 'menace critique', content)
+                    content = re.sub(r'(?i)\bcheval(aux)?\b', 'Cavalier', content)
+                    content = re.sub(r'(?i)\bson tour\b', 'sa Tour', content)
+                    content = re.sub(r'(?i)\bson pièce\b', 'sa pièce', content)
+                    content = re.sub(r'(?i)\ba déplacé vers\b', 's\'est déplacé vers', content)
+                    content = re.sub(r'(?i)attaque directe contre le [a-zA-ZÀ-ÿ]+ (Blanc|Noir) en [a-h][1-8]', 'capture sur la case', content)
+                    content = re.sub(r'(?i)attaquant\s+simultanément\s*(?::)?\s*([a-zA-ZÀ-ÿ0-9\s,]+(?:et\s+[a-zA-ZÀ-ÿ0-9\s]+)?)', r'attaquant \1', content)
+                    content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
+                    content = re.sub(r'\b([L|l])e\s+Tour\b', lambda m: f"{m.group(1)}a Tour", content)
+                    content = re.sub(r'\b([L|l])e\s+Dame\b', lambda m: f"{m.group(1)}a Dame", content)
+                    content = re.sub(r'(?i)Roi\s+(Blanc|Noir)\s+en\s+[a-h][1-8]', 'Roi adverse', content)
+                    content = re.sub(r'\bC-C([a-h][1-8])\b', r'Cavalier en \1', content)
+                    content = re.sub(r'\bF-F([a-h][1-8])\b', r'Fou en \1', content)
+                    content = re.sub(r'\bT-T([a-h][1-8])\b', r'Tour en \1', content)
+                    content = re.sub(r'\bD-D([a-h][1-8])\b', r'Dame en \1', content)
+                    content = re.sub(r'\bR-R([a-h][1-8])\b', r'Roi en \1', content)
+
+                    content = content.strip()
+                    if not content.endswith('.'):
+                        content += '.'
+
+                    Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
+                    
+                    if cache_key and content and content != fallback:
+                        cache_global = CacheManager.load_cache()
+                        cache_global[cache_key] = content
+                        CacheManager.save_cache(cache_global)
+                        
+                    return content
+            except (requests.exceptions.RequestException, Exception) as e:
+                err_str = str(e)
+                is_retryable = any(err in err_str for err in ["500", "CUDA", "connection", "timeout", "Ollama"])
+                if is_retryable and attempt < max_retries - 1:
+                    wait_time = 2 ** attempt
+                    Logger.debug_log(f"Erreur Ollama temporaire ({err_str}). Nouvelle tentative dans {wait_time}s...", "WARNING")
+                    time.sleep(wait_time)
+                    continue
+                else:
+                    Logger.debug_log(f"Erreur Ollama critique ({context_log}) : {err_str}", "ERROR")
+                    break
+                    
         return fallback
 
     @staticmethod
@@ -122,7 +134,7 @@ class AIAnalyzer:
                     "Tu es un Analyste Technique d'échecs générant une description purement factuelle. "
                     "RÈGLE STRICTE : Limite ton output à une description séquentielle et factuelle des coups "
                     "(ex: 'Les Noirs jouent Fb6, les Blancs répondent par a4...'). "
-                    "INTERDICTION FORMELLE d'inventer des plans stratégiques incohérents ou de générer un narratif unifié justifiant les coups."
+                    "INTERDICTION FORMELLE d'inventer des plans stratégiques incohérents ou de générer un narratif unifié."
                 )
             },
             {
@@ -137,7 +149,7 @@ class AIAnalyzer:
         
         fallback_text = "Ligne recommandée par le moteur pour rééquilibrer la position."
         content = AIAnalyzer.query_llm(messages, context_log=f"Théorie {opening_name}", fallback=fallback_text, cache_key=None)
-        return f"<b>Ligne Stockfish : {stockfish_line}</b><br/><br/>{content}"
+        return f"Ligne Stockfish : {stockfish_line}<br/><br/>{content}"
 
     @staticmethod
     def translate_opening_name(opening_name):
@@ -158,8 +170,6 @@ class AIAnalyzer:
             result = result.replace(eng, fr)
             
         result = result.replace(":", " : ").replace("  ", " ")
-        
-        # Réorganisation syntaxique (Ex: "Anglaise Ouverture" -> "Ouverture Anglaise")
         result = re.sub(r'\b(\w+)\s+(Défense|Ouverture|Variante|Attaque|Gambit|Système)\b', r'\2 \1', result, flags=re.IGNORECASE)
 
         result = result.title()
@@ -211,14 +221,15 @@ class AIAnalyzer:
                 else:
                     tactics.append(f"Échec direct par {moving_piece_name} en {to_square_name}")
                 
+            # CORRECTION 1.3 : Algorithme de fourchette corrigé (ciblage des pièces adverses != turn, restriction aux pièces majeures/mineures, max 3 cibles)
             attacks = board_after.attacks(move_obj.to_square)
             targets = []
             for sq in attacks:
                 piece = board_after.piece_at(sq)
-                if piece and piece.color == board_after.turn and piece.piece_type != chess.PAWN:
+                if piece and piece.color != board_after.turn and piece.piece_type in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT, chess.KING]:
                     targets.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
             
-            if len(targets) > 1:
+            if 2 <= len(targets) <= 3:
                 targets_str = ", ".join(targets)
                 tactics.append(f"{moving_piece_name} en {to_square_name} réalise une fourchette attaquant simultanément : {targets_str}")
 
@@ -246,35 +257,36 @@ class AIAnalyzer:
 
                 if t == 'mate':
                     sf = StockfishAnalyzer().get_engine()
-                    sf.set_fen_position(board_after.fen())
-                    sim_board = board_after.copy()
-                    seq_fr = []
-                    seq_eng = []
-                    for _ in range(abs(val)): 
-                        best_uci = sf.get_best_move()
-                        if not best_uci: break
-                        move_obj_sim = sim_board.parse_uci(best_uci)
-                        san_fr = ChessUtils.convert_english_to_french_notation(sim_board.san(move_obj_sim))
-                        seq_fr.append(san_fr)
-                        san_eng = sim_board.san(move_obj_sim)
-                        seq_eng.append(san_eng)
-                        sim_board.push(move_obj_sim)
-                        sf.set_fen_position(sim_board.fen())
+                    if sf:
+                        sf.set_fen_position(board_after.fen())
+                        sim_board = board_after.copy()
+                        seq_fr = []
+                        seq_eng = []
+                        for _ in range(abs(val)): 
+                            best_uci = sf.get_best_move()
+                            if not best_uci: break
+                            move_obj_sim = sim_board.parse_uci(best_uci)
+                            san_fr = ChessUtils.convert_english_to_french_notation(sim_board.san(move_obj_sim))
+                            seq_fr.append(san_fr)
+                            san_eng = sim_board.san(move_obj_sim)
+                            seq_eng.append(san_eng)
+                            sim_board.push(move_obj_sim)
+                            sf.set_fen_position(sim_board.fen())
 
-                    is_in_trap = False
-                    if future_moves:
-                        match_len = min(len(future_moves), len(seq_eng))
-                        if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
-                            is_in_trap = True
-                            
-                    if is_in_trap:
-                        tactics.append(f"Mat inévitable (suite illustrée)")
-                    else:
-                        tactics.append(f"Mat inévitable via : {' '.join(seq_fr)}")
+                        is_in_trap = False
+                        if future_moves:
+                            match_len = min(len(future_moves), len(seq_eng))
+                            if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
+                                is_in_trap = True
+                                
+                        if is_in_trap:
+                            tactics.append(f"Mat inévitable (suite illustrée)")
+                        else:
+                            tactics.append(f"Mat inévitable via : {' '.join(seq_fr)}")
                     
                 elif t == 'cp':
                     cp_val = val * player_multiplier
-                    if cp_val >= 300 and "Capture" not in " ".join(tactics):
+                    if cp_val >= 300 and not any("Capture" in t for t in tactics):
                         tactics.append("Prépare un gain matériel décisif imminent")
                     elif cp_val <= -300:
                         piece_lost = None
@@ -330,13 +342,13 @@ class AIAnalyzer:
                                 if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
                                     is_in_trap = True
                                     
-                            loss_desc = f"<b>{piece_lost} en {lost_square}</b> est exposée à une perte matérielle forcée en quelques coups"
+                            loss_desc = f"{piece_lost} en {lost_square} est exposée à une perte matérielle en quelques coups"
                             if is_in_trap:
                                 tactics.append(f"{loss_desc} (suite illustrée)")
                             else:
                                 tactics.append(f"{loss_desc} via : {' '.join(seq_fr)}")
                         else:
-                            tactics.append("Expose le joueur à une lourde perte matérielle (gaffe stratégique)")
+                            tactics.append("Expose le joueur à une lourde perte matérielle")
                         
         tactics_comment = " ; ".join(tactics) if tactics else "Déplacement standard"
         Logger.debug_log(f"Événement détecté pour le coup : {tactics_comment}", "INFO")
@@ -421,21 +433,17 @@ class AIAnalyzer:
                         qualif_math = "Meilleur coup"
                     
                     target_square = chess.square_name(move_obj.to_square)
-                    if piece_moved and piece_moved.piece_type == chess.KING:
-                        detailed_move_str = f"Roi en {target_square} ({san_fr}{eval_symbol})"
-                    else:
-                        detailed_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
-                    
-                    pdf_move_str = f"{san_fr}{eval_symbol}"
-                    
-                    Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     detailed_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
                     pdf_move_str = f"{san_fr}{eval_symbol}"
                     
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, played_continuation)
                     
-                    # Nettoyage des séquences de la tactique pour l'évaluation factuelle
+                    # CORRECTION 1.1 : Résolution de la contradiction logique (si Stockfish indique un meilleur/excellent coup, interdiction d'associer des termes de gaffe/perte)
+                    if qualif_math in ["Meilleur coup", "Excellent coup", "Coup brillant", "Coup solide"]:
+                        if any(term in tactics.lower() for term in ["perte", "gaffe", "erreur", "expose"]):
+                            tactics = "Déplacement standard"
+                    
                     if "via :" in tactics:
                         tactics = tactics.split("via :")[0].strip()
                     elif "suite illustrée" in tactics:
@@ -445,8 +453,8 @@ class AIAnalyzer:
                     if tactics != "Déplacement standard":
                         eval_exacte += f" - Tactique : {tactics}"
                         
-                    # Gestion stricte de l'alternative
-                    alt_forced_value = "Aucune variante forcée retenue"
+                    # CORRECTION 1.2 : Terminologie corrigée ("Coups alternatifs recommandés" au lieu de "Alternative forcée")
+                    alt_recom_value = "Aucune variante recommandée retenue"
                     directive_text = ""
 
                     if delta < -30 and best_uci:
@@ -464,7 +472,7 @@ class AIAnalyzer:
                             
                             best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list))
                             if best_pv_san:
-                                alt_forced_value = best_pv_san
+                                alt_recom_value = best_pv_san
                                 directive_text = f"\n- Une alternative supérieure existait : [{best_pv_san}]. Intègre cette variante factuelle si nécessaire."
                             engine.set_fen_position(board.fen())
                         except Exception:
@@ -472,7 +480,7 @@ class AIAnalyzer:
 
                     system_prompt = f"""Tu es un Analyste Technique d'échecs retranscrivant des données machine en un rapport factuel. Ton rôle est de formuler l'analyse brute de l'ordinateur de manière strictement exacte, sans aucune invention, extrapolation ou tentative de style littéraire.
 
-Lexique strict (Notation Française SAN) - Interdiction formelle de corriger la notation ou d'assumer autrement :
+Lexique strict (Notation Française SAN) :
 - F = Fou (ne désigne jamais une Dame)
 - C = Cavalier
 - T = Tour
@@ -481,18 +489,18 @@ Lexique strict (Notation Française SAN) - Interdiction formelle de corriger la 
 
 RÈGLES ABSOLUES :
 - DÉCRIS UNIQUEMENT CE QUI EST FOURNI DANS LES VARIABLES.
-- Le LLM ne doit plus déterminer la qualité du coup. Utilise EXCLUSIVEMENT la qualification exacte fournie dans "Évaluation exacte".{directive_text}
+- Utilise EXCLUSIVEMENT la qualification exacte fournie dans "Évaluation exacte".{directive_text}
 - Tu dois générer une analyse structurée dénuée de phrases superflues, respectant EXACTEMENT et UNIQUEMENT le format Markdown suivant :
 
 Coup joué : [Description littérale vérifiée du coup SAN]
 Évaluation Stockfish : [Intégrer dynamiquement la valeur d'évaluation fournie]
-Alternative forcée : [Alternative fournie ou "Aucune variante forcée retenue"]
+Coups alternatifs recommandés : [Alternative fournie ou "Aucune variante recommandée retenue"]
 """
 
                     user_content = f"""Données à formater rigoureusement :
 - Coup SAN : {detailed_move_str}
 - Évaluation exacte : {eval_exacte}
-- Alternative : {alt_forced_value}
+- Alternative : {alt_recom_value}
 """
                     
                     messages = [
@@ -502,7 +510,7 @@ Alternative forcée : [Alternative fournie ou "Aucune variante forcée retenue"]
                     
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.0}
                     
-                    fallback_comment = f"Coup joué : {detailed_move_str}\nÉvaluation Stockfish : {eval_exacte}\nAlternative forcée : {alt_forced_value}"
+                    fallback_comment = f"Coup joué : {detailed_move_str}\nÉvaluation Stockfish : {eval_exacte}\nCoups alternatifs recommandés : {alt_recom_value}"
                     
                     cache_k = None
                     if is_trap:
