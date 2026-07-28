@@ -250,3 +250,9 @@ class ChessUtils:
             try: games.extend(request_with_retry(archive_url).json().get("games", []))
             except Exception: pass
         return games
+
+    @staticmethod
+    def parse_stockfish_pv(pv_str):
+        """Convertit une séquence de coups (ex: Bb6 a4 a6) en notation française."""
+        if not pv_str: return pv_str
+        return " ".join([ChessUtils.convert_english_to_french_notation(move) for move in pv_str.split()])

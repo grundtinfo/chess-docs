@@ -131,7 +131,12 @@ class EloProgressionChart(Flowable):
                 current_y = chart_y - 30
                 continue
                 
-            min_value, max_value = max(0, min(all_vals) - 150), max(all_vals) + 150
+            min_value = min(all_vals)
+            max_value = max(all_vals)
+            if min_value == max_value:
+                min_value -= 50
+                max_value += 50
+                
             span = max_value - min_value or 1
 
             self.canv.setFont("Helvetica", 8)

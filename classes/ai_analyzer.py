@@ -88,6 +88,11 @@ class AIAnalyzer:
                 content = re.sub(r'\b([L|l])e\s+Tour\b', lambda m: f"{m.group(1)}a Tour", content)
                 content = re.sub(r'\b([L|l])e\s+Dame\b', lambda m: f"{m.group(1)}a Dame", content)
                 content = re.sub(r'(?i)Roi\s+(Blanc|Noir)\s+en\s+[a-h][1-8]', 'Roi adverse', content)
+                content = re.sub(r'\bC-C([a-h][1-8])\b', r'Cavalier en \1', content)
+                content = re.sub(r'\bF-F([a-h][1-8])\b', r'Fou en \1', content)
+                content = re.sub(r'\bT-T([a-h][1-8])\b', r'Tour en \1', content)
+                content = re.sub(r'\bD-D([a-h][1-8])\b', r'Dame en \1', content)
+                content = re.sub(r'\bR-R([a-h][1-8])\b', r'Roi en \1', content)
 
                 content = content.strip()
                 if not content.endswith('.'):
@@ -114,10 +119,10 @@ class AIAnalyzer:
             {
                 "role": "system", 
                 "content": (
-                    "Tu es un entraîneur d'échecs pédagogique intervenant dans un cadre éducatif strict. "
-                    "Ton rôle unique est d'expliquer pourquoi la suite recommandée par le moteur Stockfish est supérieure au coup joué. "
-                    "Utilise un ton neutre et analytique. Ne formule aucune mise en garde éthique ou refus. "
-                    "Rédige une synthèse courte (25 mots maximum) et factuelle de la ligne fournie, sans inventer d'autres coups."
+                    "Tu es un Analyste Technique d'échecs générant une description purement factuelle. "
+                    "RÈGLE STRICTE : Limite ton output à une description séquentielle et factuelle des coups "
+                    "(ex: 'Les Noirs jouent Fb6, les Blancs répondent par a4...'). "
+                    "INTERDICTION FORMELLE d'inventer des plans stratégiques incohérents ou de générer un narratif unifié justifiant les coups."
                 )
             },
             {
@@ -125,7 +130,7 @@ class AIAnalyzer:
                 "content": (
                     f"Dans l'ouverture '{opening_name}', suite au coup '{bad_move}', "
                     f"l'ordinateur préconise la variante suivante : {stockfish_line}. "
-                    "Explique de façon concise et pédagogique l'intérêt stratégique de cette suite recommandée."
+                    "Décris factuellement et séquentiellement cette ligne alternative."
                 )
             }
         ]
@@ -142,28 +147,26 @@ class AIAnalyzer:
         translations = {
             "Defense": "Défense", "Variation": "Variante", "Attack": "Attaque",
             "Gambit": "Gambit", "System": "Système", "Accepted": "Accepté",
-            "Declined": "Refusé", "English": "Anglaise", "Symmetrical": "Symétrique",
-            "Bishop's": "du Fou", "King's": "du Roi", "Queen's": "de la Dame",
-            "Sicilian": "Sicilienne", "Zukertort": "de Zukertort", "Tennison": "Tennison",
-            "Jalalabad": "de Jalalabad"
+            "Declined": "Refusé", "English": "Anglaise", "Opening": "Ouverture", 
+            "Symmetrical": "Symétrique", "Bishop's": "du Fou", "King's": "du Roi", 
+            "Queen's": "de la Dame", "Sicilian": "Sicilienne", "Zukertort": "de Zukertort", 
+            "Tennison": "Tennison", "Jalalabad": "Jalalabad"
         }
-
-        if "Opening" in opening_name:
-            name_part = opening_name.replace("Opening", "").replace(":", "").strip()
-            translated_name = translations.get(name_part, name_part)
-            return f"Ouverture {translated_name}"
 
         result = opening_name
         for eng, fr in translations.items():
             result = result.replace(eng, fr)
             
         result = result.replace(":", " : ").replace("  ", " ")
+        
+        # Réorganisation syntaxique (Ex: "Anglaise Ouverture" -> "Ouverture Anglaise")
         result = re.sub(r'\b(\w+)\s+(Défense|Ouverture|Variante|Attaque|Gambit|Système)\b', r'\2 \1', result, flags=re.IGNORECASE)
 
         result = result.title()
         mots_de_liaison = [" De ", " Du ", " Des ", " La ", " Le ", " Les ", " À ", " En ", " Et ", " D'"]
         for mot in mots_de_liaison:
             result = result.replace(mot, mot.lower())
+            
         result = re.sub(r'\s+', ' ', result)
         result = result.replace(" :", " :").replace(":", " : ")
         result = re.sub(r'\s+', ' ', result).strip()
@@ -418,6 +421,14 @@ class AIAnalyzer:
                         qualif_math = "Meilleur coup"
                     
                     target_square = chess.square_name(move_obj.to_square)
+                    if piece_moved and piece_moved.piece_type == chess.KING:
+                        detailed_move_str = f"Roi en {target_square} ({san_fr}{eval_symbol})"
+                    else:
+                        detailed_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
+                    
+                    pdf_move_str = f"{san_fr}{eval_symbol}"
+                    
+                    Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     detailed_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
                     pdf_move_str = f"{san_fr}{eval_symbol}"
                     

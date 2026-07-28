@@ -165,8 +165,9 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                             pv_list.append(sim_board.san(m_sim))
                             sim_board.push(m_sim)
                             engine.set_fen_position(sim_board.fen())
-                        pv_san = " ".join(pv_list)
-                        engine.set_fen_position(board_before.fen()) 
+                            
+                        pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list))
+                        engine.set_fen_position(board_before.fen())
                         
             except Exception as e: 
                 Logger.debug_log(f"Erreur d'analyse (ply {idx}) pour le coup {move_raw_en} : {str(e)}", "ERROR")
