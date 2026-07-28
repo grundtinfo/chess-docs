@@ -153,33 +153,16 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                     precision = min((val_after - val_best) * pm, swing)
                     if best_uci and move_obj.uci() == best_uci and swing > -50: 
                         precision = 0
-                    
-                    if idx <= 12 and swing <= -250:
-                        sim_board = board_before.copy()
-                        pv_list = []
-                        engine.set_fen_position(sim_board.fen())
-                        for _ in range(4):
-                            m_best = engine.get_best_move()
-                            if not m_best: break
-                            m_sim = sim_board.parse_uci(m_best)
-                            pv_list.append(sim_board.san(m_sim))
-                            sim_board.push(m_sim)
-                            engine.set_fen_position(sim_board.fen())
-                            
-                        pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list))
-                        engine.set_fen_position(board_before.fen())
                         
             except Exception as e: 
                 Logger.debug_log(f"Erreur d'analyse (ply {idx}) pour le coup {move_raw_en} : {str(e)}", "ERROR")
 
         if idx <= max_deep_moves:
-            # CORRECTIF C : Séparation claire entre suite jouée et meilleure alternative stockfish
-            # Note: Pense à ajuster la signature `generate_move_comment` dans AIAnalyzer pour 
-            # remplacer `future_moves` par `played_continuation` et `best_alternative`
+            # L'étude et l'envoi de l'alternative sont désormais gérés dynamiquement à l'intérieur de l'analyseur
             llm_comment, move_label = AIAnalyzer.generate_move_comment(
                 move_raw_en, move_raw_en, board_before, is_trap=False, 
                 played_continuation=san_moves[idx:idx+3] if idx < len(san_moves) else [], 
-                best_alternative=pv_san if pv_san else None
+                best_alternative=None
             )
             
             # CORRECTIF C : Post-traitement strict avec regex (Refus IA & artéfacts)

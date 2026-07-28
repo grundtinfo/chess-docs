@@ -446,8 +446,29 @@ class AIAnalyzer:
                         eval_exacte += f" - Tactique : {tactics}"
                         
                     # Gestion stricte de l'alternative
-                    alt_forced_value = best_alternative if best_alternative else "Aucune variante forcée retenue"
-                    directive_text = f"\n- La seule alternative valide est [{best_alternative}]. Tu ne dois en aucun cas proposer un autre coup ou inventer une variante." if best_alternative else ""
+                    alt_forced_value = "Aucune variante forcée retenue"
+                    directive_text = ""
+
+                    if delta < -30 and best_uci:
+                        try:
+                            sim_board = board.copy()
+                            engine.set_fen_position(sim_board.fen())
+                            pv_list = []
+                            for _ in range(4):
+                                m_best = engine.get_best_move()
+                                if not m_best: break
+                                m_sim = sim_board.parse_uci(m_best)
+                                pv_list.append(sim_board.san(m_sim))
+                                sim_board.push(m_sim)
+                                engine.set_fen_position(sim_board.fen())
+                            
+                            best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list))
+                            if best_pv_san:
+                                alt_forced_value = best_pv_san
+                                directive_text = f"\n- Une alternative supérieure existait : [{best_pv_san}]. Intègre cette variante factuelle si nécessaire."
+                            engine.set_fen_position(board.fen())
+                        except Exception:
+                            pass
 
                     system_prompt = f"""Tu es un Analyste Technique d'échecs retranscrivant des données machine en un rapport factuel. Ton rôle est de formuler l'analyse brute de l'ordinateur de manière strictement exacte, sans aucune invention, extrapolation ou tentative de style littéraire.
 
