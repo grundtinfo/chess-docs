@@ -9,34 +9,35 @@ from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer
 
 class AIAnalyzer:
+    # CORRECTION 2 : Réécriture des Few-Shots avec des balises génériques (Anti-Hallucination)
     FEW_SHOT_BANK = {
         "bon_coup": [
-            {"role": "user", "content": "Coup : Tour des Blancs vers la case f8 (Tf8). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Déplacement standard."},
-            {"role": "assistant", "content": "La Tour se déplace sur la case f8. C'est le coup le plus précis."}
+            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Déplacement standard."},
+            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est le coup le plus précis."}
         ],
         "imprecision": [
-            {"role": "user", "content": "Coup : Pion des Noirs vers la case h3 (h3?!). Évaluation : C'est une imprécision qui dégrade légèrement la position. Tactique détectée : Déplacement standard."},
-            {"role": "assistant", "content": "Le Pion se déplace sur la case h3. C'est une imprécision."}
+            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est une imprécision qui dégrade légèrement la position. Tactique détectée : Déplacement standard."},
+            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une imprécision."}
         ],
         "suite_stockfish": [
-            {"role": "user", "content": "Coup : Roi des Blancs vers la case d3 (Rxd3??). Évaluation : C'est une gaffe majeure entraînant un mat inévitable contre le joueur. Tactique détectée : Mat inévitable. Suite forcée : Df3+ Rg2 Df2#"},
-            {"role": "assistant", "content": "Le Roi se déplace sur la case d3. C'est une gaffe majeure entraînant un mat inévitable. Suite : Df3+ Rg2 Df2#."}
+            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est une gaffe majeure entraînant un mat inévitable contre le joueur. Tactique détectée : Mat inévitable. Séquence prédictive de l'ordinateur : [SÉQUENCE]"},
+            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une gaffe majeure entraînant un mat inévitable. Séquence prédictive de l'ordinateur : [SÉQUENCE]."}
         ],
         "gaffe_tactique_alternative": [
-            {"role": "user", "content": "Coup : Cavalier des Blancs vers la case d4 (Cxd4??). Évaluation : C'est une gaffe majeure. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de déplacer le Fou vers la case c4 (Fc4)."},
-            {"role": "assistant", "content": "Le Cavalier se déplace sur la case d4. C'est une gaffe majeure. Une meilleure alternative aurait été de déplacer le Fou sur la case c4."}
+            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est une gaffe majeure. Tactique détectée : Déplacement standard."},
+            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une gaffe majeure."}
         ],
         "erreur_avec_alternative": [
-            {"role": "user", "content": "Coup : Fou des Noirs vers la case d3 (Fd3?). Évaluation : C'est une erreur sérieuse. Tactique détectée : Déplacement standard. Une meilleure alternative aurait été de roquer."},
-            {"role": "assistant", "content": "Le Fou se déplace sur la case d3. C'est une erreur sérieuse. Une meilleure alternative aurait été de roquer."}
+            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est une erreur sérieuse. Tactique détectée : Déplacement standard."},
+            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une erreur sérieuse."}
         ],
         "perte_materielle": [
-            {"role": "user", "content": "Coup : Dame des Blancs vers la case b5 (Db5??). Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : <b>Dame en b5</b> est exposée à une perte matérielle forcée en quelques coups."},
-            {"role": "assistant", "content": "La Dame se déplace sur la case b5. C'est une erreur sérieuse causant une perte matérielle forcée."}
+            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est une erreur sérieuse causant une perte matérielle forcée. Tactique détectée : <b>[PIÈCE] en [CASE]</b> est exposée à une perte matérielle forcée en quelques coups."},
+            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une erreur sérieuse causant une perte matérielle forcée."}
         ],
         "echec_geometrique": [
-            {"role": "user", "content": "Coup : Dame des Noirs vers la case h4 (Dh4+). Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Échec direct par Dame en h4."},
-            {"role": "assistant", "content": "La Dame se déplace sur la case h4. Elle met le Roi adverse en échec."}
+            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Échec direct par [PIÈCE] en [CASE]."},
+            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. Elle met le Roi adverse en échec."}
         ]
     }
 
@@ -61,26 +62,18 @@ class AIAnalyzer:
             if result and 'message' in result and 'content' in result['message']:
                 content = result['message']['content']
                 
-                # --- Interception stricte des refus et bavardages éthiques de l'IA ---
                 refusals_regex = r"(?i)(je suis désolé|désolé|en tant qu'IA|en tant que modèle|je ne peux pas répondre|je ne suis pas autorisé)"
                 if re.search(refusals_regex, content):
                     Logger.debug_log(f"Refus IA intercepté ({context_log}). Fallback appliqué.", "WARNING")
                     Logger.debug_log(f"Réponse brute du LLM ayant entraîné le refus : {content}", "DEBUG")
                     return fallback
                 
-                # 1. Suppression des balises de bavardage
                 content = re.sub(r'\(?Note\s*:.*?\)?', '', content, flags=re.IGNORECASE).strip()
-                # 2. Remplacement des sauts de ligne
                 content = re.sub(r'\n+', ' ', content)
-                # 3. Suppression des guillemets parasites
                 content = content.strip(' "\'')
-                # 4. Nettoyage de l'ancien préfixe
                 content = content.replace("Commentaire : ", "").replace("Commentaire :", "").strip()
-                
-                # --- NOUVEAU : Nettoyage strict des symboles mathématiques et artéfacts ($) ---
                 content = re.sub(r'[\$~]', '', content)
                 
-                # 6. Post-traitement lexical & Anti-hallucination rigoureux (Inchangé)
                 content = re.sub(r'(?i)\bévêques?\b', 'Fou', content)
                 content = re.sub(r'(?i)\bécureuils?\b', 'Pion', content)
                 content = re.sub(r'(?i)\bcarré(s)?\b', r'case\1', content)
@@ -90,7 +83,6 @@ class AIAnalyzer:
                 content = re.sub(r'(?i)\bson pièce\b', 'sa pièce', content)
                 content = re.sub(r'(?i)\ba déplacé vers\b', 's\'est déplacé vers', content)
                 content = re.sub(r'(?i)attaque directe contre le [a-zA-ZÀ-ÿ]+ (Blanc|Noir) en [a-h][1-8]', 'capture sur la case', content)
-                content = re.sub(r'(?i)une meilleure alternative aurait été.*?\.', '', content).strip()
                 content = re.sub(r'(?i)attaquant\s+simultanément\s*(?::)?\s*([a-zA-ZÀ-ÿ0-9\s,]+(?:et\s+[a-zA-ZÀ-ÿ0-9\s]+)?)', r'attaquant \1', content)
                 content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
                 content = re.sub(r'\b([L|l])e\s+Tour\b', lambda m: f"{m.group(1)}a Tour", content)
@@ -103,7 +95,6 @@ class AIAnalyzer:
 
                 Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
                 
-                # Caching limité à ce qui est strictement demandé
                 if cache_key and content and content != fallback:
                     cache_global = CacheManager.load_cache()
                     cache_global[cache_key] = content
@@ -177,7 +168,6 @@ class AIAnalyzer:
         result = result.replace(" :", " :").replace(":", " : ")
         result = re.sub(r'\s+', ' ', result).strip()
 
-        # Suppression du fallback LLM : on retourne uniquement le résultat traduit de manière déterministe
         return result
 
     @staticmethod
@@ -337,7 +327,6 @@ class AIAnalyzer:
                                 if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
                                     is_in_trap = True
                                     
-                            # Amélioration : La pièce menacée et sa case apparaissent en gras et au début de la description
                             loss_desc = f"<b>{piece_lost} en {lost_square}</b> est exposée à une perte matérielle forcée en quelques coups"
                             if is_in_trap:
                                 tactics.append(f"{loss_desc} (suite illustrée)")
@@ -403,139 +392,85 @@ class AIAnalyzer:
                     val_after_raw = eval_after.get('value', 0) if isinstance(eval_after, dict) else (eval_after.value if hasattr(eval_after, 'value') and eval_after.value is not None else 0)
                     mate_in = (val_after_raw * player_multiplier) if t_after == 'mate' else 0
 
+                    # Calcul mathématique strict de la qualification du coup
                     eval_symbol = ""
-                    if is_sacrifice and t_after == 'mate' and 0 < mate_in <= 3: eval_symbol = "!!"
-                    elif delta <= -300: eval_symbol = "??"
-                    elif delta <= -150: eval_symbol = "?"
-                    elif delta <= -80: eval_symbol = "?!"
-                    elif delta <= -30: eval_symbol = "!?"
-                    elif delta == 0 and swing >= 300: eval_symbol = "!"
+                    qualif_math = "Coup solide"
+                    
+                    if is_sacrifice and t_after == 'mate' and 0 < mate_in <= 3: 
+                        eval_symbol = "!!"
+                        qualif_math = "Coup brillant"
+                    elif delta <= -300: 
+                        eval_symbol = "??"
+                        qualif_math = "Gaffe majeure"
+                    elif delta <= -150: 
+                        eval_symbol = "?"
+                        qualif_math = "Erreur sérieuse"
+                    elif delta <= -80: 
+                        eval_symbol = "?!"
+                        qualif_math = "Imprécision"
+                    elif delta <= -30: 
+                        eval_symbol = "!?"
+                        qualif_math = "Coup douteux"
+                    elif delta == 0 and swing >= 300: 
+                        eval_symbol = "!"
+                        qualif_math = "Excellent coup"
+                    elif delta > -10: 
+                        qualif_math = "Meilleur coup"
                     
                     target_square = chess.square_name(move_obj.to_square)
-                    
                     detailed_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
                     pdf_move_str = f"{san_fr}{eval_symbol}"
                     
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, played_continuation)
                     
-                    stockfish_seq = "Aucune"
+                    # Nettoyage des séquences de la tactique pour l'évaluation factuelle
                     if "via :" in tactics:
-                        parts = tactics.split("via :")
-                        stockfish_seq = parts[1].strip()
-                        tactics = parts[0].strip()
+                        tactics = tactics.split("via :")[0].strip()
                     elif "suite illustrée" in tactics:
-                        stockfish_seq = "Illustrée dans le rapport"
                         tactics = tactics.replace("(suite illustrée)", "").strip()
-                    
-                    if delta <= -150:
-                        status = f"Le joueur {turn_color} commet une erreur. L'adversaire bénéficie de la tactique suivante : {tactics}"
-                        events_text = ""
-                    else:
-                        if tactics != "Déplacement standard":
-                            if "mat inévitable" in tactics.lower() or "mat par" in tactics.lower():
-                                if val_after_raw < 0:
-                                    status = f"Ce coup est excellent, le joueur {turn_color} force le mat. Décris comment il gagne."
-                                else:
-                                    status = f"C'est une gaffe majeure entraînant un mat inévitable contre le joueur {turn_color}."
-                            elif "perte matérielle" in tactics.lower():
-                                status = f"C'est une erreur sérieuse causant une perte matérielle forcée pour le joueur {turn_color}."
-                            else:
-                                status = f"C'est un coup tactique significatif pour le joueur {turn_color}."
-                        else:
-                            if delta > -10: status = "C'est un bon coup, le plus précis actuellement."
-                            elif delta <= -80: status = f"C'est une imprécision qui dégrade légèrement la position de {turn_color}."
-                            elif delta <= -30: status = "C'est un coup jouable."
-                            else: status = "C'est un coup solide et tout à fait correct."
                         
-                        if tactics != "Déplacement standard":
-                            events_text = f"Tactique détectée : {tactics}"
-                        else:
-                            events_text = "Tactique détectée : Déplacement standard."
-                    
-                    alt_context = ""
-                    if move_obj and best_uci and move_obj.uci() != best_uci and delta < -20:
-                        if best_move_fr:
-                            if "O-O" in best_move_fr:
-                                alt_context = "Une meilleure alternative aurait été de roquer."
-                            else:
-                                best_move_obj = chess.Move.from_uci(best_uci)
-                                best_piece = board.piece_at(best_move_obj.from_square)
-                                best_piece_name = ChessUtils.get_piece_name_fr(best_piece)
-                                best_target_square = chess.square_name(best_move_obj.to_square)
-                                alt_context = f"Une meilleure alternative aurait été de déplacer {best_piece_name} vers la case {best_target_square} ({best_move_fr})."
-                    
-                    if not alt_context:
-                        warning_msg = "AVERTISSEMENT SYSTÈME : Ne propose aucune alternative de coup. Ne fournis aucune phrase d'alternative."
-                        if events_text:
-                            events_text += f" {warning_msg}"
-                        else:
-                            events_text = warning_msg
-                    
-                    system_prompt = """Tu es un Analyste Technique d'échecs retranscrivant des données machine en un rapport factuel. Ton rôle est de formuler l'analyse brute de l'ordinateur de manière strictement exacte, sans aucune invention, extrapolation ou tentative de style littéraire.
+                    eval_exacte = qualif_math
+                    if tactics != "Déplacement standard":
+                        eval_exacte += f" - Tactique : {tactics}"
+                        
+                    # Gestion stricte de l'alternative
+                    alt_forced_value = best_alternative if best_alternative else "Aucune variante forcée retenue"
+                    directive_text = f"\n- La seule alternative valide est [{best_alternative}]. Tu ne dois en aucun cas proposer un autre coup ou inventer une variante." if best_alternative else ""
 
-Guide d'interprétation strict des suffixes d'échecs :
-- !! : Coup brillant/sacrifice
-- ! : Excellent coup
-- !? : Coup intéressant
-- ?! : Imprécision
-- ? : Erreur
-- ?? : Gaffe majeure ou perte forcée
+                    system_prompt = f"""Tu es un Analyste Technique d'échecs retranscrivant des données machine en un rapport factuel. Ton rôle est de formuler l'analyse brute de l'ordinateur de manière strictement exacte, sans aucune invention, extrapolation ou tentative de style littéraire.
 
-Directives de rédaction à suivre impérativement :
-1. Adopte un ton clinique, purement descriptif et factuel. L'exactitude prime sur le naturel. La répétition de structures de phrases rigides est encouragée et obligatoire.
-2. Utilise EXCLUSIVEMENT la terminologie française officielle : Pion, Cavalier, Fou, Tour (féminine), Dame (féminine), Roi.
-3. Intègre factuellement les informations de tactique sans utiliser l'expression 'tactique détectée'. N'invente aucun élément absent des données.
-4. Distingue rigoureusement la "Suite jouée dans la partie" (les coups réellement joués) de la "Meilleure alternative théorique" (variante de l'ordinateur). Ne mélange jamais les deux.
-5. Si le champ d'alternative est vide, NE MENTIONNE STRICTEMENT AUCUNE ALTERNATIVE et n'invente jamais de coup alternatif.
-6. Nettoie toute interférence contextuelle : chaque commentaire cible uniquement le tour analysé.
+Lexique strict (Notation Française SAN) - Interdiction formelle de corriger la notation ou d'assumer autrement :
+- F = Fou (ne désigne jamais une Dame)
+- C = Cavalier
+- T = Tour
+- D = Dame
+- R = Roi
 
 RÈGLES ABSOLUES :
 - DÉCRIS UNIQUEMENT CE QUI EST FOURNI DANS LES VARIABLES.
-- Livre UNIQUEMENT le commentaire final, sans note ni réflexion.
-- Si une "Suite jouée" t'est fournie, cite-la factuellement. Si une "Meilleure alternative théorique" t'est fournie, précise que c'est une recommandation.
-- Rédige impérativement 1 à 3 phrases courtes et standardisées.
-- PENALITÉ MAXIMALE : Si ta réponse dépasse 3 phrases, elle sera rejetée. Ne décris JAMAIS la sécurité des pions ou des pièces de ton propre chef.
+- Le LLM ne doit plus déterminer la qualité du coup. Utilise EXCLUSIVEMENT la qualification exacte fournie dans "Évaluation exacte".{directive_text}
+- Tu dois générer une analyse structurée dénuée de phrases superflues, respectant EXACTEMENT et UNIQUEMENT le format Markdown suivant :
+
+Coup joué : [Description littérale vérifiée du coup SAN]
+Évaluation Stockfish : [Intégrer dynamiquement la valeur d'évaluation fournie]
+Alternative forcée : [Alternative fournie ou "Aucune variante forcée retenue"]
 """
-                    messages = [{"role": "system", "content": system_prompt}]
-                    
-                    if "bon coup" in status.lower() or "solide" in status.lower():
-                        messages.extend(AIAnalyzer.FEW_SHOT_BANK["bon_coup"])
-                    elif "imprécision" in status.lower():
-                        messages.extend(AIAnalyzer.FEW_SHOT_BANK["imprecision"])
-                    elif "erreur" in status.lower() or "gaffe" in status.lower():
-                        if "via :" in tactics:
-                            messages.extend(AIAnalyzer.FEW_SHOT_BANK["suite_stockfish"])
-                        elif alt_context:
-                            if "gaffe" in status.lower():
-                                messages.extend(AIAnalyzer.FEW_SHOT_BANK["gaffe_tactique_alternative"])
-                            else:
-                                messages.extend(AIAnalyzer.FEW_SHOT_BANK["erreur_avec_alternative"])
-                        elif tactics != "Continuité" and "perte matérielle" in tactics.lower():
-                            messages.extend(AIAnalyzer.FEW_SHOT_BANK["perte_materielle"])
 
-                    if "échec direct" in tactics.lower() or "échec double" in tactics.lower():
-                        messages.extend(AIAnalyzer.FEW_SHOT_BANK["echec_geometrique"])
-
-                    suite_str = ""
-                    if stockfish_seq not in ["Aucune", "Illustrée dans le rapport"] and stockfish_seq.strip() != "":
-                        suite_str = f"Suite jouée dans la partie : {stockfish_seq}"
+                    user_content = f"""Données à formater rigoureusement :
+- Coup SAN : {detailed_move_str}
+- Évaluation exacte : {eval_exacte}
+- Alternative : {alt_forced_value}
+"""
                     
-                    alt_str = f"Meilleure alternative théorique (recommandation Stockfish) : {alt_context.strip()}" if alt_context else ""
-                    
-                    user_content = f"Coup : {detailed_move_str}. Évaluation : {status} {events_text} {alt_str} {suite_str}".strip()
-                    
-                    if not suite_str:
-                        user_content = re.sub(r'\s+', ' ', user_content).strip()
-
-                    messages.append({"role": "user", "content": user_content})
+                    messages = [
+                        {"role": "system", "content": system_prompt.strip()},
+                        {"role": "user", "content": user_content.strip()}
+                    ]
                     
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.0}
                     
-                    fallback_comment = "Analyse LLM échouée."
-                    if delta < -50: fallback_comment = "Coup très mauvais : menace grave non évitée."
-                    elif delta == 0 or delta > -10: fallback_comment = "Coup bon : maintient la pression."
-                    else: fallback_comment = "Coup neutre : pas de menace immédiate."
+                    fallback_comment = f"Coup joué : {detailed_move_str}\nÉvaluation Stockfish : {eval_exacte}\nAlternative forcée : {alt_forced_value}"
                     
                     cache_k = None
                     if is_trap:
@@ -545,7 +480,7 @@ RÈGLES ABSOLUES :
 
                     comment_llm = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment, cache_key=cache_k)
                     
-                    return comment_llm, pdf_move_str
+                    return comment_llm.strip(), pdf_move_str
 
             except Exception as e:
                 Logger.debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")

@@ -498,6 +498,7 @@ def main():
     parser.add_argument("--months", type=int, default=1, help="Nombre de mois d'historique à récupérer")
     parser.add_argument("--verbose", nargs="?", const=1, default=0, type=int, help="Active les logs")
     parser.add_argument("--max-games", type=int, default=5, help="Nombre max de parties à analyser (0 pour toutes, 5 par défaut)")
+    parser.add_argument("--incomplete-only", action="store_true", help="Reprend uniquement l'analyse des parties déjà enregistrées mais incomplètes")
     parser.add_argument("--game-id", type=str, default=None, help="ID ou URL spécifique de la partie à forcer dans l'analyse")
     # --------------------------------------
     
@@ -525,13 +526,13 @@ def main():
 
         existing_games = state.get("games", {})
         
-        # --- NOUVELLE LOGIQUE DE FILTRAGE ET DE LIMITE ---
+        # --- LOGIQUE DE FILTRAGE ET DE REPRISE ---
         games_to_process = []
         for g in ChessUtils.fetch_player_games(args.player, months=args.months):
             game_id = g.get("url")
             if not game_id: continue
             
-            # Filtre 1 : ID de la partie si fourni (vérifie si l'ID passé est dans l'URL)
+            # Filtre 1 : ID de la partie si fourni
             if args.game_id and args.game_id not in game_id:
                 continue
             
@@ -540,14 +541,22 @@ def main():
                 continue
                 
             existing_g = existing_games.get(game_id)
+            
+            # Si le mode --incomplete-only est activé : on ignore les nouvelles parties 
+            # et on ne garde que celles qui existent déjà localement et sont incomplètes.
+            if args.incomplete_only:
+                if existing_g and ChessUtils.is_game_incomplete(existing_g, require_deep=True):
+                    games_to_process.append((g, game_id, existing_g, True))
+                continue
+
+            # Comportement standard par défaut
             needs_full_analysis = ChessUtils.is_game_incomplete(existing_g, require_deep=True)
             needs_opening_fix = existing_g and ChessUtils.is_raw_opening(existing_g.get("opening", ""))
             
-            # On stocke uniquement les parties qui requièrent un traitement
             if needs_full_analysis or needs_opening_fix:
                 games_to_process.append((g, game_id, existing_g, needs_full_analysis))
         
-        # Application de la limite du nombre de parties (uniquement si > 0)
+        # Application de la limite du nombre de parties
         if args.max_games > 0:
             games_to_process = games_to_process[:args.max_games]
             
