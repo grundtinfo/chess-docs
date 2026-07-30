@@ -33,8 +33,8 @@ class AIAnalyzer:
             {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une erreur sérieuse."}
         ],
         "perte_materielle": [
-            {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est une erreur sérieuse causant une perte matérielle. Tactique détectée : [PIÈCE] en [CASE] est exposée à une perte matérielle en quelques coups."},
-            {"role": "assistant", "content": "La [PIÈCE] s'est déplacée en [CASE]. C'est une erreur sérieuse causant une perte matérielle."}
+            {"role": "user", "content": "Coup : [PIÈCE JOUÉE] des [COULEUR] vers la case [CASE]. Évaluation : C'est une erreur sérieuse causant une perte matérielle. Tactique détectée : [PIÈCE PERDUE] en [CASE_PERTE] est exposée à une perte matérielle en quelques coups via : [SÉQUENCE]."},
+            {"role": "assistant", "content": "La [PIÈCE JOUÉE] s'est déplacée en [CASE]. C'est une erreur exposant [PIÈCE PERDUE] à une perte. Séquence prédictive : [SÉQUENCE]."}
         ],
         "echec_geometrique": [
             {"role": "user", "content": "Coup : [PIÈCE] des [COULEUR] vers la case [CASE]. Évaluation : C'est un bon coup, le plus précis actuellement. Tactique détectée : Échec direct par [PIÈCE] en [CASE]."},
@@ -344,8 +344,12 @@ class AIAnalyzer:
                                     match_len = min(len(future_moves), len(seq_eng))
                                     if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
                                         is_in_trap = True
-                                        
-                                loss_desc = f"{piece_lost} en {lost_square} est exposée à une perte matérielle en quelques coups"
+
+                                if len(seq_fr) == 1:
+                                    loss_desc = f"{piece_lost} en {lost_square} est mise en prise directe"
+                                else:
+                                    loss_desc = f"{piece_lost} en {lost_square} est exposée à une perte matérielle en quelques coups"
+                                
                                 if is_in_trap:
                                     tactics.append(f"{loss_desc} (suite illustrée)")
                                 else:
@@ -423,6 +427,8 @@ class AIAnalyzer:
                     mate_in = (val_after_raw * player_multiplier) if t_after == 'mate' else 0
 
                     # Calcul mathématique strict de la qualification du coup
+                    # VÉRIFICATION : L'ordre if/elif est strictement décroissant. 
+                    # Un delta de -279 est intercepté par <= -150 ("Erreur sérieuse") avant d'atteindre <= -30.
                     eval_symbol = ""
                     qualif_math = "Coup solide"
                     
