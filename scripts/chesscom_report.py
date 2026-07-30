@@ -158,11 +158,19 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                 Logger.debug_log(f"Erreur d'analyse (ply {idx}) pour le coup {move_raw_en} : {str(e)}", "ERROR")
 
         if idx <= max_deep_moves:
-            # L'étude et l'envoi de l'alternative sont désormais gérés dynamiquement à l'intérieur de l'analyseur
+            precomputed_data = {
+                'eval_before': eval_before,
+                'eval_after': eval_after,
+                'move_obj': move_obj,
+                'best_eval': best_eval,
+                'best_uci': best_uci
+            } if engine else None
+
             llm_comment, move_label = AIAnalyzer.generate_move_comment(
                 move_raw_en, move_raw_en, board_before, is_trap=False, 
                 played_continuation=san_moves[idx:idx+3] if idx < len(san_moves) else [], 
-                best_alternative=None
+                best_alternative=None,
+                precomputed_data=precomputed_data
             )
             
             # CORRECTIF C : Post-traitement strict avec regex (Refus IA & artéfacts)

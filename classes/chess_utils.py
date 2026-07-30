@@ -252,7 +252,23 @@ class ChessUtils:
         return games
 
     @staticmethod
-    def parse_stockfish_pv(pv_str):
+    def parse_stockfish_pv(pv_str, is_white_turn=True, start_move_number=1):
         """Convertit une séquence de coups (ex: Bb6 a4 a6) en notation française."""
         if not pv_str: return pv_str
-        return " ".join([ChessUtils.convert_english_to_french_notation(move) for move in pv_str.split()])
+        
+        # COMPLÉMENT CORRECTION : Insertion de séparateurs clairs et de numérotation séquentielle
+        moves = pv_str.split()
+        formatted_moves = []
+        current_move = start_move_number
+        white_to_move = is_white_turn
+        
+        for move_eng in moves:
+            move_fr = ChessUtils.convert_english_to_french_notation(move_eng)
+            if white_to_move:
+                formatted_moves.append(f"{current_move}. {move_fr}")
+            else:
+                formatted_moves.append(f"{current_move}... {move_fr}")
+                current_move += 1
+            white_to_move = not white_to_move
+            
+        return " -> ".join(formatted_moves)
