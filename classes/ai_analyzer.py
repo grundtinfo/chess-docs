@@ -78,9 +78,12 @@ class AIAnalyzer:
                     content = content.replace("Commentaire : ", "").replace("Commentaire :", "").strip()
                     content = re.sub(r'[\$~]', '', content)
                     
-                    # Respect strict du lexique français SAN
+                    # Respect strict du lexique français SAN et suppression des hallucinations
                     content = re.sub(r'(?i)\bévêques?\b', 'Fou', content)
                     content = re.sub(r'(?i)\bécureuils?\b', 'Pion', content)
+                    content = re.sub(r'(?i)\bFid[èe]les?\b', 'Fou', content)
+                    content = re.sub(r'(?i)\bRoi-Roi\b', 'petit roque', content)
+                    content = re.sub(r'(?i)\bCavalier\s+bloquant(?:\s+la\s+diagonale|\s+les?\s+[^\.,;]+)?\b', 'Cavalier', content)
                     content = re.sub(r'(?i)\bcarré(s)?\b', r'case\1', content)
                     content = re.sub(r'(?i)\bpiège mortel\b', 'menace critique', content)
                     content = re.sub(r'(?i)\bcheval(aux)?\b', 'Cavalier', content)
@@ -453,7 +456,7 @@ class AIAnalyzer:
                     
                     target_square = chess.square_name(move_obj.to_square)
                     
-                    # OBJECTIF 2 : Nettoyage des variables (Phrase naturelle au lieu du texte à trous)
+                    # Nettoyage des variables (Phrase naturelle au lieu du texte à trous)
                     article = "la" if piece_name in ["Tour", "Dame", "Pièce"] else "le"
                     detailed_move_str = f"Les {turn_color} ont joué {article} {piece_name} en {target_square} ({san_fr}{eval_symbol})"
                     pdf_move_str = f"{san_fr}{eval_symbol}"
@@ -497,22 +500,16 @@ class AIAnalyzer:
                         except Exception:
                             pass
 
-                    # OBJECTIF 3 : Optimisation des Pertes Forcées (Condition d'injection dynamique)
-                    instruction_gaffe = ""
-                    if delta <= -300 or t_after == 'mate':
-                        sequence_punition = best_pv_san if best_pv_san else best_uci
-                        instruction_gaffe = f"\nLe moteur signale une gaffe grave ou un mat. Explique brièvement la ligne de punition suivante : {sequence_punition}."
-
-                    # OBJECTIF 1 : Refonte du Prompt Système (Naturel, sans format rigide)
+                    # Refonte du Prompt Système (Verrouillé, direct et interdiction d'halluciner)
                     system_prompt = f"""Tu es un Analyste Technique d'échecs. Ton rôle est d'expliquer le coup joué de manière naturelle, claire et concise (2 à 3 phrases maximum).
 Ne fais aucune liste, n'utilise aucune étiquette de type "Coup joué :" ou "Évaluation :". Rédige directement un petit paragraphe fluide.
 
 RÈGLES STRICTES :
-1. Rédige une explication naturelle intégrant le coup et son évaluation factuelle.
-2. Si une alternative est fournie et différente de "Aucune", intègre-la de manière fluide dans ton explication.
-3. Si la variable alternative vaut "Aucune", TU NE DOIS PAS DU TOUT mentionner d'alternative ou de variante recommandée.
+1. Rédige une explication naturelle basée EXCLUSIVEMENT sur la variable "Évaluation exacte" et ses tactiques associées. INTERDICTION d'extrapoler ou d'inventer des lignes de défense (pas d'extrapolation tactique ou géométrique).
+2. Ne décris les séquences de coups que si elles sont explicitement fournies dans l'évaluation exacte, sans jamais inventer de déplacements défensifs impossibles.
+3. Si une alternative est fournie et différente de "Aucune", intègre-la de manière fluide dans ton explication. Si la variable alternative vaut "Aucune", TU NE DOIS PAS DU TOUT mentionner d'alternative ou de variante recommandée.
 4. Pas de format Markdown rigide.
-5. Utilise strictement la notation française (F, C, T, D, R).{instruction_gaffe}"""
+5. Utilise strictement la notation française (F, C, T, D, R)."""
 
                     user_content = f"""Coup joué : {detailed_move_str}
 Évaluation exacte : {eval_exacte}
