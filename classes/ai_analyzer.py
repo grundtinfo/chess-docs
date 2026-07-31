@@ -383,7 +383,7 @@ class AIAnalyzer:
                     best_eval = precomputed_data.get('best_eval')
                     best_uci = precomputed_data.get('best_uci')
                 else:
-                    # Fallback pour openings.py et traps.py qui ne fournissent pas de données précalculées
+                    # Fallback pour openings.py et traps.py
                     Logger.debug_log(f"Stockfish : Analyse du coup {raw}", "INFO")
                     eval_before, eval_after, move_obj = analyzer.analyze_move(board, move_san)
                     Logger.debug_log(f"Stockfish : Évaluation du meilleur coup alternatif pour {raw}", "INFO")
@@ -427,8 +427,6 @@ class AIAnalyzer:
                     mate_in = (val_after_raw * player_multiplier) if t_after == 'mate' else 0
 
                     # Calcul mathématique strict de la qualification du coup
-                    # VÉRIFICATION : L'ordre if/elif est strictement décroissant. 
-                    # Un delta de -279 est intercepté par <= -150 ("Erreur sérieuse") avant d'atteindre <= -30.
                     eval_symbol = ""
                     qualif_math = "Coup solide"
                     
@@ -454,19 +452,19 @@ class AIAnalyzer:
                         qualif_math = "Meilleur coup"
                     
                     target_square = chess.square_name(move_obj.to_square)
-                    detailed_move_str = f"{piece_name} des {turn_color} vers la case {target_square} ({san_fr}{eval_symbol})"
+                    
+                    # OBJECTIF 2 : Nettoyage des variables (Phrase naturelle au lieu du texte à trous)
+                    article = "la" if piece_name in ["Tour", "Dame", "Pièce"] else "le"
+                    detailed_move_str = f"Les {turn_color} ont joué {article} {piece_name} en {target_square} ({san_fr}{eval_symbol})"
                     pdf_move_str = f"{san_fr}{eval_symbol}"
                     
                     Logger.debug_log(f"Analyse tactique automatique pour {raw}", "DEBUG")
-                    # COMPLÉMENT CORRECTION : Transmission de la variable delta
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, continuation, delta=delta)
                     
-                    # CORRECTION 1.1 : Résolution de la contradiction logique (si Stockfish indique un meilleur/excellent coup, interdiction d'associer des termes de gaffe/perte)
                     if qualif_math in ["Meilleur coup", "Excellent coup", "Coup brillant", "Coup solide"]:
                         if any(term in tactics.lower() for term in ["perte", "gaffe", "erreur", "expose"]):
                             tactics = "Déplacement standard"
                     
-                    # COMPLÉMENT CORRECTION : Remplacement des altérations destructrices par un formatage clair
                     if "via :" in tactics:
                         tactics = tactics.replace("via :", "- Séquence forcée de l'ordinateur :")
                     elif "(suite illustrée)" in tactics:
@@ -476,9 +474,8 @@ class AIAnalyzer:
                     if tactics != "Déplacement standard":
                         eval_exacte += f" - Tactique : {tactics}"
                         
-                    # CORRECTION 1.2 : Terminologie corrigée ("Coups alternatifs recommandés" au lieu de "Alternative forcée")
-                    alt_recom_value = "Aucune variante recommandée retenue"
-                    directive_text = ""
+                    alt_recom_value = "Aucune"
+                    best_pv_san = None
 
                     if delta < -30 and best_uci:
                         try:
@@ -493,66 +490,45 @@ class AIAnalyzer:
                                 sim_board.push(m_sim)
                                 engine.set_fen_position(sim_board.fen())
                             
-                            # COMPLÉMENT CORRECTION : Envoi du contexte de tour et de numéro de coup pour formater la séquence univoquement
                             best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
                             if best_pv_san:
                                 alt_recom_value = best_pv_san
-                                directive_text = f"\n- Une alternative supérieure existait : [{best_pv_san}]. Intègre cette variante factuelle si nécessaire."
                             engine.set_fen_position(board.fen())
                         except Exception:
                             pass
 
-                    system_prompt = f"""Tu es un Analyste Technique d'échecs retranscrivant des données machine en un rapport factuel. Ton rôle est de formuler l'analyse brute de l'ordinateur de manière strictement exacte, sans aucune invention, extrapolation ou tentative de style littéraire.
+                    # OBJECTIF 3 : Optimisation des Pertes Forcées (Condition d'injection dynamique)
+                    instruction_gaffe = ""
+                    if delta <= -300 or t_after == 'mate':
+                        sequence_punition = best_pv_san if best_pv_san else best_uci
+                        instruction_gaffe = f"\nLe moteur signale une gaffe grave ou un mat. Explique brièvement la ligne de punition suivante : {sequence_punition}."
 
-Lexique strict (Notation Française SAN) :
-- F = Fou (ne désigne jamais une Dame)
-- C = Cavalier
-- T = Tour
-- D = Dame
-- R = Roi
+                    # OBJECTIF 1 : Refonte du Prompt Système (Naturel, sans format rigide)
+                    system_prompt = f"""Tu es un Analyste Technique d'échecs. Ton rôle est d'expliquer le coup joué de manière naturelle, claire et concise (2 à 3 phrases maximum).
+Ne fais aucune liste, n'utilise aucune étiquette de type "Coup joué :" ou "Évaluation :". Rédige directement un petit paragraphe fluide.
 
-RÈGLES ABSOLUES :
-- DÉCRIS UNIQUEMENT CE QUI EST FOURNI DANS LES VARIABLES.
-- Utilise EXCLUSIVEMENT la qualification exacte fournie dans "Évaluation exacte".{directive_text}
-- Tu dois générer une analyse structurée dénuée de phrases superflues, respectant EXACTEMENT et UNIQUEMENT le format Markdown suivant :
+RÈGLES STRICTES :
+1. Rédige une explication naturelle intégrant le coup et son évaluation factuelle.
+2. Si une alternative est fournie et différente de "Aucune", intègre-la de manière fluide dans ton explication.
+3. Si la variable alternative vaut "Aucune", TU NE DOIS PAS DU TOUT mentionner d'alternative ou de variante recommandée.
+4. Pas de format Markdown rigide.
+5. Utilise strictement la notation française (F, C, T, D, R).{instruction_gaffe}"""
 
-Coup joué : [Description littérale vérifiée du coup SAN]
-Évaluation Stockfish : [Intégrer dynamiquement la valeur d'évaluation fournie]
-Coups alternatifs recommandés : [Alternative fournie ou "Aucune variante recommandée retenue"]
-"""
-
-                    user_content = f"""Données à formater rigoureusement :
-- Coup SAN : {detailed_move_str}
-- Évaluation exacte : {eval_exacte}
-- Alternative : {alt_recom_value}
-"""
+                    user_content = f"""Coup joué : {detailed_move_str}
+Évaluation exacte : {eval_exacte}
+Alternative recommandée : {alt_recom_value}"""
                     
-                    # COMPLÉMENT CORRECTION : Validation CORRECTION 2, injection de la banque Few-Shot
-                    few_shots = AIAnalyzer.FEW_SHOT_BANK["bon_coup"]
-                    tactics_lower = tactics.lower()
-                    
-                    if "mat inévitable" in tactics_lower:
-                        few_shots = AIAnalyzer.FEW_SHOT_BANK["suite_stockfish"]
-                    elif "perte matérielle" in tactics_lower:
-                        few_shots = AIAnalyzer.FEW_SHOT_BANK["perte_materielle"]
-                    elif "échec direct" in tactics_lower or "échec double" in tactics_lower:
-                        few_shots = AIAnalyzer.FEW_SHOT_BANK["echec_geometrique"]
-                    elif qualif_math == "Gaffe majeure":
-                        few_shots = AIAnalyzer.FEW_SHOT_BANK["gaffe_tactique_alternative"]
-                    elif qualif_math == "Erreur sérieuse":
-                        few_shots = AIAnalyzer.FEW_SHOT_BANK["erreur_avec_alternative"]
-                    elif qualif_math in ["Imprécision", "Coup douteux"]:
-                        few_shots = AIAnalyzer.FEW_SHOT_BANK["imprecision"]
-
                     messages = [
-                        {"role": "system", "content": system_prompt.strip()}
+                        {"role": "system", "content": system_prompt.strip()},
+                        {"role": "user", "content": user_content.strip()}
                     ]
-                    messages.extend(few_shots)
-                    messages.append({"role": "user", "content": user_content.strip()})
                     
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 150, 'repeat_penalty': 1.0}
                     
-                    fallback_comment = f"Coup joué : {detailed_move_str}\nÉvaluation Stockfish : {eval_exacte}\nCoups alternatifs recommandés : {alt_recom_value}"
+                    # Fallback mis à jour pour respecter la structure naturelle sans étiquettes
+                    fallback_comment = f"{detailed_move_str}. Ce coup est considéré comme {qualif_math.lower()}."
+                    if alt_recom_value != "Aucune":
+                        fallback_comment += f" L'ordinateur préférait la variante : {alt_recom_value}."
                     
                     cache_k = None
                     if is_trap:
