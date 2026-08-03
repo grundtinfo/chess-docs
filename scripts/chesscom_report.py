@@ -223,7 +223,11 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         
         result_data["analysis"]["blunders"] = blunders
         result_data["analysis"]["good_moves"] = good_moves
-        result_data["analysis"]["est_elo_white"], result_data["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(details)
+        if details:
+            result_data["analysis"]["est_elo_white"], result_data["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(details)
+        else:
+            result_data["analysis"]["est_elo_white"] = est_elo_white
+            result_data["analysis"]["est_elo_black"] = est_elo_black
         
         if progress_callback: progress_callback(result_data)
 
@@ -513,7 +517,7 @@ def main():
             state = {"player": args.player, "games": {}}
         
         for game in state.get("games", {}).values():
-            if "analysis" in game and "details" in game["analysis"]:
+            if "analysis" in game and game["analysis"].get("details"):
                 game["analysis"]["est_elo_white"], game["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(game["analysis"]["details"])
 
         existing_games = state.get("games", {})

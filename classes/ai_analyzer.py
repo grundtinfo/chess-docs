@@ -13,15 +13,15 @@ class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
             {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en e4 (e4). Évaluation exacte : Meilleur coup. Alternative recommandée : Aucune."},
-            {"role": "assistant", "content": "Coup précis. Développement optimal dans cette position."}
+            {"role": "assistant", "content": "Coup précis."}
         ],
         "perte_materielle": [
             {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en c3 (Cc3?). Évaluation exacte : Erreur sérieuse - Tactique : Cavalier en c3 est exposé à une perte matérielle - Séquence forcée de l'ordinateur : \"1... d4 2. Ce4\". Alternative recommandée : d3."},
-            {"role": "assistant", "content": "Erreur. Ce coup perd du matériel face à la séquence : 1... d4 2. Ce4. L'alternative recommandée était : d3."}
+            {"role": "assistant", "content": "Erreur. Ce coup perd du matériel face à la séquence : 1... d4 2. Ce4. L'alternative était : d3."}
         ],
         "gaffe_mat": [
             {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en g4 (g4??). Évaluation exacte : Gaffe majeure - STATUT: Mat forcé en 2 coups par les Noirs - Séquence forcée de l'ordinateur : \"1... Dh4#\". Alternative recommandée : h3."},
-            {"role": "assistant", "content": "Gaffe. Ce coup autorise un Mat forcé par les Noirs : 1... Dh4#. L'alternative recommandée était : h3."}
+            {"role": "assistant", "content": "Gaffe. Ce coup autorise un Mat forcé par les Noirs : 1... Dh4#. L'alternative était : h3."}
         ],
         "mat_en_faveur": [
             {"role": "user", "content": "Coup joué : Les Blancs ont joué la Dame en f7 (Df7#). Évaluation exacte : Coup brillant - STATUT: Mat forcé en 1 coups par les Blancs. Alternative recommandée : Aucune."},
@@ -482,6 +482,9 @@ class AIAnalyzer:
                         parts = eval_exacte.split("- Séquence forcée de l'ordinateur :", 1)
                         eval_exacte = f'{parts[0]}- Séquence forcée de l\'ordinateur : "{parts[1].strip()}"'
                         
+                    if qualif_math in ["Meilleur coup", "Coup solide"] and not tactics:
+                        return "Coup précis.", pdf_move_str
+                        
                     alt_recom_value = "Aucune"
                     best_pv_san = None
 
@@ -513,7 +516,9 @@ RÈGLES STRICTES :
 3. Ne justifie jamais un coup. Contente-toi de formuler l'erreur ou la réussite en te basant UNIQUEMENT sur les variables fournies.
 4. Si un "STATUT" indique un Mat forcé, attribue STRICTEMENT la victoire au camp indiqué (Blancs ou Noirs) avec l'Alternative fournie, sans te contredire et sans justification géométrique.
 5. Ne fais aucune liste. Ne commence pas par "Coup joué :", "Évaluation :", ou "Commentaire :".
-6. Si aucune information tactique ou matérielle n'est fournie dans la variable 'Tactique', IL T'EST FORMELLEMENT INTERDIT de mentionner un gain matériel, une perte, ou une menace dans ton commentaire. Décris uniquement la nature du coup selon son évaluation (ex: 'Coup imprécis.')."""
+6. Si aucune information tactique ou matérielle n'est fournie dans la variable 'Tactique', IL T'EST FORMELLEMENT INTERDIT de mentionner un gain matériel, une perte, ou une menace dans ton commentaire. Décris uniquement la nature du coup selon son évaluation (ex: 'Coup imprécis.').
+7. Si la variable Tactique contient plusieurs informations séparées par un point-virgule (;), tu DOIS toutes les lister dans ta réponse sans exception.
+8. Si l'évaluation est une Erreur ou une Gaffe, ton commentaire DOIT obligatoirement inclure la séquence fournie dans la variable 'Alternative recommandée' de cette manière exacte : 'L'alternative était : [Séquence]'."""
 
                     user_content = f"""Coup joué : {detailed_move_str}
 Évaluation exacte : {eval_exacte}
