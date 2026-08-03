@@ -209,7 +209,6 @@ class AIAnalyzer:
                 else:
                     tactics.append(f"Échec direct par {moving_piece_name} en {to_square_name}")
                 
-            # CORRECTION 1.3 : Algorithme de fourchette corrigé (ciblage des pièces adverses != turn, restriction aux pièces majeures/mineures, max 3 cibles)
             attacks = board_after.attacks(move_obj.to_square)
             targets = []
             for sq in attacks:
@@ -217,7 +216,6 @@ class AIAnalyzer:
                 if piece and piece.color == board_after.turn and piece.piece_type in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT, chess.KING]:
                     targets.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
             
-            # SUPPRESSION DU BRIDAGE DE LA FOURCHETTE
             if len(targets) >= 2:
                 targets_str = ", ".join(targets)
                 tactics.append(f"{moving_piece_name} en {to_square_name} réalise une fourchette attaquant simultanément : {targets_str}")
@@ -275,10 +273,9 @@ class AIAnalyzer:
                     
                 elif t == 'cp':
                     cp_val = val * player_multiplier
-                    if cp_val >= 300 and not any("Capture" in t for t in tactics):
+                    if cp_val >= 300 and delta is not None and delta >= 150 and not any("Capture" in t for t in tactics):
                         tactics.append("Prépare un gain matériel décisif imminent")
                     elif cp_val <= -300:
-                        # COMPLÉMENT CORRECTION : S'assure mathématiquement que la perte est due au coup actuel, neutralisant la racine de la CORRECTION 1.1
                         if delta is None or delta <= -150:
                             piece_lost = None
                             lost_square = None
@@ -290,7 +287,6 @@ class AIAnalyzer:
                             sf = analyzer.get_engine()
                             original_color = board_after.turn 
                             
-                            # Fonction interne pour calculer le solde matériel
                             def get_material_score(b, c):
                                 return len(b.pieces(chess.PAWN, c)) + 3 * len(b.pieces(chess.KNIGHT, c)) + 3 * len(b.pieces(chess.BISHOP, c)) + 5 * len(b.pieces(chess.ROOK, c)) + 9 * len(b.pieces(chess.QUEEN, c))
                             
@@ -310,7 +306,6 @@ class AIAnalyzer:
                                     if target_piece and target_piece.color != original_color:
                                         pt = target_piece.piece_type
                                         is_new_loss = False
-                                        # Conserve la plus grande valeur perdue pour le label
                                         if pt == chess.QUEEN:
                                             piece_lost = "Dame"
                                             is_new_loss = True
@@ -331,14 +326,12 @@ class AIAnalyzer:
                                     seq_eng.append(san_eng)
                                     seq_fr.append(ChessUtils.convert_english_to_french_notation(san_eng))
                                     sim_board.push(move_obj_sim)
-                                    # SUPPRESSION DU BREAK : on déroule la séquence pour vérifier les recaptures
                                     
-                            # VÉRIFICATION DU SOLDE MATÉRIEL RÉEL
                             mat_after = get_material_score(sim_board, original_color)
                             mat_opp_after = get_material_score(sim_board, not original_color)
                             net_loss = (mat_before - mat_after) - (mat_opp_before - mat_opp_after)
 
-                            if net_loss > 0: # C'est une vraie perte, pas un échange équitable
+                            if net_loss > 0:
                                 if piece_lost:
                                     is_in_trap = False
                                     if future_moves:
@@ -358,8 +351,8 @@ class AIAnalyzer:
                                 else:
                                     tactics.append("Expose le joueur à une lourde perte matérielle")
                         
-        tactics_comment = " ; ".join(tactics) if tactics else "Déplacement standard"
-        Logger.debug_log(f"Événement détecté pour le coup : {tactics_comment}", "INFO")
+        tactics_comment = " ; ".join(tactics) if tactics else ""
+        Logger.debug_log(f"Événement détecté pour le coup : {tactics_comment if tactics_comment else 'Aucun'}", "INFO")
         return tactics_comment
 
     @staticmethod
@@ -409,9 +402,6 @@ class AIAnalyzer:
                     san_eng = board.san(move_obj) 
                     san_fr = ChessUtils.convert_english_to_french_notation(san_eng)
 
-                    if board_after.is_checkmate():
-                        return "Échec et mat.", f"{san_fr}#"
-
                     is_sacrifice = False
                     piece_moved = board.piece_at(move_obj.from_square)
                     piece_name = ChessUtils.get_piece_name_fr(piece_moved) if piece_moved else "Pièce"
@@ -420,21 +410,30 @@ class AIAnalyzer:
                         if board.is_attacked_by(not board.turn, move_obj.to_square):
                             is_sacrifice = True
 
+                    t_before = eval_before.get('type', 'cp') if isinstance(eval_before, dict) else getattr(eval_before, 'type', 'cp')
                     t_after = eval_after.get('type', 'cp') if isinstance(eval_after, dict) else getattr(eval_after, 'type', 'cp')
                     val_after_raw = eval_after.get('value', 0) if isinstance(eval_after, dict) else (eval_after.value if hasattr(eval_after, 'value') and eval_after.value is not None else 0)
-                    mate_in = (val_after_raw * player_multiplier) if t_after == 'mate' else 0
-
-                    # MODIFICATION 1 : Désambiguïsation explicite absolue des évaluations de Mat
+                    
                     mate_status = ""
-                    if t_after == 'mate' and val_after_raw != 0:
-                        # En interne chez Stockfish, > 0 = Avantage Blanc, < 0 = Avantage Noir
+                    is_blunder_into_mate = False
+
+                    if board_after.is_checkmate():
+                        mate_status = "STATUT: Échec et mat sur l'échiquier"
+                    elif t_after == 'mate' and val_after_raw != 0:
                         winning_side = "les Blancs" if val_after_raw > 0 else "les Noirs"
-                        mate_status = f"STATUT: Mat forcé en {abs(val_after_raw)} coups par {winning_side}"
+                        mate_in = val_after_raw * player_multiplier
+                        
+                        if t_before != 'mate' and mate_in < 0:
+                            mate_status = f"STATUT: Gaffe critique - Autorise un Mat forcé en {abs(mate_in)} coups par l'adversaire"
+                            is_blunder_into_mate = True
+                        else:
+                            mate_status = f"STATUT: Mat forcé en {abs(val_after_raw)} coups par {winning_side}"
 
                     eval_symbol = ""
                     qualif_math = "Coup solide"
                     
-                    if is_sacrifice and t_after == 'mate' and 0 < mate_in <= 3: 
+                    mate_in_val = (val_after_raw * player_multiplier) if t_after == 'mate' else 0
+                    if is_sacrifice and t_after == 'mate' and 0 < mate_in_val <= 3: 
                         eval_symbol = "!!"
                         qualif_math = "Coup brillant"
                     elif delta <= -300: 
@@ -462,23 +461,21 @@ class AIAnalyzer:
                     
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, continuation, delta=delta)
                     
+                    if is_blunder_into_mate or board_after.is_checkmate():
+                        tactics = ""
+                    
                     if qualif_math in ["Meilleur coup", "Excellent coup", "Coup brillant", "Coup solide"]:
                         if any(term in tactics.lower() for term in ["perte", "gaffe", "erreur", "expose"]):
-                            tactics = "Déplacement standard"
+                            tactics = ""
                     
                     if "via :" in tactics:
                         tactics = tactics.replace("via :", "- Séquence forcée de l'ordinateur :")
                     elif "(suite illustrée)" in tactics:
                         tactics = tactics.replace("(suite illustrée)", "- Séquence forcée de l'ordinateur : (illustrée dans la partie)")
                         
-                    eval_exacte = qualif_math
+                    eval_exacte = mate_status if mate_status else qualif_math
                     
-                    # MODIFICATION 1 (Suite) : Injection stricte du statut du mat en remplacement de l'extrapolation LLM
-                    if mate_status:
-                        eval_exacte += f" - {mate_status}"
-                        
-                    # S'ASSURE QUE LA CHAÎNE "DÉPLACEMENT STANDARD" NE SOIT JAMAIS ENVOYÉE AU LLM
-                    if tactics and tactics != "Déplacement standard":
+                    if tactics:
                         eval_exacte += f" - Tactique : {tactics}"
                         
                     if "- Séquence forcée de l'ordinateur :" in eval_exacte:
@@ -488,7 +485,7 @@ class AIAnalyzer:
                     alt_recom_value = "Aucune"
                     best_pv_san = None
 
-                    if delta < -30 and best_uci:
+                    if delta < -30 and best_uci and not board_after.is_checkmate():
                         try:
                             sim_board = board.copy()
                             engine.set_fen_position(sim_board.fen())
@@ -508,7 +505,6 @@ class AIAnalyzer:
                         except Exception:
                             pass
 
-                    # MODIFICATION 2 : Refonte du Prompt Système (formatage laconique absolu)
                     system_prompt = f"""Tu es un strict formateur de données d'échecs. Ton rôle est de restituer les données d'évaluation de manière clinique et laconique (1 à 2 phrases).
 
 RÈGLES STRICTES :
@@ -527,13 +523,11 @@ Alternative recommandée : {alt_recom_value}"""
                         {"role": "system", "content": system_prompt.strip()}
                     ]
                     
-                    # MODIFICATION 3 (Suite) : Injection dynamique des exmples chirurgicaux
                     for key in ["bon_coup", "perte_materielle", "gaffe_mat"]:
                         messages.extend(AIAnalyzer.FEW_SHOT_BANK[key])
                         
                     messages.append({"role": "user", "content": user_content.strip()})
                     
-                    # MODIFICATION 4 : Bridage des paramètres d'inférence avec num_predict très bas
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 80, 'repeat_penalty': 1.0}
                     
                     fallback_comment = f"{detailed_move_str}. Ce coup est considéré comme {qualif_math.lower()}."
