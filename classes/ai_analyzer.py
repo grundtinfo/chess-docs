@@ -75,7 +75,6 @@ class AIAnalyzer:
                     content = re.sub(r'(?i)\bson tour\b', 'sa Tour', content)
                     content = re.sub(r'(?i)\bson pièce\b', 'sa pièce', content)
                     content = re.sub(r'(?i)\ba déplacé vers\b', 's\'est déplacé vers', content)
-                    content = re.sub(r'(?i)attaque directe contre le [a-zA-ZÀ-ÿ]+ (Blanc|Noir) en [a-h][1-8]', 'capture sur la case', content)
                     content = re.sub(r'(?i)attaquant\s+simultanément\s*(?::)?\s*([a-zA-ZÀ-ÿ0-9\s,]+(?:et\s+[a-zA-ZÀ-ÿ0-9\s]+)?)', r'attaquant \1', content)
                     content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
                     content = re.sub(r'\b([L|l])e\s+Tour\b', lambda m: f"{m.group(1)}a Tour", content)
@@ -218,7 +217,8 @@ class AIAnalyzer:
                 if piece and piece.color == board_after.turn and piece.piece_type in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT, chess.KING]:
                     targets.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
             
-            if 2 <= len(targets) <= 3:
+            # SUPPRESSION DU BRIDAGE DE LA FOURCHETTE
+            if len(targets) >= 2:
                 targets_str = ", ".join(targets)
                 tactics.append(f"{moving_piece_name} en {to_square_name} réalise une fourchette attaquant simultanément : {targets_str}")
 
@@ -290,6 +290,13 @@ class AIAnalyzer:
                             sf = analyzer.get_engine()
                             original_color = board_after.turn 
                             
+                            # Fonction interne pour calculer le solde matériel
+                            def get_material_score(b, c):
+                                return len(b.pieces(chess.PAWN, c)) + 3 * len(b.pieces(chess.KNIGHT, c)) + 3 * len(b.pieces(chess.BISHOP, c)) + 5 * len(b.pieces(chess.ROOK, c)) + 9 * len(b.pieces(chess.QUEEN, c))
+                            
+                            mat_before = get_material_score(sim_board, original_color)
+                            mat_opp_before = get_material_score(sim_board, not original_color)
+                            
                             if sf:
                                 for _ in range(6):
                                     if sim_board.is_game_over(): break
@@ -303,6 +310,7 @@ class AIAnalyzer:
                                     if target_piece and target_piece.color != original_color:
                                         pt = target_piece.piece_type
                                         is_new_loss = False
+                                        # Conserve la plus grande valeur perdue pour le label
                                         if pt == chess.QUEEN:
                                             piece_lost = "Dame"
                                             is_new_loss = True
@@ -323,27 +331,32 @@ class AIAnalyzer:
                                     seq_eng.append(san_eng)
                                     seq_fr.append(ChessUtils.convert_english_to_french_notation(san_eng))
                                     sim_board.push(move_obj_sim)
+                                    # SUPPRESSION DU BREAK : on déroule la séquence pour vérifier les recaptures
                                     
-                                    if piece_lost == "Dame": break
-                                    
-                            if piece_lost:
-                                is_in_trap = False
-                                if future_moves:
-                                    match_len = min(len(future_moves), len(seq_eng))
-                                    if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
-                                        is_in_trap = True
+                            # VÉRIFICATION DU SOLDE MATÉRIEL RÉEL
+                            mat_after = get_material_score(sim_board, original_color)
+                            mat_opp_after = get_material_score(sim_board, not original_color)
+                            net_loss = (mat_before - mat_after) - (mat_opp_before - mat_opp_after)
 
-                                if len(seq_fr) == 1:
-                                    loss_desc = f"{piece_lost} en {lost_square} est mise en prise directe"
+                            if net_loss > 0: # C'est une vraie perte, pas un échange équitable
+                                if piece_lost:
+                                    is_in_trap = False
+                                    if future_moves:
+                                        match_len = min(len(future_moves), len(seq_eng))
+                                        if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
+                                            is_in_trap = True
+
+                                    if len(seq_fr) == 1:
+                                        loss_desc = f"{piece_lost} en {lost_square} est mise en prise directe"
+                                    else:
+                                        loss_desc = f"{piece_lost} en {lost_square} est exposée à une perte matérielle en quelques coups"
+                                    
+                                    if is_in_trap:
+                                        tactics.append(f"{loss_desc} (suite illustrée)")
+                                    else:
+                                        tactics.append(f"{loss_desc} via : {' '.join(seq_fr)}")
                                 else:
-                                    loss_desc = f"{piece_lost} en {lost_square} est exposée à une perte matérielle en quelques coups"
-                                
-                                if is_in_trap:
-                                    tactics.append(f"{loss_desc} (suite illustrée)")
-                                else:
-                                    tactics.append(f"{loss_desc} via : {' '.join(seq_fr)}")
-                            else:
-                                tactics.append("Expose le joueur à une lourde perte matérielle")
+                                    tactics.append("Expose le joueur à une lourde perte matérielle")
                         
         tactics_comment = " ; ".join(tactics) if tactics else "Déplacement standard"
         Logger.debug_log(f"Événement détecté pour le coup : {tactics_comment}", "INFO")
@@ -464,7 +477,8 @@ class AIAnalyzer:
                     if mate_status:
                         eval_exacte += f" - {mate_status}"
                         
-                    if tactics != "Déplacement standard":
+                    # S'ASSURE QUE LA CHAÎNE "DÉPLACEMENT STANDARD" NE SOIT JAMAIS ENVOYÉE AU LLM
+                    if tactics and tactics != "Déplacement standard":
                         eval_exacte += f" - Tactique : {tactics}"
                         
                     if "- Séquence forcée de l'ordinateur :" in eval_exacte:
@@ -502,7 +516,8 @@ RÈGLES STRICTES :
 2. Interdiction d'extrapoler, d'inventer des menaces, des plans ou de nommer des cases qui ne sont pas fournies textuellement dans la variable Séquence forcée ou Alternative.
 3. Ne justifie jamais un coup. Contente-toi de formuler l'erreur ou la réussite en te basant UNIQUEMENT sur les variables fournies.
 4. Si un "STATUT" indique un Mat forcé, attribue STRICTEMENT la victoire au camp indiqué (Blancs ou Noirs) avec l'Alternative fournie, sans te contredire et sans justification géométrique.
-5. Ne fais aucune liste. Ne commence pas par "Coup joué :", "Évaluation :", ou "Commentaire :"."""
+5. Ne fais aucune liste. Ne commence pas par "Coup joué :", "Évaluation :", ou "Commentaire :".
+6. Si aucune information tactique ou matérielle n'est fournie dans la variable 'Tactique', IL T'EST FORMELLEMENT INTERDIT de mentionner un gain matériel, une perte, ou une menace dans ton commentaire. Décris uniquement la nature du coup selon son évaluation (ex: 'Coup imprécis.')."""
 
                     user_content = f"""Coup joué : {detailed_move_str}
 Évaluation exacte : {eval_exacte}
