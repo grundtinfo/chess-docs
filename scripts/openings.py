@@ -51,7 +51,7 @@ def generate_moves_table(item):
             commentaire = cache[cache_key]["commentaire"]
             coup_annote = cache[cache_key]["coup_annote"]
         else:
-            commentaire, coup_annote = AIAnalyzer.generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
+            commentaire, coup_annote, _ = AIAnalyzer.generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
             cache[cache_key] = {"commentaire": commentaire, "coup_annote": coup_annote}
             cache_updated = True
         

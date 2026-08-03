@@ -166,33 +166,34 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                 'best_uci': best_uci
             } if engine else None
 
-            llm_comment, move_label = AIAnalyzer.generate_move_comment(
+            # On récupère les tactiques et on transmet san_moves[idx:] pour tester les M(x) ratés
+            llm_comment, move_label, tactics_detected = AIAnalyzer.generate_move_comment(
                 move_raw_en, move_raw_en, board_before, is_trap=False, 
-                played_continuation=san_moves[idx:idx+3] if idx < len(san_moves) else [], 
+                played_continuation=san_moves[idx:], 
                 best_alternative=None,
                 precomputed_data=precomputed_data
             )
             
-            # CORRECTIF C : Post-traitement strict avec regex (Refus IA & artéfacts)
             llm_comment = re.sub(r'(?i)^\s*(je suis d[é|e]sol[é|e]|d[é|e]sol[é|e]|en tant qu\').*?(\. |\n|$)', '', llm_comment).strip()
             llm_comment = llm_comment.replace('$', '')
         else:
             board_test = board_before.copy()
             board_test.push(move)
-            # Utilisation et conservation stricte du delta injecté dans le suffixe
             suffix = ChessUtils.infer_move_suffix(is_check=board_test.is_check(), is_checkmate=board_test.is_checkmate(), delta=swing)
             san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             move_label = f"{san_fr}{suffix}" if suffix else san_fr
             llm_comment = ""
+            tactics_detected = ""
 
-        if idx <= 12 and swing <= -250 and pv_san:
+        # CORRECTION 5 : Gaffe (?? == <= -300) avant le coup 12 (ply 24)
+        if idx <= 24 and swing <= -300 and best_uci:
             opening_blunders_data.append({
                 "move_number": (idx + 1) // 2,
                 "color": "white" if idx % 2 != 0 else "black",
                 "played_move": move_raw_en,
                 "played_uci": move.uci(),
                 "best_uci": best_uci,
-                "stockfish_pv": pv_san,
+                "stockfish_pv": best_uci,
                 "fen": board_before.fen()
             })
 
@@ -207,12 +208,14 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         is_capture = board_before.is_capture(move)
         board_before.push(move)
         
+        # CORRECTION 6 : On injecte la clé tactics_detected
         details.append({
             "ply": idx, "move_number": (idx + 1) // 2, "color": "white" if idx % 2 != 0 else "black",
             "move": move_label, "raw_san": move_raw_en, "comment": llm_comment, "fen": board_before.fen(),
             "delta": round(swing, 2), "precision": round(precision, 2), "phase": phase,
             "uci": move.uci(),
-            "is_capture": is_capture
+            "is_capture": is_capture,
+            "tactics": tactics_detected
         })
 
         result_data["analysis"]["summary"] = {

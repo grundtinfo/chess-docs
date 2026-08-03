@@ -22,28 +22,33 @@ class ChessUtils:
 
     @staticmethod
     def calculate_elo_from_details(details):
-        # (La logique reste identique à celle de l'original)
-        weights = {"opening": 0.7, "middlegame": 1.2, "endgame": 1.0}
-        w_cpl, b_cpl = 0.0, 0.0
-        w_sum, b_sum = 0.0, 0.0
+        if not details:
+            return 1200, 1200
+            
+        w_acc, b_acc = [], []
         
         for ply in details:
-            w = weights.get(ply.get("phase", "opening"), 1.0)
             loss = min(1000, max(0, -ply.get("precision", 0)))
+            
+            # Ancrage d'Accuracy (type CAPS Lichess/Chess.com approximation via centipions)
+            move_accuracy = max(0.0, min(100.0, 103.1668 * math.exp(-0.04354 * (loss / 10.0))))
+            
             if ply.get("color") == "white":
-                w_cpl += (loss * w); w_sum += w
+                w_acc.append(move_accuracy)
             else:
-                b_cpl += (loss * w); b_sum += w
+                b_acc.append(move_accuracy)
                 
-        MAX_ELO = 3200
-        FLOOR_ELO = 400
-        DECAY_CONSTANT = 0.019
+        avg_w_acc = sum(w_acc) / len(w_acc) if w_acc else 0
+        avg_b_acc = sum(b_acc) / len(b_acc) if b_acc else 0
         
-        def apply_exponential_curve(acpl):
-            return int(FLOOR_ELO + (MAX_ELO - FLOOR_ELO) * math.exp(-DECAY_CONSTANT * acpl))
+        # Mapping linéaire basé sur l'Accuracy: 95% = 2325, 90% = 2150, 70% = 1450, 50% = 750
+        def accuracy_to_elo(acc):
+            if acc == 0: return 400
+            elo = int((acc * 35) - 1000)
+            return max(400, min(3200, elo))
 
-        est_w = apply_exponential_curve(w_cpl / w_sum) if w_sum > 0 else 1200
-        est_b = apply_exponential_curve(b_cpl / b_sum) if b_sum > 0 else 1200
+        est_w = accuracy_to_elo(avg_w_acc) if w_acc else 1200
+        est_b = accuracy_to_elo(avg_b_acc) if b_acc else 1200
         
         return est_w, est_b
 
