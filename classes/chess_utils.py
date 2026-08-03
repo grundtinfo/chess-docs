@@ -272,7 +272,7 @@ class ChessUtils:
             if white_to_move:
                 formatted_moves.append(f"{current_move}. {move_fr}")
             else:
-                formatted_moves.append(f"{current_move}... {move_fr}")
+                formatted_moves.append(f"{current_move}.. {move_fr}")
                 current_move += 1
             white_to_move = not white_to_move
             
