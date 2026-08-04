@@ -1,6 +1,5 @@
 import os
 import ollama
-import chess
 from classes.logger import Logger
 from classes.config import Config
 from classes.chess_utils import ChessUtils

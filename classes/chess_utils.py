@@ -258,22 +258,32 @@ class ChessUtils:
 
     @staticmethod
     def parse_stockfish_pv(pv_str, is_white_turn=True, start_move_number=1):
-        """Convertit une séquence de coups (ex: Bb6 a4 a6) en notation française."""
+        """Convertit une séquence de coups (ex: Bb6 a4 a6) en notation classique."""
         if not pv_str: return pv_str
         
-        # COMPLÉMENT CORRECTION : Insertion de séparateurs clairs et de numérotation séquentielle
         moves = pv_str.split()
         formatted_moves = []
         current_move = start_move_number
         white_to_move = is_white_turn
         
-        for move_eng in moves:
+        for i, move_eng in enumerate(moves):
             move_fr = ChessUtils.convert_english_to_french_notation(move_eng)
+            
             if white_to_move:
-                formatted_moves.append(f"{current_move}. {move_fr}")
+                # Coup des blancs : on ajoute toujours le numéro de coup
+                formatted_moves.append(f"{current_move}.{move_fr}")
             else:
-                formatted_moves.append(f"{current_move}.. {move_fr}")
+                # Coup des noirs
+                if i == 0:
+                    # C'est le tout premier coup de la séquence
+                    formatted_moves.append(f"{current_move}...{move_fr}")
+                else:
+                    # Suite normale, on l'ajoute simplement pour qu'il soit séparé par un espace
+                    formatted_moves.append(move_fr)
+                
+                # Le tour complet est terminé, on incrémente le numéro de coup
                 current_move += 1
+                
             white_to_move = not white_to_move
             
-        return " -> ".join(formatted_moves)
+        return " ".join(formatted_moves)

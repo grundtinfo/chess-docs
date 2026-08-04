@@ -13,19 +13,19 @@ class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
             {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en e4 (e4). Évaluation exacte : Meilleur coup. Alternative recommandée : Aucune."},
-            {"role": "assistant", "content": "Coup précis."}
+            {"role": "assistant", "content": "Meilleur coup."}
         ],
         "capture_piece": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en d5 (Cxd5). Évaluation exacte : Meilleur coup - Tactique : Capture de Pion par Cavalier en d5. Alternative recommandée : Aucune."},
-            {"role": "assistant", "content": "Coup précis. Le Cavalier capture le Pion en d5."}
+            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en d5 (Cxd5). Évaluation exacte : Excellent coup - Tactique : Capture de Pion par Cavalier en d5. Alternative recommandée : Aucune."},
+            {"role": "assistant", "content": "Excellent coup. Le Cavalier capture le Pion en d5."}
         ],
         "perte_materielle": [
             {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en c3 (Cc3?). Évaluation exacte : Erreur sérieuse - Tactique : Cavalier en c3 est exposé à une perte matérielle - Séquence forcée de l'ordinateur : \"1... d4 2. Ce4\". Alternative recommandée : d3."},
-            {"role": "assistant", "content": "Erreur. Ce coup perd du matériel face à la séquence : 1... d4 2. Ce4. L'alternative était : d3."}
+            {"role": "assistant", "content": "Erreur sérieuse. Ce coup perd du matériel face à la séquence : 1... d4 2. Ce4. L'alternative était : d3."}
         ],
         "gaffe_mat": [
             {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en g4 (g4??). Évaluation exacte : Gaffe majeure - STATUT: Mat forcé en 2 coups par les Noirs - Séquence forcée de l'ordinateur : \"1... Dh4#\". Alternative recommandée : h3."},
-            {"role": "assistant", "content": "Gaffe. Ce coup autorise un Mat forcé par les Noirs : 1... Dh4#. L'alternative était : h3."}
+            {"role": "assistant", "content": "Gaffe majeure. Ce coup autorise un Mat forcé par les Noirs : 1... Dh4#. L'alternative était : h3."}
         ],
         "mat_en_faveur": [
             {"role": "user", "content": "Coup joué : Les Blancs ont joué la Dame en f7 (Df7#). Évaluation exacte : Coup brillant - STATUT: Mat forcé en 1 coups par les Blancs. Alternative recommandée : Aucune."},
@@ -147,39 +147,52 @@ class AIAnalyzer:
         if not opening_name or opening_name == "Ouverture Inconnue":
             return opening_name
 
-        # On extrait la base du nom avant les ":" ou "," pour standardiser via ECO
-        clean_name = opening_name.split(":")[0].split(",")[0].strip()
-        clean_name = re.sub(r'(?i)\s+(Variation|Attack|Gambit|System|Accepted|Declined).*', r' \1', clean_name)
+        clean_name = opening_name.strip()
 
+        # CORRECTION 5 : Ajout des traductions manquantes alignées sur les codes ECO
         translations = {
-            "Defense": "Défense", "Variation": "Variante", "Attack": "Attaque",
-            "Gambit": "Gambit", "System": "Système", "Accepted": "Accepté",
-            "Declined": "Refusé", "English": "Anglaise", "Opening": "Ouverture", 
-            "Symmetrical": "Symétrique", "Bishop's": "du Fou", "King's": "du Roi", 
-            "Queen's": "de la Dame", "Sicilian": "Sicilienne", "Zukertort": "de Zukertort",
-            "Scandinavian": "Scandinave", "French": "Française", "Caro-Kann": "Caro-Kann",
-            "Italian": "Italienne", "Spanish": "Espagnole", "Ruy Lopez": "Ruy Lopez",
-            "Slav": "Slave", "Nimzo-Indian": "Nimzo-Indienne", "Dutch": "Hollandaise",
-            "Russian": "Russe", "Petrov": "Petrov", "Philidor": "Philidor", "Alekhine": "Alekhine",
-            "Pirc": "Pirc", "Modern": "Moderne", "Reti": "Réti", "Bird": "Bird"
+            r"\bDefense\b": "Défense", r"\bVariation\b": "Variante", r"\bAttack\b": "Attaque",
+            r"\bGambit\b": "Gambit", r"\bSystem\b": "Système", r"\bAccepted\b": "Accepté",
+            r"\bDeclined\b": "Refusé", r"\bEnglish\b": "Anglaise", r"\bOpening\b": "Ouverture", 
+            r"\bSymmetrical\b": "Symétrique", r"\bBishop's\b": "du Fou", r"\bKing's\b": "du Roi", 
+            r"\bQueen's\b": "de la Dame", r"\bSicilian\b": "Sicilienne", r"\bZukertort\b": "de Zukertort",
+            r"\bScandinavian\b": "Scandinave", r"\bFrench\b": "Française", r"\bCaro-Kann\b": "Caro-Kann",
+            r"\bItalian\b": "Italienne", r"\bSpanish\b": "Espagnole", r"\bRuy Lopez\b": "Ruy Lopez",
+            r"\bSlav\b": "Slave", r"\bNimzo-Indian\b": "Nimzo-Indienne", r"\bDutch\b": "Hollandaise",
+            r"\bRussian\b": "Russe", r"\bPetrov\b": "Petrov", r"\bPhilidor\b": "Philidor", 
+            r"\bAlekhine\b": "Alekhine", r"\bPirc\b": "Pirc", r"\bModern\b": "Moderne", 
+            r"\bReti\b": "Réti", r"\bBird\b": "Bird", r"\bIndian\b": "Indienne",
+            r"\bTwo Knights\b": "des Deux Cavaliers", r"\bFour Knights\b": "des Quatre Cavaliers",
+            r"\bGiuoco Piano\b": "Giuoco Piano", r"\bEvans\b": "Evans", r"\bExchange\b": "d'Échange",
+            r"\bAdvance\b": "d'Avance", r"\bClassical\b": "Classique", r"\bTarrasch\b": "Tarrasch",
+            r"\bNajdorf\b": "Najdorf", r"\bDragon\b": "Dragon", r"\bScheveningen\b": "Scheveningen",
+            r"\bClosed\b": "Fermée", r"\bOpen\b": "Ouverte", r"\bMain Line\b": "Ligne Principale",
+            # ---- Nouveaux ajouts ----
+            r"\bGame\b": "Partie", r"\bScotch\b": "Écossaise", r"\bVienna\b": "Viennoise",
+            r"\bPawn\b": "Pion", r"\bKnights\b": "Cavaliers", r"\bBishops\b": "Fous",
+            r"\bKing's Indian\b": "Est-Indienne", r"\bQueen's Indian\b": "Ouest-Indienne",
+            r"\bCatalan\b": "Catalane", r"\bBenoni\b": "Benoni", r"\bLondon\b": "de Londres",
+            r"\bGrob\b": "Grob", r"\bBorg\b": "Borg"
         }
 
         result = clean_name
         for eng, fr in translations.items():
-            result = re.sub(rf'\b{eng}\b', fr, result, flags=re.IGNORECASE)
+            result = re.sub(eng, fr, result, flags=re.IGNORECASE)
             
-        result = re.sub(r'\b((?:de la |du |des |de |d\')?\w+)\s+(Défense|Ouverture|Variante|Attaque|Gambit|Système)\b', r'\2 \1', result, flags=re.IGNORECASE)
+        result = re.sub(r'\b([a-zA-ZÀ-ÿ]+)\s+(Défense|Ouverture|Variante|Attaque|Gambit|Système)\b', r'\2 \1', result, flags=re.IGNORECASE)
 
-        result = result.title()
-        mots_de_liaison = [" De ", " Du ", " Des ", " La ", " Le ", " Les ", " À ", " En ", " Et ", " D'"]
+        def titlecase_custom(match):
+            return match.group(0).capitalize()
+        
+        result = re.sub(r'\b[a-zA-ZÀ-ÿ]+\b', titlecase_custom, result)
+        
+        mots_de_liaison = ["De", "Du", "Des", "La", "Le", "Les", "À", "En", "Et", "D'"]
         for mot in mots_de_liaison:
-            result = result.replace(mot, mot.lower())
+            result = re.sub(rf'\b{mot}\b', mot.lower(), result, flags=re.IGNORECASE)
             
-        # Nettoyage final pour s'assurer du format francophone pur (sans notation type 2.D3)
-        result = re.sub(r'\s*\d+\..*$', '', result).strip()
-        result = re.sub(r'\s+', ' ', result).strip()
+        result = result.replace("D' ", "d'").replace("d' ", "d'")
 
-        return result
+        return result.strip()
 
     @staticmethod
     def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None, delta=None):
@@ -375,7 +388,10 @@ class AIAnalyzer:
         
         analyzer = StockfishAnalyzer()
         engine = analyzer.get_engine()
-        tactics = "" # Init par défaut
+        
+        tactics = "" 
+        best_pv_san = None 
+        alt_recom_value = "Aucune"
         
         if engine:
             try:
@@ -431,17 +447,40 @@ class AIAnalyzer:
                     if board_after.is_checkmate():
                         mate_status = "STATUT: Échec et mat sur l'échiquier"
                     elif t_after == 'mate' and val_after_raw != 0:
+                        # Toujours définir le camp gagnant explicitement
                         winning_side = "les Blancs" if val_after_raw > 0 else "les Noirs"
                         mate_in = val_after_raw * player_multiplier
                         
-                        # CORRECTION : Le "Mat Forcé" s'interrompt s'il n'est pas converti
                         is_mate_missed = False
                         if mate_in > 0 and continuation:
                             if len(continuation) >= mate_in * 2:
                                 is_mate_missed = True
 
+                        # Extraction proactive de la séquence de Mat (PV) par Stockfish si inexistante
+                        if not best_pv_san:
+                            try:
+                                sim_board = board.copy()
+                                engine.set_fen_position(sim_board.fen())
+                                pv_list = []
+                                # Profondeur ajustée au nombre de coups de Mat
+                                for _ in range(abs(val_after_raw) * 2): 
+                                    m_best = engine.get_best_move()
+                                    if not m_best: break
+                                    m_sim = sim_board.parse_uci(m_best)
+                                    pv_list.append(sim_board.san(m_sim))
+                                    sim_board.push(m_sim)
+                                    engine.set_fen_position(sim_board.fen())
+                                
+                                if pv_list:
+                                    best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
+                                    alt_recom_value = best_pv_san
+                                engine.set_fen_position(board.fen())
+                            except Exception:
+                                pass
+
+                        # Application stricte du statut
                         if t_before != 'mate' and mate_in < 0:
-                            mate_status = f"STATUT: Gaffe critique - Autorise un Mat forcé en {abs(mate_in)} coups par l'adversaire"
+                            mate_status = f"STATUT: Gaffe critique - Autorise un Mat forcé en {abs(mate_in)} coups par {winning_side}"
                             is_blunder_into_mate = True
                         elif mate_in > 0 and not is_mate_missed:
                             mate_status = f"STATUT: Mat forcé en {abs(val_after_raw)} coups par {winning_side}"
@@ -499,11 +538,13 @@ class AIAnalyzer:
                     if "- Séquence forcée de l'ordinateur :" in eval_exacte:
                         parts = eval_exacte.split("- Séquence forcée de l'ordinateur :", 1)
                         eval_exacte = f'{parts[0]}- Séquence forcée de l\'ordinateur : "{parts[1].strip()}"'
-                        
-                    alt_recom_value = "Aucune"
-                    best_pv_san = None
+                    
+                    # CORRECTION 1 : On ne remet PLUS best_pv_san à None ici, on le préserve 
+                    # s'il a été calculé lors de la détection de Mat plus haut.
+                    if best_pv_san is None:
+                        alt_recom_value = "Aucune"
 
-                    if delta < -30 and best_uci and not board_after.is_checkmate():
+                    if delta < -30 and best_uci and not board_after.is_checkmate() and best_pv_san is None:
                         try:
                             sim_board = board.copy()
                             engine.set_fen_position(sim_board.fen())
@@ -523,18 +564,16 @@ class AIAnalyzer:
                         except Exception:
                             pass
 
-                    # CORRECTION : Prompt redessiné et durci
-                    system_prompt = f"""Tu es un strict formateur de données d'échecs. Ton rôle est de restituer les données d'évaluation de manière clinique et laconique (1 à 2 phrases).
-
-RÈGLES STRICTES :
-1. Agis comme un pur formateur de données. Rédige un constat factuel. Interdiction d'utiliser des "explications naturelles".
-2. Ne justifie jamais un coup. Formule l'erreur ou la réussite en te basant UNIQUEMENT sur les variables.
-3. FILTRE LINGUISTIQUE (Capture) : Si la tactique indique une capture de X par Y, tu DOIS formuler activement "Y capture X" (ex: "Le Cavalier capture le Pion") au lieu de "Ce coup permet une capture".
-4. Si un "STATUT" indique un Mat forcé, tu DOIS restituer la variante EXACTE envoyée dans la Séquence forcée, au lieu de tronquer la réponse. Attribue strictement la victoire au camp indiqué.
-5. Ne fais aucune liste. Ne commence pas par "Coup joué :", "Évaluation :" ou "Commentaire :".
-6. Si aucune information n'est fournie dans la variable 'Tactique', NE mentionne AUCUN gain matériel, perte, ou menace.
-7. INTÈGRE TOUJOURS les informations de la variable 'Tactique' (clouage, fourchette, gain, capture, etc.) dans ta réponse, MÊME SI l'évaluation est "Meilleur coup" ou "Excellent coup".
-8. Si l'évaluation est une Erreur ou une Gaffe, ton commentaire DOIT obligatoirement inclure la séquence fournie dans la variable 'Alternative recommandée' ainsi : 'L'alternative était : [Séquence]'."""
+                    # CORRECTION 2 & 3 : Prompt redessiné (Verrouillage Hallucination et Évaluation 1:1)
+                    system_prompt = """Tu es un strict extracteur de données d'échecs. Restitue les variables de manière purement clinique.
+RÈGLES ABSOLUES :
+1. AUCUNE EXPLICATION NATURELLE. Ne justifie rien (interdit de dire "le Roi se met en sécurité", "développe une pièce", "position incohérente").
+2. ZÉRO HALLUCINATION : Interdiction formelle d'inventer des captures ou des événements non fournis en input (ex: ne dis pas 'La Dame capture' si l'input dit juste 'Dd5'). S'il n'y a aucune donnée tactique fournie, TAIS-TOI sur les tactiques.
+3. PRÉSERVATION EXACTE DE L'ÉVALUATION : Commence TOUJOURS ta réponse par la chaîne exacte fournie dans "Évaluation exacte" (ex: "Excellent coup.", "Imprécis.", etc.). Ne vulgarise JAMAIS un "Excellent coup" en "Coup solide".
+4. INCLURE TOUTE LA TACTIQUE : Si plusieurs tactiques sont fournies, tu DOIS toutes les lister factuellement.
+5. SÉQUENCE INTÉGRALE : Si une 'Alternative recommandée' est fournie, tu DOIS copier l'intégralité de la chaîne sans JAMAIS la tronquer.
+6. MAT : Restitue la séquence de Mat exactement comme fournie, en attribuant la victoire au camp explicitement nommé.
+FORMAT ATTENDU : "[Évaluation exacte]. [Action de capture si applicable]. [Liste des tactiques - s'il y en a]. L'alternative était : [Séquence intégrale]." """
 
                     user_content = f"""Coup joué : {detailed_move_str}
 Évaluation exacte : {eval_exacte}
@@ -558,14 +597,15 @@ Alternative recommandée : {alt_recom_value}"""
 
                     comment_llm = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment, cache_key=cache_k)
                     
-                    return comment_llm.strip(), pdf_move_str, tactics
+                    return comment_llm.strip(), pdf_move_str, tactics, alt_recom_value
 
             except Exception as e:
                 Logger.debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")
-                return "Analyse impossible : erreur de calcul.", ChessUtils.convert_english_to_french_notation(move_san), tactics
+                # Fallback mis à jour avec le 4ème paramètre "Aucune"
+                return "Analyse impossible : erreur de calcul.", ChessUtils.convert_english_to_french_notation(move_san), tactics, "Aucune"
         
         san_fr_fb = ChessUtils.convert_english_to_french_notation(move_san)
-        if "x" in raw: return "Coup de prise : attention à la position des pièces.", san_fr_fb, tactics
-        elif "#" in raw: return "Échec et mat. La partie est terminée.", san_fr_fb, tactics
-        elif "+" in raw: return "Coup d'échec : menace immédiate.", san_fr_fb, tactics
-        else: return "Coup neutre : pas de menace immédiate.", san_fr_fb, tactics
+        if "x" in raw: return "Coup de prise : attention à la position des pièces.", san_fr_fb, tactics, "Aucune"
+        elif "#" in raw: return "Échec et mat. La partie est terminée.", san_fr_fb, tactics, "Aucune"
+        elif "+" in raw: return "Coup d'échec : menace immédiate.", san_fr_fb, tactics, "Aucune"
+        else: return "Coup neutre : pas de menace immédiate.", san_fr_fb, tactics, "Aucune"

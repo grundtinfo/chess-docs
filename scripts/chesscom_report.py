@@ -167,7 +167,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             } if engine else None
 
             # On récupère les tactiques et on transmet san_moves[idx:] pour tester les M(x) ratés
-            llm_comment, move_label, tactics_detected = AIAnalyzer.generate_move_comment(
+            llm_comment, move_label, tactics_detected, alt_recom = AIAnalyzer.generate_move_comment(
                 move_raw_en, move_raw_en, board_before, is_trap=False, 
                 played_continuation=san_moves[idx:], 
                 best_alternative=None,
@@ -218,14 +218,43 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             "tactics": tactics_detected
         })
 
-        result_data["analysis"]["summary"] = {
-            ph: {"good_moves": sum(1 for i in lst if i.get("precision", -9999) >= -30 and i.get("swing", -9999) > -100), 
-                 "blunders": sum(1 for i in lst if i.get("swing", 0) <= -300)}
-            for ph, lst in [("opening", opening_phase), ("middlegame", middlegame_phase), ("endgame", endgame_phase)]
-        }
+        def summarize_details(nodes):
+            summary = {
+                "opening": {"good_moves": 0, "blunders": 0, "mistakes": 0},
+                "middlegame": {"good_moves": 0, "blunders": 0, "mistakes": 0},
+                "endgame": {"good_moves": 0, "blunders": 0, "mistakes": 0}
+            }
+            def parcours_recursif(noeud_list):
+                for node in noeud_list:
+                    phase = node.get("phase", "opening")
+                    swing = node.get("delta", node.get("swing", 0))
+                    precision = node.get("precision", -9999)
+                    
+                    if swing <= -300:
+                        summary[phase]["blunders"] += 1
+                    elif swing <= -150:
+                        summary[phase]["mistakes"] += 1
+                    elif precision >= -30 and swing > -100:
+                        summary[phase]["good_moves"] += 1
+                        
+                    # Si des sous-variantes existent dans le JSON, on plonge dedans
+                    if "variations" in node:
+                        parcours_recursif(node["variations"])
+                        
+            parcours_recursif(nodes)
+            return summary
+
+        # Remplacement de l'ancien calcul linéaire par la fonction récursive (Vers la ligne 177)
+        result_data["analysis"]["summary"] = summarize_details(details)
         
-        result_data["analysis"]["blunders"] = blunders
-        result_data["analysis"]["good_moves"] = good_moves
+        # CORRECTION 4 : Consolidation stricte des données depuis l'arborescence (Zéro perte)
+        result_data["analysis"]["blunders"] = sum(
+            phase_data.get("blunders", 0) for phase_data in result_data["analysis"]["summary"].values()
+        )
+        result_data["analysis"]["good_moves"] = sum(
+            phase_data.get("good_moves", 0) for phase_data in result_data["analysis"]["summary"].values()
+        )
+
         if details:
             result_data["analysis"]["est_elo_white"], result_data["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(details)
         else:
