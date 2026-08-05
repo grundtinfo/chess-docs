@@ -11,7 +11,11 @@ class AIAnalyzer:
 
     @staticmethod
     def get_stockfish_theory_summary(opening_name, bad_move, stockfish_line):
-        return f"Ligne Stockfish : {stockfish_line}<br/><br/>Dans l'ouverture {opening_name}, suite au coup {bad_move}, c'est la ligne recommandée par le moteur pour rééquilibrer la position."
+        summary = f"Ligne Stockfish : {stockfish_line}<br/><br/>Dans l'ouverture {opening_name}, suite au coup {bad_move}, c'est la ligne recommandée par le moteur pour rééquilibrer la position."
+        
+        Logger.debug_log(f"[Génération Théorie] {opening_name} | Coup {bad_move} -> {summary}", "DEBUG")
+        
+        return summary
 
     @staticmethod
     def translate_opening_name(opening_name):
@@ -246,7 +250,12 @@ class AIAnalyzer:
                                     tactics.append("Expose le joueur à une lourde perte matérielle")
                         
         tactics_comment = " ; ".join(tactics) if tactics else ""
-        Logger.debug_log(f"Événement détecté pour le coup : {tactics_comment if tactics_comment else 'Aucun'}", "INFO")
+        
+        if tactics_comment:
+            Logger.debug_log(f"[Génération Tactique] Événement détecté pour le coup {move_obj.uci()} : {tactics_comment}", "DEBUG")
+        else:
+            Logger.debug_log(f"Aucun événement tactique pour le coup : {move_obj.uci()}", "INFO")
+            
         return tactics_comment
 
     @staticmethod
@@ -429,6 +438,8 @@ class AIAnalyzer:
                     if alt_recom_value != "Aucune":
                         comment_final += f" L'alternative recommandée était : {alt_recom_value}."
 
+                    Logger.debug_log(f"[Génération Commentaire] {move_san} -> {comment_final.strip()}", "DEBUG")
+
                     return comment_final.strip(), pdf_move_str, tactics, alt_recom_value
 
             except Exception as e:
@@ -436,7 +447,17 @@ class AIAnalyzer:
                 return "Analyse impossible : erreur de calcul.", ChessUtils.convert_english_to_french_notation(move_san), tactics, "Aucune"
         
         san_fr_fb = ChessUtils.convert_english_to_french_notation(move_san)
-        if "x" in raw: return "Coup de prise : attention à la position des pièces.", san_fr_fb, tactics, "Aucune"
-        elif "#" in raw: return "Échec et mat. La partie est terminée.", san_fr_fb, tactics, "Aucune"
-        elif "+" in raw: return "Coup d'échec : menace immédiate.", san_fr_fb, tactics, "Aucune"
-        else: return "Coup neutre : pas de menace immédiate.", san_fr_fb, tactics, "Aucune"
+        
+        if "x" in raw: 
+            fallback_comment = "Coup de prise : attention à la position des pièces."
+        elif "#" in raw: 
+            fallback_comment = "Échec et mat. La partie est terminée."
+        elif "+" in raw: 
+            fallback_comment = "Coup d'échec : menace immédiate."
+        else: 
+            fallback_comment = "Coup neutre : pas de menace immédiate."
+            
+        # Ajout du traçage DEBUG pour le fallback
+        Logger.debug_log(f"[Génération Fallback] {move_san} -> {fallback_comment}", "DEBUG")
+        
+        return fallback_comment, san_fr_fb, tactics, "Aucune"
