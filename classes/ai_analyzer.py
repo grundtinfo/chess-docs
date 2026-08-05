@@ -297,16 +297,16 @@ class AIAnalyzer:
                     val_after = ChessUtils.get_eval_value(eval_after, board_after)
                     val_best = ChessUtils.get_eval_value(best_eval, board_best)
                     
-                    player_multiplier = 1 if board.turn == chess.WHITE else -1
-                    eval_player_before = val_before * player_multiplier
-                    eval_player_after = val_after * player_multiplier
-                    eval_player_best = val_best * player_multiplier
+                    # CORRECTIF : Évaluations relatives au joueur qui vient de jouer
+                    eval_player_before = val_before
+                    eval_player_after = -val_after
+                    eval_player_best = -val_best
                     
                     delta = eval_player_after - eval_player_best
                     swing = eval_player_after - eval_player_before
                     if move_obj and best_uci and move_obj.uci() == best_uci: delta = 0
 
-                    san_eng = board.san(move_obj) 
+                    san_eng = board.san(move_obj).strip() 
                     san_fr = ChessUtils.convert_english_to_french_notation(san_eng)
 
                     is_sacrifice = False
@@ -438,7 +438,7 @@ class AIAnalyzer:
                     if alt_recom_value != "Aucune":
                         comment_final += f" L'alternative recommandée était : {alt_recom_value}."
 
-                    Logger.debug_log(f"[Génération Commentaire] {move_san} -> {comment_final.strip()}", "DEBUG")
+                    Logger.debug_log(f"[Génération Commentaire] {pdf_move_str} -> {comment_final.strip()}", "DEBUG")
 
                     return comment_final.strip(), pdf_move_str, tactics, alt_recom_value
 
@@ -457,7 +457,6 @@ class AIAnalyzer:
         else: 
             fallback_comment = "Coup neutre : pas de menace immédiate."
             
-        # Ajout du traçage DEBUG pour le fallback
-        Logger.debug_log(f"[Génération Fallback] {move_san} -> {fallback_comment}", "DEBUG")
+        Logger.debug_log(f"[Génération Fallback] {san_fr_fb} -> {fallback_comment}", "DEBUG")
         
         return fallback_comment, san_fr_fb, tactics, "Aucune"

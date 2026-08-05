@@ -113,6 +113,7 @@ class ChessUtils:
     @staticmethod
     def convert_english_to_french_notation(move):
         if not move: return move
+        move = move.strip() # Sécurité ajoutée ici
         piece_map = {'Q': 'D', 'N': 'C', 'B': 'F', 'R': 'T', 'K': 'R'}
         if move[0] in piece_map:
             move = piece_map[move[0]] + move[1:]
@@ -226,21 +227,32 @@ class ChessUtils:
 
     @staticmethod
     def fetch_player_games(username, months=6):
-        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ChessDocs/1.0"}
+        headers = {
+            "User-Agent": "ChessAnalysisApp/1.0 (username: grundt07; contact: etienne.levisse@gmail.com)"
+        }
         Logger.debug_log(f"Récupération des archives Chess.com pour {username} (mois={months})", "INFO")
 
-        def request_with_retry(url, retries=3):
+        # On passe à 5 tentatives par défaut avec un délai de base ajustable
+        def request_with_retry(url, retries=5, base_delay=1):
             for attempt in range(retries):
                 try:
                     response = requests.get(url, timeout=25, headers=headers)
-                    if response.status_code in {403, 429} and attempt < retries - 1:
-                        time.sleep(2 ** attempt)
+                    
+                    if response.status_code in {403, 404, 429, 500, 502, 503, 504} and attempt < retries - 1:
+                        attente = base_delay * (2 ** attempt) # 1s, 2s, 4s, 8s...
+                        Logger.debug_log(f"HTTP {response.status_code} sur l'API. Nouvelle tentative {attempt + 1}/{retries} dans {attente}s...", "WARNING")
+                        time.sleep(attente)
                         continue
+                        
                     response.raise_for_status()
                     return response
                 except requests.RequestException as exc:
-                    if attempt < retries - 1: time.sleep(2 ** attempt)
-                    else: raise exc
+                    if attempt < retries - 1: 
+                        attente = base_delay * (2 ** attempt)
+                        Logger.debug_log(f"Exception réseau ({exc}). Nouvelle tentative {attempt + 1}/{retries} dans {attente}s...", "WARNING")
+                        time.sleep(attente)
+                    else: 
+                        raise exc
 
         archives_url = f"https://api.chess.com/pub/player/{username}/games/archives"
         try:
@@ -248,7 +260,7 @@ class ChessUtils:
         except Exception as e:
             Logger.debug_log(f"Erreur API archives: {e}", "ERROR")
             return []
-
+            
         recent_archives = archives[-months:] if months and months > 0 else archives
         games = []
         for archive_url in recent_archives:

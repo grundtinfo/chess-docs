@@ -148,9 +148,9 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                     val_after = ChessUtils.get_eval_value(eval_after, board_after)
                     val_best = ChessUtils.get_eval_value(best_eval, board_before) if best_eval else val_before
                     
-                    # Logique de calcul des Deltas et statuts (PRÉSERVATION ABSOLUE)
-                    swing = (val_after - val_before) * pm
-                    precision = min((val_after - val_best) * pm, swing)
+                    # CORRECTIF : val_after et val_best sont évalués après le coup (trait à l'adversaire)
+                    swing = (-val_after) - val_before
+                    precision = min((-val_after) - (-val_best), swing)
                     if best_uci and move_obj.uci() == best_uci and swing > -50: 
                         precision = 0
                         
