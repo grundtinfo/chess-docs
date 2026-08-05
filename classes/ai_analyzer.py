@@ -12,23 +12,27 @@ from classes.engines import StockfishAnalyzer
 class AIAnalyzer:
     FEW_SHOT_BANK = {
         "bon_coup": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en e4 (e4). Évaluation exacte : Meilleur coup. Alternative recommandée : Aucune."},
+            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en e4 (e4). Évaluation exacte : Meilleur coup."},
             {"role": "assistant", "content": "Meilleur coup."}
         ],
         "capture_piece": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en d5 (Cxd5). Évaluation exacte : Excellent coup - Tactique : Capture de Pion par Cavalier en d5. Alternative recommandée : Aucune."},
+            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en d5 (Cxd5). Évaluation exacte : Excellent coup - Tactique : Capture de Pion par Cavalier en d5."},
             {"role": "assistant", "content": "Excellent coup. Le Cavalier capture le Pion en d5."}
         ],
         "perte_materielle": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en c3 (Cc3?). Évaluation exacte : Erreur sérieuse - Tactique : Cavalier en c3 est exposé à une perte matérielle - Séquence forcée de l'ordinateur : \"1... d4 2. Ce4\". Alternative recommandée : d3."},
-            {"role": "assistant", "content": "Erreur sérieuse. Ce coup perd du matériel face à la séquence : 1... d4 2. Ce4. L'alternative était : d3."}
+            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en c3 (Cc3?). Évaluation exacte : Erreur sérieuse - Tactique : Cavalier en c3 est exposé à une perte matérielle - Séquence forcée de l'ordinateur : \"1... d4 2. Ce4\".\nAlternative recommandée : d3."},
+            {"role": "assistant", "content": "Erreur sérieuse. Ce coup perd du matériel face à la séquence : 1... d4 2. Ce4. L'alternative recommandée était : d3."}
+        ],
+        "erreur_positionnelle": [
+            {"role": "user", "content": "Coup joué : Les Noirs ont joué le Pion en a6 (a6?). Évaluation exacte : Erreur sérieuse.\nAlternative recommandée : 5...e6 6.Dd1 Cf6 7.Fd3."},
+            {"role": "assistant", "content": "Erreur sérieuse. L'alternative recommandée était : 5...e6 6.Dd1 Cf6 7.Fd3."}
         ],
         "gaffe_mat": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en g4 (g4??). Évaluation exacte : Gaffe majeure - STATUT: Mat forcé en 2 coups par les Noirs - Séquence forcée de l'ordinateur : \"1... Dh4#\". Alternative recommandée : h3."},
-            {"role": "assistant", "content": "Gaffe majeure. Ce coup autorise un Mat forcé par les Noirs : 1... Dh4#. L'alternative était : h3."}
+            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en g4 (g4??). Évaluation exacte : Gaffe majeure - STATUT: Mat forcé en 2 coups par les Noirs - Séquence forcée de l'ordinateur : \"1... Dh4#\".\nAlternative recommandée : h3."},
+            {"role": "assistant", "content": "Gaffe majeure. Ce coup autorise un Mat forcé par les Noirs : 1... Dh4#. L'alternative recommandée était : h3."}
         ],
         "mat_en_faveur": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué la Dame en f7 (Df7#). Évaluation exacte : Coup brillant - STATUT: Mat forcé en 1 coups par les Blancs. Alternative recommandée : Aucune."},
+            {"role": "user", "content": "Coup joué : Les Blancs ont joué la Dame en f7 (Df7#). Évaluation exacte : Coup brillant - STATUT: Mat forcé en 1 coups par les Blancs."},
             {"role": "assistant", "content": "Coup brillant. Ce coup délivre un échec et mat inévitable par les Blancs."}
         ]
     }
@@ -564,26 +568,27 @@ class AIAnalyzer:
                         except Exception:
                             pass
 
-                    # CORRECTION 2 & 3 : Prompt redessiné (Verrouillage Hallucination et Évaluation 1:1)
                     system_prompt = """Tu es un strict extracteur de données d'échecs. Restitue les variables de manière purement clinique.
 RÈGLES ABSOLUES :
-1. AUCUNE EXPLICATION NATURELLE. Ne justifie rien (interdit de dire "le Roi se met en sécurité", "développe une pièce", "position incohérente").
-2. ZÉRO HALLUCINATION : Interdiction formelle d'inventer des captures ou des événements non fournis en input (ex: ne dis pas 'La Dame capture' si l'input dit juste 'Dd5'). S'il n'y a aucune donnée tactique fournie, TAIS-TOI sur les tactiques.
-3. PRÉSERVATION EXACTE DE L'ÉVALUATION : Commence TOUJOURS ta réponse par la chaîne exacte fournie dans "Évaluation exacte" (ex: "Excellent coup.", "Imprécis.", etc.). Ne vulgarise JAMAIS un "Excellent coup" en "Coup solide".
-4. INCLURE TOUTE LA TACTIQUE : Si plusieurs tactiques sont fournies, tu DOIS toutes les lister factuellement.
-5. SÉQUENCE INTÉGRALE : Si une 'Alternative recommandée' est fournie, tu DOIS copier l'intégralité de la chaîne sans JAMAIS la tronquer.
-6. MAT : Restitue la séquence de Mat exactement comme fournie, en attribuant la victoire au camp explicitement nommé.
-FORMAT ATTENDU : "[Évaluation exacte]. [Action de capture si applicable]. [Liste des tactiques - s'il y en a]. L'alternative était : [Séquence intégrale]." """
+1. AUCUNE EXPLICATION NATURELLE : Ne justifie rien (interdit de dire "le Roi se met en sécurité", "développe une pièce", "dégrade votre position").
+2. ZÉRO HALLUCINATION : Interdiction formelle d'inventer des événements. Si aucune "Tactique" n'est fournie, applique un SILENCE TOTAL sur ce point.
+3. PRÉSERVATION EXACTE : Commence TOUJOURS ta réponse par la chaîne exacte fournie dans "Évaluation exacte" (ex: "Erreur sérieuse.", "Coup solide.").
+4. SÉQUENCES FORCÉES : Si une séquence forcée est présente, restitue-la factuellement entre guillemets.
+5. ALTERNATIVE RECOMMANDÉE OBLIGATOIRE : Si l'input contient la mention "Alternative recommandée :", tu DOIS IMPÉRATIVEMENT conclure ta réponse par la formule exacte : "L'alternative recommandée était : [Séquence intégrale]".
+6. COHÉRENCE DES OUVERTURES : Si des termes d'ouverture anglais sont détectés, préserve leur nomenclature officielle sans forcer la traduction."""
 
-                    user_content = f"""Coup joué : {detailed_move_str}
-Évaluation exacte : {eval_exacte}
-Alternative recommandée : {alt_recom_value}"""
+                    # Silence conditionnel : suppression totale de la variable si vide/Aucune
+                    alt_recom_str = f"\nAlternative recommandée : {alt_recom_value}" if alt_recom_value != "Aucune" else ""
+                    
+                    user_content = f"Coup joué : {detailed_move_str}\nÉvaluation exacte : {eval_exacte}{alt_recom_str}".strip()
                     
                     messages = [{"role": "system", "content": system_prompt.strip()}]
-                    for key in ["bon_coup", "capture_piece", "perte_materielle", "gaffe_mat"]:
+                    
+                    # Injection de l'erreur positionnelle dans la pile contextuelle
+                    for key in ["bon_coup", "capture_piece", "erreur_positionnelle", "perte_materielle", "gaffe_mat"]:
                         messages.extend(AIAnalyzer.FEW_SHOT_BANK[key])
                         
-                    messages.append({"role": "user", "content": user_content.strip()})
+                    messages.append({"role": "user", "content": user_content})
                     options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 80, 'repeat_penalty': 1.0}
                     
                     fallback_comment = f"{detailed_move_str}. Ce coup est considéré comme {qualif_math.lower()}."
