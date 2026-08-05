@@ -371,5 +371,39 @@
     ],
     "defenseur": "Noirs",
     "explication_defense": "Jouer 5... De7 permet de neutraliser le clouage sur la colonne e tout en laissant le Fou f8 libre de se développer. Le coup 5... Dd7 est une erreur majeure qui paralyse l'aile Roi et expose les Noirs à une attaque dévastatrice."
+  },
+  {
+    "nom": "Piège de l'Ouverture du Fou",
+    "coups": "1. e4 e5 2. Fc4 Cf6 3. d4 exd4 4. Cf3 Cxe4 5. Dxd4 Nd6 6. O-O Nxc4 7. Te1 Fe7 8. Dxg7 Tf8 9. Fh6",
+    "conseil_defense": "Ne reculez pas le cavalier en d6 au sixième coup. Préférez développer le fou en e7 ou jouer c6 pour assurer la sécurité de votre position et parer la pression sur la colonne e.",
+    "coup_defense": "6... Fe7",
+    "fleches_defense": [
+      "f8e7"
+    ],
+    "fleches_menace": [
+      "d4g7",
+      "e1e7",
+      "f1h6"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Développer le fou en e7 permet de parer le clouage et de préparer le roque pour éviter l'enfermement de la tour après l'attaque de la dame et de la tour sur la colonne e."
+  },
+  {
+    "nom": "Piège de l'attaque h4 (Jeu Italien)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Fc5 4. d3 Cf6 5. Cc3 O-O 6. Fg5 h6 7. h4 hxg5 8. hxg5 Ch7 9. g6 Cf6 10. Cg5 d5 11. Fxd5 Cxd5 12. Th8+ Rxh8 13. Dh5+ Rg8 14. Dh7",
+    "conseil_defense": "Ne capturez pas mécaniquement le fou en g5 avec le pion h6 si cela ouvre la colonne h et permet une attaque fulgurante avec la tour et la dame[cite: 3]. Préférez consolider l'aile roi ou jouer de manière plus positionnelle.",
+    "coup_defense": "7... Te8 ou 7... d6",
+    "fleches_defense": [
+      "e8e7",
+      "d7d6"
+    ],
+    "fleches_menace": [
+      "h4g5",
+      "h1h8",
+      "d1h5",
+      "h5h7"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Éviter d'ouvrir la colonne h en prenant en g5 permet de maintenir la structure de pions intacte devant le roi et de parer l'attaque de mat[cite: 3]."
   }
 ]
