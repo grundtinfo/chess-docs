@@ -15,7 +15,6 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from classes.config import Config
 from classes.logger import Logger
 from classes.chess_utils import ChessUtils
-from classes.engines import OllamaManager
 from classes.ai_analyzer import AIAnalyzer
 from classes.pdf_components import ChessboardFlowable, PDFUtils
 
@@ -116,7 +115,7 @@ def build_pdf(output_path, source_name, data):
     title_text = data[0].get('nom', source_name) if data else source_name
     elements.extend([
         Paragraph(f"Guide d'Ouvertures : {title_text}", title_style), Spacer(1, 10),
-        Paragraph("Ce document présente chaque position d'ouverture, les coups clés et des commentaires pédagogiques générés par IA.", intro_style),
+        Paragraph("Ce document présente chaque position d'ouverture, les coups clés et des commentaires pédagogiques générés par Stockfish.", intro_style),
         Paragraph("Dernière mise à jour le " + datetime.now().strftime("%d/%m/%Y à %H:%M"), intro_style), Spacer(1, 15)
     ])
 
@@ -151,9 +150,9 @@ def build_pdf(output_path, source_name, data):
             if explication:
                 comment_text = f"<b>{explication}</b>"
                 if auto_comment:
-                    comment_text += f"<br/><br/><i>Analyse IA :</i><br/>{auto_comment}"
+                    comment_text += f"<br/><br/><i>Analyse Stockfish :</i><br/>{auto_comment}"
             else:
-                comment_text = f"<i>Analyse IA :</i><br/>{auto_comment}"
+                comment_text = f"<i>Analyse Stockfish :</i><br/>{auto_comment}"
 
             table_data.append([diag, Paragraph(str(row.get('move_number', '')), bold_style), Paragraph(row.get('white', ''), bold_style), Paragraph(row.get('black', ''), bold_style), Paragraph(comment_text, normal_style)])
             
@@ -190,24 +189,18 @@ def main(stockfish_depth=18, verbose=1, opening=None):
     if not sources:
         Logger.debug_log("Aucun fichier JSON trouvé.", "ERROR")
         return
-        
-    ollama = OllamaManager()
-    ollama.start()
     
-    try:
-        for source_path in sources:
-            try:
-                with open(source_path, 'r', encoding='utf-8') as f: data = json.load(f)
-                if not isinstance(data, list): continue
-                output_path = os.path.join(base_dir, f"guide_{os.path.splitext(os.path.basename(source_path))[0]}.pdf")
-                Logger.debug_log(f"Traitement du fichier source {source_path}", "INFO")
-                Logger.debug_log(f"==== Génération de {output_path} ====", "ESSENTIAL")
-                build_pdf(output_path, os.path.basename(source_path), data)
-            except Exception as exc: 
-                Logger.debug_log(f"Impossible de traiter {source_path}: {exc}", "ERROR")
-        Logger.debug_log("Génération terminée.", "ESSENTIAL")
-    finally:
-        ollama.stop()
+    for source_path in sources:
+        try:
+            with open(source_path, 'r', encoding='utf-8') as f: data = json.load(f)
+            if not isinstance(data, list): continue
+            output_path = os.path.join(base_dir, f"guide_{os.path.splitext(os.path.basename(source_path))[0]}.pdf")
+            Logger.debug_log(f"Traitement du fichier source {source_path}", "INFO")
+            Logger.debug_log(f"==== Génération de {output_path} ====", "ESSENTIAL")
+            build_pdf(output_path, os.path.basename(source_path), data)
+        except Exception as exc: 
+            Logger.debug_log(f"Impossible de traiter {source_path}: {exc}", "ERROR")
+    Logger.debug_log("Génération terminée.", "ESSENTIAL")
 
 if __name__ == '__main__':
     import argparse

@@ -1,5 +1,4 @@
 import os
-import ollama
 from classes.logger import Logger
 from classes.config import Config
 from classes.chess_utils import ChessUtils
@@ -10,46 +9,6 @@ try:
 except ImportError:
     STOCKFISH_AVAILABLE = False
     Logger.debug_log("Stockfish non disponible. Les commentaires seront générés sans analyse.", "WARNING")
-
-class OllamaManager:
-    _instance = None
-    
-    def __new__(cls):
-        if cls._instance is None:
-            cls._instance = super().__new__(cls)
-            cls._instance.process = None
-            cls._instance.is_managed_by_us = False
-        return cls._instance
-        
-    def start(self):
-        try:
-            if ollama.list():
-                Logger.debug_log("Le serveur Ollama est déjà en cours d'exécution.", "INFO")
-                return
-        except Exception as e:
-            Logger.debug_log(f"Erreur lors de la vérification du serveur Ollama: {e}", "ERROR")
-            return
-
-        Logger.debug_log("Démarrage du serveur Ollama en arrière-plan...", "INFO")
-        try:
-            self.process = ollama.run()
-            self.is_managed_by_us = True
-        except FileNotFoundError:
-            Logger.debug_log("Ollama n'est pas installé ou non trouvé dans le PATH.", "ERROR")
-            return
-
-    def stop(self):
-        Logger.debug_log(f"Nettoyage : Déchargement du modèle {Config.OLLAMA_MODEL} de la VRAM...", "ESSENTIAL")
-        try:
-            ollama.generate(model=Config.OLLAMA_MODEL, prompt="", keep_alive=0)
-        except Exception as e:
-            Logger.debug_log(f"Erreur lors du déchargement du modèle: {e}", "ERROR")
-        
-        if self.is_managed_by_us and self.process:
-            try:
-                self.process.kill()
-            except Exception as e:
-                Logger.debug_log(f"Erreur lors de la fermeture du processus: {e}", "ERROR")
 
 class StockfishAnalyzer:
     _instance = None

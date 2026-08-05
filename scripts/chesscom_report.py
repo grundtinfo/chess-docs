@@ -24,7 +24,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from classes.config import Config
 from classes.logger import Logger
 from classes.chess_utils import ChessUtils
-from classes.engines import StockfishAnalyzer, OllamaManager
+from classes.engines import StockfishAnalyzer
 from classes.ai_analyzer import AIAnalyzer
 from classes.pdf_components import ChessboardFlowable, EloProgressionChart, PDFUtils
 from classes.json_cache import CacheManager
@@ -458,7 +458,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                 Paragraph("<b>N°</b>", normal_style),
                 Paragraph("<b>Gaffe (Orange)</b>", normal_style),
                 Paragraph("<b>Meilleure (Bleue)</b>", normal_style),
-                Paragraph("<b>Analyse de l'IA</b>", normal_style)
+                Paragraph("<b>Analyse de Stockfish</b>", normal_style)
             ]]
             
             for sample in blunders_list:
@@ -534,9 +534,6 @@ def main():
 
     Logger.set_debug_enabled(bool(args.verbose), level=max(int(args.verbose or 0), 1))
     
-    ollama_mgr = OllamaManager()
-    ollama_mgr.start()
-    
     try:
         base_dir = Path(__file__).resolve().parent.parent
         state_path = ChessUtils.build_player_state_path(str(base_dir), args.player)
@@ -603,7 +600,6 @@ def main():
         build_pdf(str(output_path), state, args.player, args.opponent)
 
     finally:
-        ollama_mgr.stop()
         StockfishAnalyzer().clear_cache()
 
 if __name__ == "__main__":

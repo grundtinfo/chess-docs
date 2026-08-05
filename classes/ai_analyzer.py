@@ -1,150 +1,17 @@
 import json
 import chess
-import requests
 import re
 import time
-import ollama
 from classes.config import Config
 from classes.logger import Logger
 from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer
 
 class AIAnalyzer:
-    FEW_SHOT_BANK = {
-        "bon_coup": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en e4 (e4). Évaluation exacte : Meilleur coup."},
-            {"role": "assistant", "content": "Meilleur coup."}
-        ],
-        "capture_piece": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en d5 (Cxd5). Évaluation exacte : Excellent coup - Tactique : Capture de Pion par Cavalier en d5."},
-            {"role": "assistant", "content": "Excellent coup. Le Cavalier capture le Pion en d5."}
-        ],
-        "perte_materielle": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Cavalier en c3 (Cc3?). Évaluation exacte : Erreur sérieuse - Tactique : Cavalier en c3 est exposé à une perte matérielle - Séquence forcée de l'ordinateur : \"1... d4 2. Ce4\".\nAlternative recommandée : d3."},
-            {"role": "assistant", "content": "Erreur sérieuse. Ce coup perd du matériel face à la séquence : 1... d4 2. Ce4. L'alternative recommandée était : d3."}
-        ],
-        "erreur_positionnelle": [
-            {"role": "user", "content": "Coup joué : Les Noirs ont joué le Pion en a6 (a6?). Évaluation exacte : Erreur sérieuse.\nAlternative recommandée : 5...e6 6.Dd1 Cf6 7.Fd3."},
-            {"role": "assistant", "content": "Erreur sérieuse. L'alternative recommandée était : 5...e6 6.Dd1 Cf6 7.Fd3."}
-        ],
-        "gaffe_mat": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué le Pion en g4 (g4??). Évaluation exacte : Gaffe majeure - STATUT: Mat forcé en 2 coups par les Noirs - Séquence forcée de l'ordinateur : \"1... Dh4#\".\nAlternative recommandée : h3."},
-            {"role": "assistant", "content": "Gaffe majeure. Ce coup autorise un Mat forcé par les Noirs : 1... Dh4#. L'alternative recommandée était : h3."}
-        ],
-        "mat_en_faveur": [
-            {"role": "user", "content": "Coup joué : Les Blancs ont joué la Dame en f7 (Df7#). Évaluation exacte : Coup brillant - STATUT: Mat forcé en 1 coups par les Blancs."},
-            {"role": "assistant", "content": "Coup brillant. Ce coup délivre un échec et mat inévitable par les Blancs."}
-        ]
-    }
-
-    @staticmethod
-    def query_llm(messages, options=None, context_log="LLM", fallback="", cache_key=None):
-        if cache_key:
-            from classes.json_cache import CacheManager
-            cache_global = CacheManager.load_cache()
-            if cache_key in cache_global:
-                Logger.debug_log(f"Réponse récupérée depuis le cache pour : {context_log}", "INFO")
-                return cache_global[cache_key]
-                
-        Logger.debug_log(f"Appel d'Ollama ({Config.OLLAMA_MODEL}) pour : {context_log}...", "INFO")
-        Logger.debug_log(f"Prompt envoyé au LLM : {json.dumps(messages, ensure_ascii=False)}", "DEBUG")
-        
-        max_retries = 3
-        for attempt in range(max_retries):
-            try:
-                result = ollama.chat(
-                    model=Config.OLLAMA_MODEL,
-                    messages=messages,
-                    options=options or {'temperature': 0.0}
-                )
-                if result and 'message' in result and 'content' in result['message']:
-                    content = result['message']['content']
-                    
-                    refusals_regex = r"(?i)(je suis désolé|désolé|en tant qu'IA|en tant que modèle|je ne peux pas répondre|je ne suis pas autorisé)"
-                    if re.search(refusals_regex, content):
-                        Logger.debug_log(f"Refus IA intercepté ({context_log}). Fallback appliqué.", "WARNING")
-                        return fallback
-                    
-                    content = re.sub(r'\(?Note\s*:.*?\)?', '', content, flags=re.IGNORECASE).strip()
-                    content = re.sub(r'\n+', ' ', content)
-                    content = content.strip(' "\'')
-                    content = content.replace("Commentaire : ", "").replace("Commentaire :", "").strip()
-                    content = re.sub(r'[\$~]', '', content)
-                    
-                    # Respect strict du lexique français SAN et suppression des hallucinations
-                    content = re.sub(r'(?i)\bévêques?\b', 'Fou', content)
-                    content = re.sub(r'(?i)\bécureuils?\b', 'Pion', content)
-                    content = re.sub(r'(?i)\bFid[èe]les?\b', 'Fou', content)
-                    content = re.sub(r'(?i)\bRoi-Roi\b', 'petit roque', content)
-                    content = re.sub(r'(?i)\bCavalier\s+bloquant(?:\s+la\s+diagonale|\s+les?\s+[^\.,;]+)?\b', 'Cavalier', content)
-                    content = re.sub(r'(?i)\bcarré(s)?\b', r'case\1', content)
-                    content = re.sub(r'(?i)\bpiège mortel\b', 'menace critique', content)
-                    content = re.sub(r'(?i)\bcheval(aux)?\b', 'Cavalier', content)
-                    content = re.sub(r'(?i)\bson tour\b', 'sa Tour', content)
-                    content = re.sub(r'(?i)\bson pièce\b', 'sa pièce', content)
-                    content = re.sub(r'(?i)\ba déplacé vers\b', 's\'est déplacé vers', content)
-                    content = re.sub(r'(?i)attaquant\s+simultanément\s*(?::)?\s*([a-zA-ZÀ-ÿ0-9\s,]+(?:et\s+[a-zA-ZÀ-ÿ0-9\s]+)?)', r'attaquant \1', content)
-                    content = re.sub(r'(?i)(mettant|met)\s+en\s+échec\s+(le|la|les)\s+(?!Roi)[a-zA-Z]+', r'attaquant \2', content)
-                    content = re.sub(r'\b([L|l])e\s+Tour\b', lambda m: f"{m.group(1)}a Tour", content)
-                    content = re.sub(r'\b([L|l])e\s+Dame\b', lambda m: f"{m.group(1)}a Dame", content)
-                    content = re.sub(r'(?i)Roi\s+(Blanc|Noir)\s+en\s+[a-h][1-8]', 'Roi adverse', content)
-                    content = re.sub(r'\bC-C([a-h][1-8])\b', r'Cavalier en \1', content)
-                    content = re.sub(r'\bF-F([a-h][1-8])\b', r'Fou en \1', content)
-                    content = re.sub(r'\bT-T([a-h][1-8])\b', r'Tour en \1', content)
-                    content = re.sub(r'\bD-D([a-h][1-8])\b', r'Dame en \1', content)
-                    content = re.sub(r'\bR-R([a-h][1-8])\b', r'Roi en \1', content)
-
-                    content = content.strip()
-                    if not content.endswith('.'):
-                        content += '.'
-
-                    Logger.debug_log(f"Résultat brut LLM ({context_log}) : {content}", "DEBUG")
-                    
-                    if cache_key and content and content != fallback:
-                        cache_global = CacheManager.load_cache()
-                        cache_global[cache_key] = content
-                        CacheManager.save_cache(cache_global)
-                        
-                    return content
-            except (requests.exceptions.RequestException, Exception) as e:
-                err_str = str(e)
-                is_retryable = any(err in err_str for err in ["500", "CUDA", "connection", "timeout", "Ollama"])
-                if is_retryable and attempt < max_retries - 1:
-                    wait_time = 2 ** attempt
-                    Logger.debug_log(f"Erreur Ollama temporaire ({err_str}). Nouvelle tentative dans {wait_time}s...", "WARNING")
-                    time.sleep(wait_time)
-                    continue
-                else:
-                    Logger.debug_log(f"Erreur Ollama critique ({context_log}) : {err_str}", "ERROR")
-                    break
-                    
-        return fallback
 
     @staticmethod
     def get_stockfish_theory_summary(opening_name, bad_move, stockfish_line):
-        messages = [
-            {
-                "role": "system", 
-                "content": (
-                    "Tu es un Analyste Technique d'échecs générant une description purement factuelle. "
-                    "RÈGLE STRICTE : Limite ton output à une description séquentielle et factuelle des coups "
-                    "(ex: 'Les Noirs jouent Fb6, les Blancs répondent par a4...'). "
-                    "INTERDICTION FORMELLE d'inventer des plans stratégiques incohérents ou de générer un narratif unifié."
-                )
-            },
-            {
-                "role": "user", 
-                "content": (
-                    f"Dans l'ouverture '{opening_name}', suite au coup '{bad_move}', "
-                    f"l'ordinateur préconise la variante suivante : {stockfish_line}. "
-                    "Décris factuellement et séquentiellement cette ligne alternative."
-                )
-            }
-        ]
-        
-        fallback_text = "Ligne recommandée par le moteur pour rééquilibrer la position."
-        content = AIAnalyzer.query_llm(messages, context_log=f"Théorie {opening_name}", fallback=fallback_text, cache_key=None)
-        return f"Ligne Stockfish : {stockfish_line}<br/><br/>{content}"
+        return f"Ligne Stockfish : {stockfish_line}<br/><br/>Dans l'ouverture {opening_name}, suite au coup {bad_move}, c'est la ligne recommandée par le moteur pour rééquilibrer la position."
 
     @staticmethod
     def translate_opening_name(opening_name):
@@ -449,9 +316,8 @@ class AIAnalyzer:
                     is_blunder_into_mate = False
 
                     if board_after.is_checkmate():
-                        mate_status = "STATUT: Échec et mat sur l'échiquier"
+                        mate_status = "Échec et mat sur l'échiquier"
                     elif t_after == 'mate' and val_after_raw != 0:
-                        # Toujours définir le camp gagnant explicitement
                         winning_side = "les Blancs" if val_after_raw > 0 else "les Noirs"
                         mate_in = val_after_raw * player_multiplier
                         
@@ -460,13 +326,11 @@ class AIAnalyzer:
                             if len(continuation) >= mate_in * 2:
                                 is_mate_missed = True
 
-                        # Extraction proactive de la séquence de Mat (PV) par Stockfish si inexistante
                         if not best_pv_san:
                             try:
                                 sim_board = board.copy()
                                 engine.set_fen_position(sim_board.fen())
                                 pv_list = []
-                                # Profondeur ajustée au nombre de coups de Mat
                                 for _ in range(abs(val_after_raw) * 2): 
                                     m_best = engine.get_best_move()
                                     if not m_best: break
@@ -482,12 +346,11 @@ class AIAnalyzer:
                             except Exception:
                                 pass
 
-                        # Application stricte du statut
                         if t_before != 'mate' and mate_in < 0:
-                            mate_status = f"STATUT: Gaffe critique - Autorise un Mat forcé en {abs(mate_in)} coups par {winning_side}"
+                            mate_status = f"Gaffe critique - Autorise un Mat forcé en {abs(mate_in)} coups par {winning_side}"
                             is_blunder_into_mate = True
                         elif mate_in > 0 and not is_mate_missed:
-                            mate_status = f"STATUT: Mat forcé en {abs(val_after_raw)} coups par {winning_side}"
+                            mate_status = f"Mat forcé en {abs(val_after_raw)} coups par {winning_side}"
 
                     eval_symbol = ""
                     qualif_math = "Coup solide"
@@ -514,9 +377,6 @@ class AIAnalyzer:
                     elif delta > -10: 
                         qualif_math = "Meilleur coup"
                     
-                    target_square = chess.square_name(move_obj.to_square)
-                    article = "la" if piece_name in ["Tour", "Dame", "Pièce"] else "le"
-                    detailed_move_str = f"Les {turn_color} ont joué {article} {piece_name} en {target_square} ({san_fr}{eval_symbol})"
                     pdf_move_str = f"{san_fr}{eval_symbol}"
                     
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, continuation, delta=delta)
@@ -524,8 +384,6 @@ class AIAnalyzer:
                     if is_blunder_into_mate or board_after.is_checkmate():
                         tactics = ""
                     
-                    # CORRECTION : On NE VIDE PLUS les informations tactiques pour les bons coups.
-                    # On retire uniquement les termes négatifs inappropriés.
                     if qualif_math in ["Meilleur coup", "Excellent coup", "Coup brillant", "Coup solide"] and tactics:
                         tact_list = tactics.split(" ; ")
                         tactics = " ; ".join([t for t in tact_list if not any(term in t.lower() for term in ["perte", "expose", "gaffe"])])
@@ -543,8 +401,6 @@ class AIAnalyzer:
                         parts = eval_exacte.split("- Séquence forcée de l'ordinateur :", 1)
                         eval_exacte = f'{parts[0]}- Séquence forcée de l\'ordinateur : "{parts[1].strip()}"'
                     
-                    # CORRECTION 1 : On ne remet PLUS best_pv_san à None ici, on le préserve 
-                    # s'il a été calculé lors de la détection de Mat plus haut.
                     if best_pv_san is None:
                         alt_recom_value = "Aucune"
 
@@ -568,45 +424,15 @@ class AIAnalyzer:
                         except Exception:
                             pass
 
-                    system_prompt = """Tu es un strict extracteur de données d'échecs. Restitue les variables de manière purement clinique.
-RÈGLES ABSOLUES :
-1. AUCUNE EXPLICATION NATURELLE : Ne justifie rien (interdit de dire "le Roi se met en sécurité", "développe une pièce", "dégrade votre position").
-2. ZÉRO HALLUCINATION : Interdiction formelle d'inventer des événements. Si aucune "Tactique" n'est fournie, applique un SILENCE TOTAL sur ce point.
-3. PRÉSERVATION EXACTE : Commence TOUJOURS ta réponse par la chaîne exacte fournie dans "Évaluation exacte" (ex: "Erreur sérieuse.", "Coup solide.").
-4. SÉQUENCES FORCÉES : Si une séquence forcée est présente, restitue-la factuellement entre guillemets.
-5. ALTERNATIVE RECOMMANDÉE OBLIGATOIRE : Si l'input contient la mention "Alternative recommandée :", tu DOIS IMPÉRATIVEMENT conclure ta réponse par la formule exacte : "L'alternative recommandée était : [Séquence intégrale]".
-6. COHÉRENCE DES OUVERTURES : Si des termes d'ouverture anglais sont détectés, préserve leur nomenclature officielle sans forcer la traduction."""
+                    # Construction directe du commentaire déterministe
+                    comment_final = f"{eval_exacte}."
+                    if alt_recom_value != "Aucune":
+                        comment_final += f" L'alternative recommandée était : {alt_recom_value}."
 
-                    # Silence conditionnel : suppression totale de la variable si vide/Aucune
-                    alt_recom_str = f"\nAlternative recommandée : {alt_recom_value}" if alt_recom_value != "Aucune" else ""
-                    
-                    user_content = f"Coup joué : {detailed_move_str}\nÉvaluation exacte : {eval_exacte}{alt_recom_str}".strip()
-                    
-                    messages = [{"role": "system", "content": system_prompt.strip()}]
-                    
-                    # Injection de l'erreur positionnelle dans la pile contextuelle
-                    for key in ["bon_coup", "capture_piece", "erreur_positionnelle", "perte_materielle", "gaffe_mat"]:
-                        messages.extend(AIAnalyzer.FEW_SHOT_BANK[key])
-                        
-                    messages.append({"role": "user", "content": user_content})
-                    options = {'temperature': 0.0, 'top_p': 0.1, 'num_predict': 80, 'repeat_penalty': 1.0}
-                    
-                    fallback_comment = f"{detailed_move_str}. Ce coup est considéré comme {qualif_math.lower()}."
-                    if alt_recom_value != "Aucune": fallback_comment += f" L'ordinateur préférait la variante : {alt_recom_value}."
-                    
-                    cache_k = None
-                    if is_trap:
-                        import hashlib
-                        trap_id = hashlib.md5(f"trap_{board_state.fen()}_{san_fr}".encode()).hexdigest()
-                        cache_k = f"trap_{trap_id}"
-
-                    comment_llm = AIAnalyzer.query_llm(messages, options, context_log=f"Commentaire de {san_fr}", fallback=fallback_comment, cache_key=cache_k)
-                    
-                    return comment_llm.strip(), pdf_move_str, tactics, alt_recom_value
+                    return comment_final.strip(), pdf_move_str, tactics, alt_recom_value
 
             except Exception as e:
                 Logger.debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")
-                # Fallback mis à jour avec le 4ème paramètre "Aucune"
                 return "Analyse impossible : erreur de calcul.", ChessUtils.convert_english_to_french_notation(move_san), tactics, "Aucune"
         
         san_fr_fb = ChessUtils.convert_english_to_french_notation(move_san)
