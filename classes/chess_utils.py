@@ -227,9 +227,7 @@ class ChessUtils:
 
     @staticmethod
     def fetch_player_games(username, months=6):
-        headers = {
-            "User-Agent": "ChessAnalysisApp/1.0 (username: grundt07; contact: etienne.levisse@gmail.com)"
-        }
+        headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ChessDocs/1.0"}
         Logger.debug_log(f"Récupération des archives Chess.com pour {username} (mois={months})", "INFO")
 
         # On passe à 5 tentatives par défaut avec un délai de base ajustable
