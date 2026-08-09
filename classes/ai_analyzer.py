@@ -10,9 +10,13 @@ from classes.engines import StockfishAnalyzer
 class AIAnalyzer:
 
     @staticmethod
-    def get_stockfish_theory_summary(opening_name, bad_move, stockfish_line):
+    def get_stockfish_theory_summary(opening_name, bad_move, stockfish_line, tactics=""):
         summary = f"Ligne Stockfish : {stockfish_line}<br/><br/>Dans l'ouverture {opening_name}, suite au coup {bad_move}, c'est la ligne recommandée par le moteur pour rééquilibrer la position."
         
+        if tactics:
+            tactics_clean = tactics.replace("- Séquence forcée de l'ordinateur :", "").strip()
+            summary += f"<br/><br/><b>Explication de l'erreur :</b> {tactics_clean}"
+            
         Logger.debug_log(f"[Génération Théorie] {opening_name} | Coup {bad_move} -> {summary}", "DEBUG")
         
         return summary
@@ -30,7 +34,7 @@ class AIAnalyzer:
             r"\bGambit\b": "Gambit", r"\bSystem\b": "Système", r"\bAccepted\b": "Accepté",
             r"\bDeclined\b": "Refusé", r"\bEnglish\b": "Anglaise", r"\bOpening\b": "Ouverture", 
             r"\bSymmetrical\b": "Symétrique", r"\bBishop's\b": "du Fou", r"\bKing's\b": "du Roi", 
-            r"\bQueen's\b": "de la Dame", r"\bSicilian\b": "Sicilienne", r"\bZukertort\b": "de Zukertort",
+            r"\bQueen's\b": "de la Dame", r"\bSicilian\b": "Sicilienne", r"\bZukertort\b": "Zukertort",
             r"\bScandinavian\b": "Scandinave", r"\bFrench\b": "Française", r"\bCaro-Kann\b": "Caro-Kann",
             r"\bItalian\b": "Italienne", r"\bSpanish\b": "Espagnole", r"\bRuy Lopez\b": "Ruy Lopez",
             r"\bSlav\b": "Slave", r"\bNimzo-Indian\b": "Nimzo-Indienne", r"\bDutch\b": "Hollandaise",
@@ -81,9 +85,9 @@ class AIAnalyzer:
             captured_piece = board_before.piece_at(move_obj.to_square)
             if captured_piece:
                 captured_name = ChessUtils.get_piece_name_fr(captured_piece)
-                tactics.append(f"Capture de {captured_name} par {moving_piece_name} en {to_square_name}")
+                tactics.append(f"{moving_piece_name} prend {captured_name} en {to_square_name}")
             else:
-                tactics.append(f"Capture en passant par {moving_piece_name} en {to_square_name}")
+                tactics.append(f"{moving_piece_name} prend en passant en {to_square_name}")
         
         board_after = board_before.copy()
         board_after.push(move_obj)
@@ -237,10 +241,14 @@ class AIAnalyzer:
                                         if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
                                             is_in_trap = True
 
+                                    is_fem = piece_lost in ["Dame", "Tour"]
+                                    adj_mise = "mise" if is_fem else "mis"
+                                    adj_exp = "exposée" if is_fem else "exposé"
+
                                     if len(seq_fr) == 1:
-                                        loss_desc = f"{piece_lost} en {lost_square} est mise en prise directe"
+                                        loss_desc = f"{piece_lost} en {lost_square} est {adj_mise} en prise directe"
                                     else:
-                                        loss_desc = f"{piece_lost} en {lost_square} est exposée à une perte matérielle en quelques coups"
+                                        loss_desc = f"{piece_lost} en {lost_square} est {adj_exp} à une perte matérielle en quelques coups"
                                     
                                     if is_in_trap:
                                         tactics.append(f"{loss_desc} (suite illustrée)")
@@ -327,11 +335,16 @@ class AIAnalyzer:
                     if board_after.is_checkmate():
                         mate_status = "Échec et mat sur l'échiquier"
                     elif t_after == 'mate' and val_after_raw != 0:
-                        winning_side = "les Blancs" if val_after_raw > 0 else "les Noirs"
-                        mate_in = val_after_raw * player_multiplier
+                        side_to_move_after = board_after.turn
+                        val_after_absolute = val_after_raw if side_to_move_after == chess.WHITE else -val_after_raw
+                        winning_side = "les Blancs" if val_after_absolute > 0 else "les Noirs"
+                        
+                        is_mate_for_player = (val_after_absolute > 0 and board_before.turn == chess.WHITE) or (val_after_absolute < 0 and board_before.turn == chess.BLACK)
+                        
+                        mate_in = abs(val_after_raw)
                         
                         is_mate_missed = False
-                        if mate_in > 0 and continuation:
+                        if is_mate_for_player and continuation:
                             if len(continuation) >= mate_in * 2:
                                 is_mate_missed = True
 
@@ -355,11 +368,14 @@ class AIAnalyzer:
                             except Exception:
                                 pass
 
-                        if t_before != 'mate' and mate_in < 0:
-                            mate_status = f"Gaffe critique - Autorise un Mat forcé en {abs(mate_in)} coups par {winning_side}"
+                        if not is_mate_for_player:
+                            if t_before != 'mate':
+                                mate_status = f"Gaffe critique - Autorise un Mat forcé en {mate_in} coups par {winning_side}"
+                            else:
+                                mate_status = f"Mat forcé en {mate_in} coups par {winning_side}"
                             is_blunder_into_mate = True
-                        elif mate_in > 0 and not is_mate_missed:
-                            mate_status = f"Mat forcé en {abs(val_after_raw)} coups par {winning_side}"
+                        elif is_mate_for_player and not is_mate_missed:
+                            mate_status = f"Mat forcé en {mate_in} coups par {winning_side}"
 
                     eval_symbol = ""
                     qualif_math = "Coup solide"

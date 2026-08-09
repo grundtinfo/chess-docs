@@ -137,7 +137,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         if engine:
             try:
                 eval_before, eval_after, move_obj = analyzer.analyze_move(board_before, move_raw_en)
-                _, best_eval, best_uci = analyzer.get_best_move_with_eval(board_before.copy())
+                best_move_fr, best_eval, best_uci = analyzer.get_best_move_with_eval(board_before.copy())
                 
                 if eval_before and eval_after and move_obj:
                     board_after = board_before.copy()
@@ -187,14 +187,16 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
 
         # CORRECTION 5 : Gaffe (?? == <= -300) avant le coup 12 (ply 24)
         if idx <= 24 and swing <= -300 and best_uci:
+            san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             opening_blunders_data.append({
                 "move_number": (idx + 1) // 2,
                 "color": "white" if idx % 2 != 0 else "black",
-                "played_move": move_raw_en,
+                "played_move": san_fr,
                 "played_uci": move.uci(),
                 "best_uci": best_uci,
-                "stockfish_pv": best_uci,
-                "fen": board_before.fen()
+                "stockfish_pv": best_move_fr,  # Sauvegarde en SAN au lieu de l'UCI brut
+                "fen": board_before.fen(),
+                "tactics": tactics_detected  # Transmission de la tactique pour le PDF
             })
 
         if swing <= -300: blunders += 1
@@ -480,7 +482,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                     orientation=orient
                 ) if fen else ""
                 
-                summary = AIAnalyzer.get_stockfish_theory_summary(op_name, sample['played_move'], sample['stockfish_pv'])
+                summary = AIAnalyzer.get_stockfish_theory_summary(op_name, sample.get('played_move', ''), sample.get('stockfish_pv', ''), sample.get('tactics', ''))
                 best_reply_san = sample['stockfish_pv'].split()[0] if sample.get('stockfish_pv') else "N/A"
                 
                 blunder_data.append([
