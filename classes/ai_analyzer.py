@@ -301,11 +301,14 @@ class AIAnalyzer:
                     board_best = board.copy()
                     if best_uci: board_best.push(chess.Move.from_uci(best_uci))
                     
+                    # CORRECTION : Définition de player_multiplier
+                    player_multiplier = 1 if board.turn == chess.WHITE else -1
+                    
                     val_before = ChessUtils.get_eval_value(eval_before, board)
                     val_after = ChessUtils.get_eval_value(eval_after, board_after)
                     val_best = ChessUtils.get_eval_value(best_eval, board_best)
                     
-                    # CORRECTIF : Évaluations relatives au joueur qui vient de jouer
+                    # Évaluations relatives au joueur qui vient de jouer
                     eval_player_before = val_before
                     eval_player_after = -val_after
                     eval_player_best = -val_best
@@ -339,7 +342,7 @@ class AIAnalyzer:
                         val_after_absolute = val_after_raw if side_to_move_after == chess.WHITE else -val_after_raw
                         winning_side = "les Blancs" if val_after_absolute > 0 else "les Noirs"
                         
-                        is_mate_for_player = (val_after_absolute > 0 and board_before.turn == chess.WHITE) or (val_after_absolute < 0 and board_before.turn == chess.BLACK)
+                        is_mate_for_player = (val_after_absolute > 0 and board.turn == chess.WHITE) or (val_after_absolute < 0 and board.turn == chess.BLACK)
                         
                         mate_in = abs(val_after_raw)
                         
