@@ -11,11 +11,11 @@ class AIAnalyzer:
 
     @staticmethod
     def get_stockfish_theory_summary(opening_name, bad_move, stockfish_line, tactics=""):
-        summary = f"Ligne Stockfish : {stockfish_line}<br/><br/>Dans l'ouverture {opening_name}, suite au coup {bad_move}, c'est la ligne recommandée par le moteur pour rééquilibrer la position."
+        summary = f"Ligne Stockfish : {stockfish_line}\n\nDans l'ouverture {opening_name}, suite au coup {bad_move}, c'est la ligne recommandée par le moteur pour rééquilibrer la position."
         
         if tactics:
             tactics_clean = tactics.replace("- Séquence forcée de l'ordinateur :", "").strip()
-            summary += f"<br/><br/><b>Explication de l'erreur :</b> {tactics_clean}"
+            summary += f"\n\nExplication de l'erreur : {tactics_clean}"
             
         Logger.debug_log(f"[Génération Théorie] {opening_name} | Coup {bad_move} -> {summary}", "DEBUG")
         
@@ -151,7 +151,7 @@ class AIAnalyzer:
                         sim_board = board_after.copy()
                         seq_fr = []
                         seq_eng = []
-                        for _ in range(abs(val)): 
+                        for _ in range(abs(val) * 2): 
                             best_uci = sf.get_best_move()
                             if not best_uci: break
                             move_obj_sim = sim_board.parse_uci(best_uci)
@@ -454,7 +454,7 @@ class AIAnalyzer:
 
                     # Construction directe du commentaire déterministe
                     comment_final = f"{eval_exacte}."
-                    if alt_recom_value != "Aucune":
+                    if alt_recom_value != "Aucune" and (not best_uci or move_obj.uci() != best_uci):
                         comment_final += f" L'alternative recommandée était : {alt_recom_value}."
 
                     Logger.debug_log(f"[Génération Commentaire] {pdf_move_str} -> {comment_final.strip()}", "DEBUG")

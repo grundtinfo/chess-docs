@@ -485,12 +485,15 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                 summary = AIAnalyzer.get_stockfish_theory_summary(op_name, sample.get('played_move', ''), sample.get('stockfish_pv', ''), sample.get('tactics', ''))
                 best_reply_san = sample['stockfish_pv'].split()[0] if sample.get('stockfish_pv') else "N/A"
                 
+                summary_pdf = summary.replace('\n', '<br/>')
+                summary_pdf = summary_pdf.replace("Explication de l'erreur :", "<b>Explication de l'erreur :</b>")
+                
                 blunder_data.append([
                     diag,
                     Paragraph(move_num, normal_style),
                     Paragraph(sample.get('played_move', ''), normal_style),
                     Paragraph(best_reply_san, normal_style),
-                    Paragraph(summary, normal_style)
+                    Paragraph(summary_pdf, normal_style)
                 ])
                 
             t_blunder = Table(blunder_data, colWidths=[120, 30, 60, 60, 230], repeatRows=1)
