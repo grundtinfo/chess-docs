@@ -177,85 +177,100 @@ class AIAnalyzer:
                     cp_val = val * player_multiplier
                     if cp_val >= 300 and delta is not None and delta >= 150 and not any("Capture" in t for t in tactics):
                         tactics.append("Prépare un gain matériel décisif imminent")
-                    elif cp_val <= -300:
-                        if delta is None or delta <= -150:
-                            piece_lost = None
-                            lost_square = None
-                            seq_eng = []
-                            seq_fr = []
-                            
-                            sim_board = board_after.copy()
-                            analyzer = StockfishAnalyzer()
-                            sf = analyzer.get_engine()
-                            original_color = board_after.turn 
-                            
-                            def get_material_score(b, c):
-                                return len(b.pieces(chess.PAWN, c)) + 3 * len(b.pieces(chess.KNIGHT, c)) + 3 * len(b.pieces(chess.BISHOP, c)) + 5 * len(b.pieces(chess.ROOK, c)) + 9 * len(b.pieces(chess.QUEEN, c))
-                            
-                            mat_before = get_material_score(sim_board, original_color)
-                            mat_opp_before = get_material_score(sim_board, not original_color)
-                            
-                            if sf:
-                                for _ in range(6):
-                                    if sim_board.is_game_over(): break
-                                    sf.set_fen_position(sim_board.fen())
-                                    best_uci = sf.get_best_move()
-                                    if not best_uci: break
-                                    
-                                    move_obj_sim = sim_board.parse_uci(best_uci)
-                                    target_piece = sim_board.piece_at(move_obj_sim.to_square)
-                                    
-                                    if target_piece and target_piece.color != original_color:
-                                        pt = target_piece.piece_type
-                                        is_new_loss = False
-                                        if pt == chess.QUEEN:
-                                            piece_lost = "Dame"
-                                            is_new_loss = True
-                                        elif pt == chess.ROOK and piece_lost != "Dame":
-                                            piece_lost = "Tour"
-                                            is_new_loss = True
-                                        elif pt == chess.BISHOP and piece_lost not in ["Dame", "Tour"]:
-                                            piece_lost = "Fou"
-                                            is_new_loss = True
-                                        elif pt == chess.KNIGHT and piece_lost not in ["Dame", "Tour", "Fou"]:
-                                            piece_lost = "Cavalier"
-                                            is_new_loss = True
-                                            
-                                        if is_new_loss:
-                                            lost_square = chess.square_name(move_obj_sim.to_square)
-                                            
-                                    san_eng = sim_board.san(move_obj_sim)
-                                    seq_eng.append(san_eng)
-                                    seq_fr.append(ChessUtils.convert_english_to_french_notation(san_eng))
-                                    sim_board.push(move_obj_sim)
-                                    
-                            mat_after = get_material_score(sim_board, original_color)
-                            mat_opp_after = get_material_score(sim_board, not original_color)
-                            net_loss = (mat_before - mat_after) - (mat_opp_before - mat_opp_after)
+                    elif delta is not None and delta <= -30:
+                        piece_lost = None
+                        lost_square = None
+                        seq_eng = []
+                        seq_fr = []
+                        
+                        sim_board = board_after.copy()
+                        analyzer = StockfishAnalyzer()
+                        sf = analyzer.get_engine()
+                        original_color = board_after.turn 
+                        
+                        def get_material_score(b, c):
+                            return len(b.pieces(chess.PAWN, c)) + 3 * len(b.pieces(chess.KNIGHT, c)) + 3 * len(b.pieces(chess.BISHOP, c)) + 5 * len(b.pieces(chess.ROOK, c)) + 9 * len(b.pieces(chess.QUEEN, c))
+                        
+                        mat_before = get_material_score(sim_board, original_color)
+                        mat_opp_before = get_material_score(sim_board, not original_color)
+                        
+                        if sf:
+                            for _ in range(6):
+                                if sim_board.is_game_over(): break
+                                sf.set_fen_position(sim_board.fen())
+                                best_uci = sf.get_best_move()
+                                if not best_uci: break
+                                
+                                move_obj_sim = sim_board.parse_uci(best_uci)
+                                target_piece = sim_board.piece_at(move_obj_sim.to_square)
+                                
+                                if target_piece and target_piece.color != original_color:
+                                    pt = target_piece.piece_type
+                                    is_new_loss = False
+                                    if pt == chess.QUEEN:
+                                        piece_lost = "Dame"
+                                        is_new_loss = True
+                                    elif pt == chess.ROOK and piece_lost != "Dame":
+                                        piece_lost = "Tour"
+                                        is_new_loss = True
+                                    elif pt == chess.BISHOP and piece_lost not in ["Dame", "Tour"]:
+                                        piece_lost = "Fou"
+                                        is_new_loss = True
+                                    elif pt == chess.KNIGHT and piece_lost not in ["Dame", "Tour", "Fou"]:
+                                        piece_lost = "Cavalier"
+                                        is_new_loss = True
+                                        
+                                    if is_new_loss:
+                                        lost_square = chess.square_name(move_obj_sim.to_square)
+                                        
+                                san_eng = sim_board.san(move_obj_sim)
+                                seq_eng.append(san_eng)
+                                seq_fr.append(ChessUtils.convert_english_to_french_notation(san_eng))
+                                sim_board.push(move_obj_sim)
+                                
+                        mat_after = get_material_score(sim_board, original_color)
+                        mat_opp_after = get_material_score(sim_board, not original_color)
+                        
+                        # Correction : Calcul strict des pertes nettes pour le joueur fautif
+                        blunderer_loss = mat_opp_before - mat_opp_after
+                        opponent_loss = mat_before - mat_after
+                        net_loss_for_blunderer = blunderer_loss - opponent_loss
 
-                            if net_loss > 0:
-                                if piece_lost:
-                                    is_in_trap = False
-                                    if future_moves:
-                                        match_len = min(len(future_moves), len(seq_eng))
-                                        if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
-                                            is_in_trap = True
+                        if net_loss_for_blunderer > 0:
+                            if piece_lost:
+                                is_in_trap = False
+                                if future_moves:
+                                    match_len = min(len(future_moves), len(seq_eng))
+                                    if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
+                                        is_in_trap = True
 
-                                    is_fem = piece_lost in ["Dame", "Tour"]
-                                    adj_mise = "mise" if is_fem else "mis"
-                                    adj_exp = "exposée" if is_fem else "exposé"
+                                is_fem = piece_lost in ["Dame", "Tour"]
+                                adj_mise = "mise" if is_fem else "mis"
+                                adj_exp = "exposée" if is_fem else "exposé"
 
-                                    if len(seq_fr) == 1:
-                                        loss_desc = f"{piece_lost} en {lost_square} est {adj_mise} en prise directe"
-                                    else:
-                                        loss_desc = f"{piece_lost} en {lost_square} est {adj_exp} à une perte matérielle en quelques coups"
-                                    
-                                    if is_in_trap:
-                                        tactics.append(f"{loss_desc} (suite illustrée)")
-                                    else:
-                                        tactics.append(f"{loss_desc} via : {' '.join(seq_fr)}")
+                                if len(seq_fr) == 1:
+                                    loss_desc = f"{piece_lost} en {lost_square} est {adj_mise} en prise directe"
                                 else:
-                                    tactics.append("Expose le joueur à une lourde perte matérielle")
+                                    loss_desc = f"{piece_lost} en {lost_square} est {adj_exp} à une perte matérielle en quelques coups"
+                                
+                                if is_in_trap:
+                                    tactics.append(f"{loss_desc} (suite illustrée)")
+                                else:
+                                    tactics.append(f"{loss_desc} via : {' '.join(seq_fr)}")
+                            else:
+                                seq_str = " via : " + " ".join(seq_fr[:3]) if seq_fr else ""
+                                if delta <= -150:
+                                    tactics.append(f"Expose le joueur à une lourde perte matérielle (pion clé ou qualité){seq_str}")
+                                else:
+                                    tactics.append(f"Entraîne une perte matérielle ou concède un avantage tactique décisif{seq_str}")
+                        else:
+                            seq_str = " via : " + " ".join(seq_fr[:3]) if seq_fr else ""
+                            if delta <= -150:
+                                tactics.append(f"Erreur stratégique majeure causant une détérioration critique de la position{seq_str}")
+                            elif delta <= -80:
+                                tactics.append(f"Concession positionnelle permettant à l'adversaire de prendre l'initiative{seq_str}")
+                            else:
+                                tactics.append(f"Coup douteux qui déséquilibre ou affaiblit la position{seq_str}")
                         
         tactics_comment = " ; ".join(tactics) if tactics else ""
         
