@@ -16,7 +16,7 @@ pyvenv.cfg
 scripts/stockfish
 *.log
 # ignore players data
-json/player_*.json
+json/player_*
 json/cache_analyses.json
 .continue
 .venv

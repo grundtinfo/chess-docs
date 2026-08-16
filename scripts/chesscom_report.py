@@ -595,7 +595,8 @@ def main():
             def save_progress(partial_parsed):
                 existing_games[game_id] = partial_parsed
                 state["games"] = existing_games
-                CacheManager.save_state(str(state_path), state)
+                # Remplacement de l'appel global par l'appel unitaire :
+                CacheManager.save_game(str(state_path), game_id, partial_parsed)
             
             parse_game_record(g, args.player, deep_analysis=needs_full_analysis, progress_callback=save_progress, existing_game=existing_g)
         # -------------------------------------------------

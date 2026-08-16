@@ -217,7 +217,8 @@ class ChessUtils:
     @staticmethod
     def build_player_state_path(base_dir, player_name):
         safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", player_name).strip("_") or "player"
-        return os.path.join(base_dir, "json", f"player_{safe_name}.json")
+        # Renvoie désormais un chemin de DOSSIER (retrait de l'extension .json)
+        return os.path.join(base_dir, "json", f"player_{safe_name}")
 
     @staticmethod
     def is_game_incomplete(game, require_deep):
