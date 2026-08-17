@@ -38,9 +38,9 @@ class StockfishAnalyzer:
             
             resolved_depth = ChessUtils.resolve_stockfish_depth(explicit_depth=depth)
             if stockfish_path:
-                self.engine = Stockfish(path=stockfish_path, depth=resolved_depth, parameters={"Threads": 18, "Hash": 8192})
+                self.engine = Stockfish(path=stockfish_path, depth=resolved_depth, parameters={"Threads": 18, "Hash": 4096})
             else:
-                self.engine = Stockfish(depth=resolved_depth, parameters={"Threads": 18, "Hash": 8192})
+                self.engine = Stockfish(depth=resolved_depth, parameters={"Threads": 18, "Hash": 4096})
         except Exception:
             self.engine = None
         return self.engine
