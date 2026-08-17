@@ -29,7 +29,7 @@ class StockfishAnalyzer:
         self._init_attempted = True
         try:
             stockfish_path = None
-            local_sf = os.path.join(os.path.dirname(os.path.dirname(__file__)), "stockfish", "stockfish", "stockfish-ubuntu-x86-64-avx2")
+            local_sf = os.path.join(os.path.dirname(os.path.dirname(__file__)), "stockfish", "stockfish", "stockfish-ubuntu-x86-64-bmi2")
             if os.path.exists(local_sf): stockfish_path = local_sf
             
             if not stockfish_path:
@@ -38,9 +38,9 @@ class StockfishAnalyzer:
             
             resolved_depth = ChessUtils.resolve_stockfish_depth(explicit_depth=depth)
             if stockfish_path:
-                self.engine = Stockfish(path=stockfish_path, depth=resolved_depth, parameters={"Threads": 12, "Hash": 3072})
+                self.engine = Stockfish(path=stockfish_path, depth=resolved_depth, parameters={"Threads": 18, "Hash": 8192})
             else:
-                self.engine = Stockfish(depth=resolved_depth, parameters={"Threads": 12, "Hash": 3072})
+                self.engine = Stockfish(depth=resolved_depth, parameters={"Threads": 18, "Hash": 8192})
         except Exception:
             self.engine = None
         return self.engine

@@ -28,7 +28,7 @@ def get_stockfish_url():
     
     if system == "Linux":
         if machine == "x86_64":
-            return f"{base_url}/stockfish-ubuntu-x86-64-avx2.tar"
+            return f"{base_url}/stockfish-ubuntu-x86-64-bmi2.tar"
         elif machine == "aarch64":
             return f"{base_url}/stockfish-ubuntu-aarch64.tar"
         else:
@@ -38,11 +38,11 @@ def get_stockfish_url():
         if machine == "arm64":
             return f"{base_url}/stockfish-macos-m1-apple-silicon.tar"
         else:
-            return f"{base_url}/stockfish-macos-x86-64-avx2.tar"
+            return f"{base_url}/stockfish-macos-x86-64-bmi2.tar"
     
     elif system == "Windows":
         if machine == "AMD64" or machine == "x86_64":
-            return f"{base_url}/stockfish-windows-x86-64-avx2.zip"
+            return f"{base_url}/stockfish-windows-x86-64-bmi2.zip"
         else:
             return f"{base_url}/stockfish-windows-armv8.zip"
     
