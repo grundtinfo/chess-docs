@@ -53,61 +53,53 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         moves.append(move)
         board_before.push(move)
 
-    board_before = game_obj.board()
-    analyzer = StockfishAnalyzer()
-    engine = analyzer.get_engine(depth=Config.DEFAULT_STOCKFISH_DEPTH)
-
     details, opening_blunders_data = [], []
-    blunders, good_moves = 0, 0
-    opening_phase, middlegame_phase, endgame_phase = [], [], []
-    
-    est_elo_white = None
-    est_elo_black = None
+    est_elo_white, est_elo_black = None, None
 
     if existing_game and "analysis" in existing_game:
         old_analysis = existing_game["analysis"]
         details = old_analysis.get("details", [])
-        blunders = old_analysis.get("blunders", 0)
-        good_moves = old_analysis.get("good_moves", 0)
         opening_blunders_data = old_analysis.get("opening_blunders", [])
         est_elo_white = old_analysis.get("est_elo_white")
         est_elo_black = old_analysis.get("est_elo_black")
-        
-        for ply_data in details:
-            ph = ply_data.get("phase", "opening")
-            prec = ply_data.get("precision", -9999)
-            bucket = opening_phase if ph == "opening" else middlegame_phase if ph == "middlegame" else endgame_phase
-            bucket.append({"move": ply_data.get("move"), "swing": ply_data.get("delta", 0), "precision": prec})
 
-        Logger.debug_log(f"Reprise de l'analyse de {game.get('url')} au coup {len(details) + 1}", "INFO")
+    # 1) PRÉ-REMPLISSAGE (Téléchargement de la structure totale)
+    if len(details) < len(moves):
+        temp_board = game_obj.board()
+        for idx, move in enumerate(moves, start=1):
+            san_eng = san_moves[idx - 1]
+            if idx > len(details):
+                san_fr = ChessUtils.convert_english_to_french_notation(san_eng)
+                is_capture = temp_board.is_capture(move)
+                phase = "opening" if idx <= 12 else "middlegame" if idx <= 30 else "endgame"
+                
+                details.append({
+                    "ply": idx, "move_number": (idx + 1) // 2, "color": "white" if idx % 2 != 0 else "black",
+                    "move": san_fr, "raw_san": san_eng, "comment": "", "fen": temp_board.fen(),
+                    "delta": 0, "precision": -9999, "phase": phase,
+                    "uci": move.uci(), "is_capture": is_capture, "tactics": ""
+                })
+            temp_board.push(move)
 
     cached_opening = existing_game.get("opening", "Ouverture Inconnue") if existing_game else "Ouverture Inconnue"
-    
-    # Utilisation de la nouvelle détection intelligente (PRÉSERVATION ABSOLUE)
     needs_recalc = ChessUtils.is_raw_opening(cached_opening)
-    
     best_opening_name = cached_opening
-
-    # Si le nom est "brut" ou "inconnu", on relance la détection
+    
     if needs_recalc:
         board_for_opening = game_obj.board()
         found_name = "Ouverture Inconnue"
-        
         for m in moves[:20]:
             try:
                 board_for_opening.push(m)
                 op_name = ChessUtils.get_opening_name(board_for_opening)
                 if op_name != "Ouverture Inconnue" and not ChessUtils.is_raw_opening(op_name):
                     found_name = op_name
-            except Exception:
-                continue
-        
+            except Exception: continue
         best_opening_name = found_name if found_name != "Ouverture Inconnue" else cached_opening
 
-    max_deep_moves = len(moves) if deep_analysis else 0
     result_data = {
         "id": game.get("url"),
-        "is_complete": False,
+        "is_complete": existing_game.get("is_complete", False) if existing_game else False,
         "date": datetime.fromtimestamp(game.get("end_time", 0)).strftime("%Y-%m-%d %H:%M") if game.get("end_time") else None,
         "end_time": game.get("end_time"),
         "result": result_text,
@@ -119,20 +111,60 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         "deep_analysis": deep_analysis,
         "analysis": {
             "summary": {"opening": {}, "middlegame": {}, "endgame": {}}, 
-            "details": details, "blunders": blunders, "good_moves": good_moves,
+            "details": details, "blunders": 0, "good_moves": 0,
             "opening_blunders": opening_blunders_data,
             "est_elo_white": est_elo_white,
             "est_elo_black": est_elo_black
         }
     }
 
+    def summarize_details(nodes):
+        summary = {
+            "opening": {"good_moves": 0, "blunders": 0, "mistakes": 0},
+            "middlegame": {"good_moves": 0, "blunders": 0, "mistakes": 0},
+            "endgame": {"good_moves": 0, "blunders": 0, "mistakes": 0}
+        }
+        def parcours_recursif(noeud_list):
+            for node in noeud_list:
+                phase = node.get("phase", "opening")
+                swing = node.get("delta", node.get("swing", 0))
+                precision = node.get("precision", -9999)
+                
+                if swing <= -300: summary[phase]["blunders"] += 1
+                elif swing <= -150: summary[phase]["mistakes"] += 1
+                elif precision >= -30 and swing > -100: summary[phase]["good_moves"] += 1
+                
+                if "variations" in node: parcours_recursif(node["variations"])
+        parcours_recursif(nodes)
+        return summary
+
+    result_data["analysis"]["summary"] = summarize_details(details)
+    
+    # 2) Sauvegarde immédiate totale avant l'enrichissement
+    if progress_callback: progress_callback(result_data)
+
+    if not deep_analysis:
+        return result_data
+
+    # --- 3) ENRICHISSEMENT & REPRISE (Coup par Coup) ---
+    board_before = game_obj.board()
+    analyzer = StockfishAnalyzer()
+    engine = analyzer.get_engine(depth=Config.DEFAULT_STOCKFISH_DEPTH)
+    
     for idx, move in enumerate(moves, start=1):
         move_raw_en = san_moves[idx - 1]
-        if idx <= len(details):
+        ply_data = details[idx - 1]
+        
+        # Mode Reprise : On vérifie un à un les coups déjà calculés
+        is_analyzed = (ply_data.get("precision", -9999) != -9999) or (ply_data.get("comment", "") != "")
+        
+        if is_analyzed:
             board_before.push(move)
             continue
 
-        swing, precision, pv_san = 0, -9999, ""
+        swing, precision = 0, -9999
+        eval_before, eval_after, move_obj = None, None, None
+        best_move_fr, best_eval, best_uci = "", None, None
         
         if engine:
             try:
@@ -143,126 +175,55 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                     board_after = board_before.copy()
                     board_after.push(move_obj)
                     
-                    pm = 1 if board_before.turn == chess.WHITE else -1
                     val_before = ChessUtils.get_eval_value(eval_before, board_before)
                     val_after = ChessUtils.get_eval_value(eval_after, board_after)
                     val_best = ChessUtils.get_eval_value(best_eval, board_before) if best_eval else val_before
                     
-                    # CORRECTIF : val_after et val_best sont évalués après le coup (trait à l'adversaire)
                     swing = (-val_after) - val_before
                     precision = min((-val_after) - (-val_best), swing)
                     if best_uci and move_obj.uci() == best_uci and swing > -50: 
                         precision = 0
-                        
             except Exception as e: 
                 Logger.debug_log(f"Erreur d'analyse (ply {idx}) pour le coup {move_raw_en} : {str(e)}", "ERROR")
 
-        if idx <= max_deep_moves:
-            precomputed_data = {
-                'eval_before': eval_before,
-                'eval_after': eval_after,
-                'move_obj': move_obj,
-                'best_eval': best_eval,
-                'best_uci': best_uci
-            } if engine else None
+        precomputed_data = {
+            'eval_before': eval_before, 'eval_after': eval_after,
+            'move_obj': move_obj, 'best_eval': best_eval, 'best_uci': best_uci
+        } if engine else None
 
-            # On récupère les tactiques et on transmet san_moves[idx:] pour tester les M(x) ratés
-            llm_comment, move_label, tactics_detected, alt_recom = AIAnalyzer.generate_move_comment(
-                move_raw_en, move_raw_en, board_before, is_trap=False, 
-                played_continuation=san_moves[idx:], 
-                best_alternative=None,
-                precomputed_data=precomputed_data
-            )
-            
-            llm_comment = re.sub(r'(?i)^\s*(je suis d[é|e]sol[é|e]|d[é|e]sol[é|e]|en tant qu\').*?(\. |\n|$)', '', llm_comment).strip()
-            llm_comment = llm_comment.replace('$', '')
-        else:
-            board_test = board_before.copy()
-            board_test.push(move)
-            suffix = ChessUtils.infer_move_suffix(is_check=board_test.is_check(), is_checkmate=board_test.is_checkmate(), delta=swing)
-            san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
-            move_label = f"{san_fr}{suffix}" if suffix else san_fr
-            llm_comment = ""
-            tactics_detected = ""
+        # 4) Injection systématique de san_moves[idx:] pour la détection tactique
+        llm_comment, move_label, tactics_detected, alt_recom = AIAnalyzer.generate_move_comment(
+            move_raw_en, move_raw_en, board_before, is_trap=False, 
+            played_continuation=san_moves[idx:], 
+            best_alternative=None,
+            precomputed_data=precomputed_data
+        )
+        
+        llm_comment = re.sub(r'(?i)^\s*(je suis d[é|e]sol[é|e]|d[é|e]sol[é|e]|en tant qu\').*?(\. |\n|$)', '', llm_comment).strip()
+        llm_comment = llm_comment.replace('$', '')
 
-        # CORRECTION 5 : Gaffe (?? == <= -300) avant le coup 12 (ply 24)
         if idx <= 24 and swing <= -300 and best_uci:
             san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             opening_blunders_data.append({
-                "move_number": (idx + 1) // 2,
-                "color": "white" if idx % 2 != 0 else "black",
-                "played_move": san_fr,
-                "played_uci": move.uci(),
-                "best_uci": best_uci,
-                "stockfish_pv": best_move_fr,  # Sauvegarde en SAN au lieu de l'UCI brut
-                "fen": board_before.fen(),
-                "tactics": tactics_detected  # Transmission de la tactique pour le PDF
+                "move_number": (idx + 1) // 2, "color": "white" if idx % 2 != 0 else "black",
+                "played_move": san_fr, "played_uci": move.uci(), "best_uci": best_uci,
+                "stockfish_pv": best_move_fr, "fen": board_before.fen(), "tactics": tactics_detected
             })
 
-        if swing <= -300: blunders += 1
-        elif precision >= -30 and swing > -100: good_moves += 1
-
-        phase = "opening" if idx <= 12 else "middlegame" if idx <= 30 else "endgame"
-        {"opening": opening_phase, "middlegame": middlegame_phase, "endgame": endgame_phase}[phase].append({
-            "move": move_label, "swing": swing, "precision": precision
-        })
-
-        is_capture = board_before.is_capture(move)
         board_before.push(move)
         
-        # CORRECTION 6 : On injecte la clé tactics_detected
-        details.append({
-            "ply": idx, "move_number": (idx + 1) // 2, "color": "white" if idx % 2 != 0 else "black",
-            "move": move_label, "raw_san": move_raw_en, "comment": llm_comment, "fen": board_before.fen(),
-            "delta": round(swing, 2), "precision": round(precision, 2), "phase": phase,
-            "uci": move.uci(),
-            "is_capture": is_capture,
-            "tactics": tactics_detected
-        })
+        # Mise à jour du nœud sans le dédoubler
+        ply_data["move"] = move_label
+        ply_data["comment"] = llm_comment
+        ply_data["delta"] = round(swing, 2)
+        ply_data["precision"] = round(precision, 2)
+        ply_data["tactics"] = tactics_detected
 
-        def summarize_details(nodes):
-            summary = {
-                "opening": {"good_moves": 0, "blunders": 0, "mistakes": 0},
-                "middlegame": {"good_moves": 0, "blunders": 0, "mistakes": 0},
-                "endgame": {"good_moves": 0, "blunders": 0, "mistakes": 0}
-            }
-            def parcours_recursif(noeud_list):
-                for node in noeud_list:
-                    phase = node.get("phase", "opening")
-                    swing = node.get("delta", node.get("swing", 0))
-                    precision = node.get("precision", -9999)
-                    
-                    if swing <= -300:
-                        summary[phase]["blunders"] += 1
-                    elif swing <= -150:
-                        summary[phase]["mistakes"] += 1
-                    elif precision >= -30 and swing > -100:
-                        summary[phase]["good_moves"] += 1
-                        
-                    # Si des sous-variantes existent dans le JSON, on plonge dedans
-                    if "variations" in node:
-                        parcours_recursif(node["variations"])
-                        
-            parcours_recursif(nodes)
-            return summary
-
-        # Remplacement de l'ancien calcul linéaire par la fonction récursive (Vers la ligne 177)
         result_data["analysis"]["summary"] = summarize_details(details)
-        
-        # CORRECTION 4 : Consolidation stricte des données depuis l'arborescence (Zéro perte)
-        result_data["analysis"]["blunders"] = sum(
-            phase_data.get("blunders", 0) for phase_data in result_data["analysis"]["summary"].values()
-        )
-        result_data["analysis"]["good_moves"] = sum(
-            phase_data.get("good_moves", 0) for phase_data in result_data["analysis"]["summary"].values()
-        )
+        result_data["analysis"]["blunders"] = sum(p.get("blunders", 0) for p in result_data["analysis"]["summary"].values())
+        result_data["analysis"]["good_moves"] = sum(p.get("good_moves", 0) for p in result_data["analysis"]["summary"].values())
+        result_data["analysis"]["est_elo_white"], result_data["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(details)
 
-        if details:
-            result_data["analysis"]["est_elo_white"], result_data["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(details)
-        else:
-            result_data["analysis"]["est_elo_white"] = est_elo_white
-            result_data["analysis"]["est_elo_black"] = est_elo_black
-        
         if progress_callback: progress_callback(result_data)
 
     result_data["is_complete"] = True
@@ -558,46 +519,50 @@ def main():
         
         # --- LOGIQUE DE FILTRAGE ET DE REPRISE ---
         games_to_process = []
-        for g in ChessUtils.fetch_player_games(args.player, months=args.months):
+        raw_games = ChessUtils.fetch_player_games(args.player, months=args.months)
+        
+        # PASSE 1 : TÉLÉCHARGEMENT ET PRÉ-REMPLISSAGE DE TOUTES LES PARTIES
+        for g in raw_games:
             game_id = g.get("url")
             if not game_id: continue
             
-            # Filtre 1 : ID de la partie si fourni
-            if args.game_id and args.game_id not in game_id:
-                continue
-            
-            # Filtre 2 : Adversaire
-            if args.opponent and args.opponent.lower() not in (g.get("white", {}).get("username", "").lower(), g.get("black", {}).get("username", "").lower()):
-                continue
+            if args.game_id and args.game_id not in game_id: continue
+            if args.opponent and args.opponent.lower() not in (g.get("white", {}).get("username", "").lower(), g.get("black", {}).get("username", "").lower()): continue
                 
             existing_g = existing_games.get(game_id)
             
-            # Si le mode --incomplete-only est activé : on ignore les nouvelles parties 
-            # et on ne garde que celles qui existent déjà localement et sont incomplètes.
             if args.incomplete_only:
                 if existing_g and ChessUtils.is_game_incomplete(existing_g, require_deep=True):
                     games_to_process.append((g, game_id, existing_g, True))
                 continue
 
-            # Comportement standard par défaut
             needs_full_analysis = ChessUtils.is_game_incomplete(existing_g, require_deep=True)
             needs_opening_fix = existing_g and ChessUtils.is_raw_opening(existing_g.get("opening", ""))
             
             if needs_full_analysis or needs_opening_fix:
+                # 3) Télécharger et sauvegarder la partie entière avant analyse profonde
+                if not existing_g or len(existing_g.get("analysis", {}).get("details", [])) == 0:
+                    Logger.debug_log(f"Téléchargement et préparation de la partie : {game_id}", "INFO")
+                    def pre_save(partial):
+                        existing_games[game_id] = partial
+                        state["games"] = existing_games
+                        CacheManager.save_game(str(state_path), game_id, partial)
+                    # Sauvegarde intégrale sans moteur Stockfish (deep_analysis=False)
+                    existing_g = parse_game_record(g, args.player, deep_analysis=False, progress_callback=pre_save, existing_game=existing_g)
+                
                 games_to_process.append((g, game_id, existing_g, needs_full_analysis))
         
-        # Application de la limite du nombre de parties
         if args.max_games > 0:
             games_to_process = games_to_process[:args.max_games]
             
-        # Lancement de l'analyse sur la liste restreinte
+        # PASSE 2 : ENRICHISSEMENT TACTIQUE (MODE REPRISE)
         for g, game_id, existing_g, needs_full_analysis in games_to_process:
             def save_progress(partial_parsed):
                 existing_games[game_id] = partial_parsed
                 state["games"] = existing_games
-                # Remplacement de l'appel global par l'appel unitaire :
                 CacheManager.save_game(str(state_path), game_id, partial_parsed)
             
+            Logger.debug_log(f"Enrichissement tactique de la partie : {game_id}", "INFO")
             parse_game_record(g, args.player, deep_analysis=needs_full_analysis, progress_callback=save_progress, existing_game=existing_g)
         # -------------------------------------------------
         

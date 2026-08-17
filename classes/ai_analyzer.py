@@ -424,7 +424,7 @@ class AIAnalyzer:
                     
                     tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, continuation, delta=delta)
                     
-                    if is_blunder_into_mate or board_after.is_checkmate():
+                    if board_after.is_checkmate():
                         tactics = ""
                     
                     if qualif_math in ["Meilleur coup", "Excellent coup", "Coup brillant", "Coup solide"] and tactics:

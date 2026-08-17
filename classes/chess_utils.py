@@ -28,7 +28,12 @@ class ChessUtils:
         w_acc, b_acc = [], []
         
         for ply in details:
-            loss = min(1000, max(0, -ply.get("precision", 0)))
+            prec = ply.get("precision", -9999)
+            # Ignorer la précision des coups non encore analysés
+            if prec == -9999: 
+                continue
+                
+            loss = min(1000, max(0, -prec))
             
             # Ancrage d'Accuracy (type CAPS Lichess/Chess.com approximation via centipions)
             move_accuracy = max(0.0, min(100.0, 103.1668 * math.exp(-0.04354 * (loss / 10.0))))
