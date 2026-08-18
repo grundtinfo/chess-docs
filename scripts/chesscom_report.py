@@ -177,7 +177,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                     
                     val_before = ChessUtils.get_eval_value(eval_before, board_before)
                     val_after = ChessUtils.get_eval_value(eval_after, board_after)
-                    val_best = ChessUtils.get_eval_value(best_eval, board_before) if best_eval else val_before
+                    val_best = ChessUtils.get_eval_value(best_eval, board_after) if best_eval else val_before
                     
                     swing = (-val_after) - val_before
                     precision = min((-val_after) - (-val_best), swing)
@@ -404,12 +404,13 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         for blunder in g.get("analysis", {}).get("opening_blunders", []):
             openings_blunders[g.get("opening", "Inconnue")].append(blunder)
 
-    top_weak = sorted(openings_blunders.items(), key=lambda x: len(x[1]), reverse=True)[:3]
+    # Nettoyage et tri direct des ouvertures (élimine la redondance et l'erreur de syntaxe)
+    valid_top_weak = [item for item in sorted(openings_blunders.items(), key=lambda x: len(x[1]), reverse=True) if item[0] != "Inconnue"][:3]
     
-    if not top_weak:
+    if not valid_top_weak:
         elements.append(Paragraph("Aucune erreur critique d'ouverture n'a été détectée dans cet échantillon.", normal_style))
     else:
-        for op_name, blunders_list in [item for item in top_weak if item[0] != "Inconnue"]:
+        for op_name, blunders_list in valid_top_weak:
             
             opening_header_parts = [Paragraph(f"Ouverture : {op_name} ({len(blunders_list)} erreurs récentes)", subsection_style)]
             
@@ -557,13 +558,14 @@ def main():
             
         # PASSE 2 : ENRICHISSEMENT TACTIQUE (MODE REPRISE)
         for g, game_id, existing_g, needs_full_analysis in games_to_process:
-            def save_progress(partial_parsed):
+            def save_progress_buffered(partial_parsed):
                 existing_games[game_id] = partial_parsed
                 state["games"] = existing_games
+                # Sauvegarde immédiate du cache à chaque coup joué
                 CacheManager.save_game(str(state_path), game_id, partial_parsed)
             
             Logger.debug_log(f"Enrichissement tactique de la partie : {game_id}", "INFO")
-            parse_game_record(g, args.player, deep_analysis=needs_full_analysis, progress_callback=save_progress, existing_game=existing_g)
+            parse_game_record(g, args.player, deep_analysis=needs_full_analysis, progress_callback=save_progress_buffered, existing_game=existing_g)
         # -------------------------------------------------
         
         state.update({"player": args.player, "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})

@@ -7,6 +7,8 @@ from reportlab.platypus import Flowable
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
 
+_SVG_DRAWING_CACHE = {}
+
 class ChessboardFlowable(Flowable):
     def __init__(self, fen, size=150, fleches_defense=None, fleches_menace=None, fleches_oranges=None, fleches_bleues=None, fleches_blanches=None, fleches_noires=None, fleches_rouges=None, orientation=chess.WHITE):
         Flowable.__init__(self)
@@ -27,28 +29,43 @@ class ChessboardFlowable(Flowable):
     def draw(self):
         try:
             if not self.fen: return
-            board = chess.Board(self.fen)
-            arrows = []
             
-            # Fonction utilitaire pour parser et ajouter la flèche
-            def add_arrows(notations, hex_color):
-                for notation in notations:
-                    if not notation or len(notation) < 4: continue
-                    try: arrows.append(chess.svg.Arrow(chess.parse_square(notation[:2]), chess.parse_square(notation[2:4]), color=hex_color))
-                    except ValueError: pass
+            # Clé unique pour vérifier si la position exacte a déjà été convertie en dessin PDF
+            cache_key = (
+                self.fen, self.size, self.orientation,
+                tuple(self.fleches_defense), tuple(self.fleches_menace),
+                tuple(self.fleches_oranges), tuple(self.fleches_bleues),
+                tuple(self.fleches_blanches), tuple(self.fleches_noires), tuple(self.fleches_rouges)
+            )
+            
+            if cache_key in _SVG_DRAWING_CACHE:
+                drawing = _SVG_DRAWING_CACHE[cache_key]
+            else:
+                board = chess.Board(self.fen)
+                arrows = []
+                
+                def add_arrows(notations, hex_color):
+                    for notation in notations:
+                        if not notation or len(notation) < 4: continue
+                        try: arrows.append(chess.svg.Arrow(chess.parse_square(notation[:2]), chess.parse_square(notation[2:4]), color=hex_color))
+                        except ValueError: pass
 
-            add_arrows(self.fleches_menace, "#FF0000")
-            add_arrows(self.fleches_defense, "#00AA00")
-            add_arrows(self.fleches_oranges, "orange")
-            add_arrows(self.fleches_bleues, "blue")
-            add_arrows(self.fleches_blanches, "white")
-            add_arrows(self.fleches_noires, "black")
-            add_arrows(self.fleches_rouges, "red")
+                add_arrows(self.fleches_menace, "#FF0000")
+                add_arrows(self.fleches_defense, "#00AA00")
+                add_arrows(self.fleches_oranges, "orange")
+                add_arrows(self.fleches_bleues, "blue")
+                add_arrows(self.fleches_blanches, "white")
+                add_arrows(self.fleches_noires, "black")
+                add_arrows(self.fleches_rouges, "red")
 
-            svg = chess.svg.board(board=board, size=self.size, arrows=arrows, orientation=self.orientation)
-            drawing = svg2rlg(StringIO(svg))
-            if drawing: renderPDF.draw(drawing, self.canv, 0, 0)
-        except Exception as e: 
+                svg = chess.svg.board(board=board, size=self.size, arrows=arrows, orientation=self.orientation)
+                drawing = svg2rlg(StringIO(svg))
+                if len(_SVG_DRAWING_CACHE) < 500:
+                    _SVG_DRAWING_CACHE[cache_key] = drawing
+
+            if drawing: 
+                renderPDF.draw(drawing, self.canv, 0, 0)
+        except Exception: 
             pass
 
 class PDFUtils:

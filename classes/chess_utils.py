@@ -18,6 +18,10 @@ except ImportError:
     OPENIX_AVAILABLE = False
     Logger.debug_log("Bibliothèque Openix non trouvée. Utilisation du mode restreint.", "WARNING")
 
+_FR_TO_EN_MAP = {'D': 'Q', 'C': 'N', 'F': 'B', 'T': 'R', 'R': 'K'}
+_EN_TO_FR_MAP = {'Q': 'D', 'N': 'C', 'B': 'F', 'R': 'T', 'K': 'R'}
+_HTTP_SESSION = requests.Session()
+
 class ChessUtils:
 
     @staticmethod
@@ -104,30 +108,28 @@ class ChessUtils:
     @staticmethod
     def convert_french_to_english_notation(move):
         if not move: return move
-        piece_map = {'D': 'Q', 'C': 'N', 'F': 'B', 'T': 'R', 'R': 'K'}
-        if move[0] in piece_map:
-            move = piece_map[move[0]] + move[1:]
+        if move[0] in _FR_TO_EN_MAP:
+            move = _FR_TO_EN_MAP[move[0]] + move[1:]
         if '=' in move:
             parts = move.split('=')
             if len(parts) == 2 and len(parts[1]) > 0:
                 promoted_piece = parts[1][0]
-                if promoted_piece in piece_map:
-                    move = parts[0] + '=' + piece_map[promoted_piece] + parts[1][1:]
+                if promoted_piece in _FR_TO_EN_MAP:
+                    move = parts[0] + '=' + _FR_TO_EN_MAP[promoted_piece] + parts[1][1:]
         return move
 
     @staticmethod
     def convert_english_to_french_notation(move):
         if not move: return move
-        move = move.strip() # Sécurité ajoutée ici
-        piece_map = {'Q': 'D', 'N': 'C', 'B': 'F', 'R': 'T', 'K': 'R'}
-        if move[0] in piece_map:
-            move = piece_map[move[0]] + move[1:]
+        move = move.strip()
+        if move[0] in _EN_TO_FR_MAP:
+            move = _EN_TO_FR_MAP[move[0]] + move[1:]
         if '=' in move:
             parts = move.split('=')
             if len(parts) == 2 and len(parts[1]) > 0:
                 promoted_piece = parts[1][0]
-                if promoted_piece in piece_map:
-                    move = parts[0] + '=' + piece_map[promoted_piece] + parts[1][1:]
+                if promoted_piece in _EN_TO_FR_MAP:
+                    move = parts[0] + '=' + _EN_TO_FR_MAP[promoted_piece] + parts[1][1:]
         return move
 
     @staticmethod
@@ -236,11 +238,11 @@ class ChessUtils:
         headers = {"User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) ChessDocs/1.0"}
         Logger.debug_log(f"Récupération des archives Chess.com pour {username} (mois={months})", "INFO")
 
-        # On passe à 5 tentatives par défaut avec un délai de base ajustable
         def request_with_retry(url, retries=5, base_delay=1):
             for attempt in range(retries):
                 try:
-                    response = requests.get(url, timeout=25, headers=headers)
+                    # Réutilisation de la session HTTP globale
+                    response = _HTTP_SESSION.get(url, timeout=20, headers=headers)
                     
                     if response.status_code in {403, 404, 429, 500, 502, 503, 504} and attempt < retries - 1:
                         attente = base_delay * (2 ** attempt) # 1s, 2s, 4s, 8s...

@@ -85,12 +85,14 @@ def generate_moves_table(item):
                 }
                 rows.append(current_row)
             else:
-                current_row.update({"black": coup_annote, "black_comment": commentaire, "black_fen": fen_after, "black_arrow": arrow_notation, "black_arrow_color": arrow_color})
-                
-    # Sauvegarde uniquement s'il y a eu des modifications
+                current_row.update({
+                    "black": coup_annote, "black_comment": commentaire, "black_fen": fen_after,
+                    "black_arrow": arrow_notation, "black_arrow_color": arrow_color
+                })
+
     if cache_updated:
         CacheManager.save_cache(cache)
-        
+
     return rows
 
 def ajouter_pied_page(canvas, doc):
@@ -134,10 +136,14 @@ def build_pdf(output_path, source_name, data):
         for row in rows:
             fen_row = row.get('black_fen') or row.get('white_fen')
             fleches_defense, fleches_menace = [], []
+            
+            # Itération sécurisée sur les couleurs de flèches (Blancs et Noirs)
             for arrow_notation, arrow_color in [(row.get('white_arrow'), row.get('white_arrow_color')), (row.get('black_arrow'), row.get('black_arrow_color'))]:
-                if arrow_notation:
-                    if arrow_color == "#FF0000": fleches_menace.append(arrow_notation)
-                    else: fleches_defense.append(arrow_notation)
+                if arrow_notation and arrow_color:
+                    if arrow_color == "#FF0000":
+                        fleches_menace.append(arrow_notation)
+                    elif arrow_color == "#00AA00":
+                        fleches_defense.append(arrow_notation)
                     
             diag = ChessboardFlowable(fen_row, size=120, fleches_defense=fleches_defense, fleches_menace=fleches_menace, orientation=orientation) if fen_row else ""
             

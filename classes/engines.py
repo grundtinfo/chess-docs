@@ -36,30 +36,52 @@ class StockfishAnalyzer:
                 import shutil
                 stockfish_path = shutil.which("stockfish")
             
+            # NOUVEAU BLOC
             resolved_depth = ChessUtils.resolve_stockfish_depth(explicit_depth=depth)
+            params = {
+                "Threads": Config.STOCKFISH_THREADS,
+                "Hash": Config.STOCKFISH_HASH
+            }
             if stockfish_path:
-                self.engine = Stockfish(path=stockfish_path, depth=resolved_depth, parameters={"Threads": 18, "Hash": 4096})
+                self.engine = Stockfish(path=stockfish_path, depth=resolved_depth, parameters=params)
             else:
-                self.engine = Stockfish(depth=resolved_depth, parameters={"Threads": 18, "Hash": 4096})
+                self.engine = Stockfish(depth=resolved_depth, parameters=params)
         except Exception:
             self.engine = None
         return self.engine
 
+    def _check_cache_limits(self):
+        # Maintient le cache en dessous de 3000 FEN pour éviter la saturation RAM
+        if len(self._eval_cache) > 3000:
+            self._eval_cache.clear()
+        if len(self._best_move_cache) > 3000:
+            self._best_move_cache.clear()
+
     def _get_cached_eval(self, fen):
+        if not self.engine: return {"type": "cp", "value": 0}
         if fen in self._eval_cache:
             return self._eval_cache[fen]
+        self._check_cache_limits()
         self.engine.set_fen_position(fen)
         evaluation = self.engine.get_evaluation()
         self._eval_cache[fen] = evaluation
         return evaluation
 
     def _get_cached_best_move(self, fen):
+        if not self.engine: return None
         if fen in self._best_move_cache:
             return self._best_move_cache[fen]
+        self._check_cache_limits()
         self.engine.set_fen_position(fen)
         best_move = self.engine.get_best_move()
         self._best_move_cache[fen] = best_move
         return best_move
+
+    def clear_cache(self):
+        """Purge les dictionnaires de cache pour libérer la RAM."""
+        self._eval_cache.clear()
+        self._best_move_cache.clear()
+        Logger.debug_log("Cache de Stockfish vidé avec succès.", "INFO")
     
     def analyze_move(self, board, move_san):
         engine = self.get_engine()
@@ -92,7 +114,3 @@ class StockfishAnalyzer:
             return best_move_french, best_eval, best_move_uci
         except Exception:
             return None, None, None
-
-    def clear_cache(self):
-        self._eval_cache.clear()
-        self._best_move_cache.clear()

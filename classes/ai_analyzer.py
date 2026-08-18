@@ -7,6 +7,40 @@ from classes.logger import Logger
 from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer
 
+# Pré-compilation au niveau du module pour éliminer le coût à chaque appel
+_OPENING_TRANSLATIONS = [
+    (re.compile(r"\bDefense\b", re.I), "Défense"), (re.compile(r"\bVariation\b", re.I), "Variante"),
+    (re.compile(r"\bAttack\b", re.I), "Attaque"), (re.compile(r"\bGambit\b", re.I), "Gambit"),
+    (re.compile(r"\bSystem\b", re.I), "Système"), (re.compile(r"\bAccepted\b", re.I), "Accepté"),
+    (re.compile(r"\bDeclined\b", re.I), "Refusé"), (re.compile(r"\bEnglish\b", re.I), "Anglaise"),
+    (re.compile(r"\bOpening\b", re.I), "Ouverture"), (re.compile(r"\bSymmetrical\b", re.I), "Symétrique"),
+    (re.compile(r"\bBishop's\b", re.I), "du Fou"), (re.compile(r"\bKing's\b", re.I), "du Roi"),
+    (re.compile(r"\bQueen's\b", re.I), "de la Dame"), (re.compile(r"\bSicilian\b", re.I), "Sicilienne"),
+    (re.compile(r"\bZukertort\b", re.I), "Zukertort"), (re.compile(r"\bScandinavian\b", re.I), "Scandinave"),
+    (re.compile(r"\bFrench\b", re.I), "Française"), (re.compile(r"\bCaro-Kann\b", re.I), "Caro-Kann"),
+    (re.compile(r"\bItalian\b", re.I), "Italienne"), (re.compile(r"\bSpanish\b", re.I), "Espagnole"),
+    (re.compile(r"\bRuy Lopez\b", re.I), "Ruy Lopez"), (re.compile(r"\bSlav\b", re.I), "Slave"),
+    (re.compile(r"\bNimzo-Indian\b", re.I), "Nimzo-Indienne"), (re.compile(r"\bDutch\b", re.I), "Hollandaise"),
+    (re.compile(r"\bRussian\b", re.I), "Russe"), (re.compile(r"\bPetrov\b", re.I), "Petrov"),
+    (re.compile(r"\bPhilidor\b", re.I), "Philidor"), (re.compile(r"\bAlekhine\b", re.I), "Alekhine"),
+    (re.compile(r"\bPirc\b", re.I), "Pirc"), (re.compile(r"\bModern\b", re.I), "Moderne"),
+    (re.compile(r"\bReti\b", re.I), "Réti"), (re.compile(r"\bBird\b", re.I), "Bird"),
+    (re.compile(r"\bIndian\b", re.I), "Indienne"), (re.compile(r"\bTwo Knights\b", re.I), "des Deux Cavaliers"),
+    (re.compile(r"\bFour Knights\b", re.I), "des Quatre Cavaliers"), (re.compile(r"\bGiuoco Piano\b", re.I), "Giuoco Piano"),
+    (re.compile(r"\bEvans\b", re.I), "Evans"), (re.compile(r"\bExchange\b", re.I), "d'Échange"),
+    (re.compile(r"\bAdvance\b", re.I), "d'Avance"), (re.compile(r"\bClassical\b", re.I), "Classique"),
+    (re.compile(r"\bTarrasch\b", re.I), "Tarrasch"), (re.compile(r"\bNajdorf\b", re.I), "Najdorf"),
+    (re.compile(r"\bDragon\b", re.I), "Dragon"), (re.compile(r"\bScheveningen\b", re.I), "Scheveningen"),
+    (re.compile(r"\bClosed\b", re.I), "Fermée"), (re.compile(r"\bOpen\b", re.I), "Ouverte"),
+    (re.compile(r"\bMain Line\b", re.I), "Ligne Principale"), (re.compile(r"\bGame\b", re.I), "Partie"),
+    (re.compile(r"\bScotch\b", re.I), "Écossaise"), (re.compile(r"\bVienna\b", re.I), "Viennoise"),
+    (re.compile(r"\bPawn\b", re.I), "Pion"), (re.compile(r"\bKnights\b", re.I), "Cavaliers"),
+    (re.compile(r"\bBishops\b", re.I), "Fous"), (re.compile(r"\bKing's Indian\b", re.I), "Est-Indienne"),
+    (re.compile(r"\bQueen's Indian\b", re.I), "Ouest-Indienne"), (re.compile(r"\bCatalan\b", re.I), "Catalane"),
+    (re.compile(r"\bBenoni\b", re.I), "Benoni"), (re.compile(r"\bLondon\b", re.I), "de Londres"),
+    (re.compile(r"\bGrob\b", re.I), "Grob"), (re.compile(r"\bBorg\b", re.I), "Borg")
+]
+
 class AIAnalyzer:
 
     @staticmethod
@@ -14,7 +48,7 @@ class AIAnalyzer:
         summary = f"Ligne Stockfish : {stockfish_line}\n\nDans l'ouverture {opening_name}, suite au coup {bad_move}, c'est la ligne recommandée par le moteur pour rééquilibrer la position."
         
         if tactics:
-            tactics_clean = tactics.replace("- Séquence forcée de l'ordinateur :", "").strip()
+            tactics_clean = tactics.replace("- Meilleure ligne calculée :", "").strip()
             summary += f"\n\nExplication de l'erreur : {tactics_clean}"
             
         Logger.debug_log(f"[Génération Théorie] {opening_name} | Coup {bad_move} -> {summary}", "DEBUG")
@@ -26,37 +60,9 @@ class AIAnalyzer:
         if not opening_name or opening_name == "Ouverture Inconnue":
             return opening_name
 
-        clean_name = opening_name.strip()
-
-        # CORRECTION 5 : Ajout des traductions manquantes alignées sur les codes ECO
-        translations = {
-            r"\bDefense\b": "Défense", r"\bVariation\b": "Variante", r"\bAttack\b": "Attaque",
-            r"\bGambit\b": "Gambit", r"\bSystem\b": "Système", r"\bAccepted\b": "Accepté",
-            r"\bDeclined\b": "Refusé", r"\bEnglish\b": "Anglaise", r"\bOpening\b": "Ouverture", 
-            r"\bSymmetrical\b": "Symétrique", r"\bBishop's\b": "du Fou", r"\bKing's\b": "du Roi", 
-            r"\bQueen's\b": "de la Dame", r"\bSicilian\b": "Sicilienne", r"\bZukertort\b": "Zukertort",
-            r"\bScandinavian\b": "Scandinave", r"\bFrench\b": "Française", r"\bCaro-Kann\b": "Caro-Kann",
-            r"\bItalian\b": "Italienne", r"\bSpanish\b": "Espagnole", r"\bRuy Lopez\b": "Ruy Lopez",
-            r"\bSlav\b": "Slave", r"\bNimzo-Indian\b": "Nimzo-Indienne", r"\bDutch\b": "Hollandaise",
-            r"\bRussian\b": "Russe", r"\bPetrov\b": "Petrov", r"\bPhilidor\b": "Philidor", 
-            r"\bAlekhine\b": "Alekhine", r"\bPirc\b": "Pirc", r"\bModern\b": "Moderne", 
-            r"\bReti\b": "Réti", r"\bBird\b": "Bird", r"\bIndian\b": "Indienne",
-            r"\bTwo Knights\b": "des Deux Cavaliers", r"\bFour Knights\b": "des Quatre Cavaliers",
-            r"\bGiuoco Piano\b": "Giuoco Piano", r"\bEvans\b": "Evans", r"\bExchange\b": "d'Échange",
-            r"\bAdvance\b": "d'Avance", r"\bClassical\b": "Classique", r"\bTarrasch\b": "Tarrasch",
-            r"\bNajdorf\b": "Najdorf", r"\bDragon\b": "Dragon", r"\bScheveningen\b": "Scheveningen",
-            r"\bClosed\b": "Fermée", r"\bOpen\b": "Ouverte", r"\bMain Line\b": "Ligne Principale",
-            # ---- Nouveaux ajouts ----
-            r"\bGame\b": "Partie", r"\bScotch\b": "Écossaise", r"\bVienna\b": "Viennoise",
-            r"\bPawn\b": "Pion", r"\bKnights\b": "Cavaliers", r"\bBishops\b": "Fous",
-            r"\bKing's Indian\b": "Est-Indienne", r"\bQueen's Indian\b": "Ouest-Indienne",
-            r"\bCatalan\b": "Catalane", r"\bBenoni\b": "Benoni", r"\bLondon\b": "de Londres",
-            r"\bGrob\b": "Grob", r"\bBorg\b": "Borg"
-        }
-
-        result = clean_name
-        for eng, fr in translations.items():
-            result = re.sub(eng, fr, result, flags=re.IGNORECASE)
+        result = opening_name.strip()
+        for compiled_pattern, fr_str in _OPENING_TRANSLATIONS:
+            result = compiled_pattern.sub(fr_str, result)
             
         result = re.sub(r'\b([a-zA-ZÀ-ÿ]+)\s+(Défense|Ouverture|Variante|Attaque|Gambit|Système)\b', r'\2 \1', result, flags=re.IGNORECASE)
 
@@ -124,12 +130,13 @@ class AIAnalyzer:
 
             defender_color = board_after.turn
             pinned_pieces = []
-            for sq in chess.SQUARES:
-                piece = board_after.piece_at(sq)
-                if piece and piece.color == defender_color:
-                    if board_after.is_pinned(defender_color, sq):
-                        if not board_before.is_pinned(defender_color, sq):
-                            pinned_pieces.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
+            # Optimization: vérifie uniquement les cases occupées par le défenseur (~10-16 cases au lieu de 64)
+            # Correction : Utilisation de chess.SquareSet car occupied_co retourne un entier non itérable
+            for sq in chess.SquareSet(board_after.occupied_co[defender_color]):
+                if board_after.is_pinned(defender_color, sq):
+                    if not board_before.is_pinned(defender_color, sq):
+                        piece = board_after.piece_at(sq)
+                        pinned_pieces.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
                             
             if pinned_pieces:
                 tactics.append(f"Le coup crée un clouage immobilisant : {', '.join(pinned_pieces)}")
@@ -144,34 +151,38 @@ class AIAnalyzer:
 
                 player_multiplier = 1 if board_before.turn == chess.WHITE else -1
 
+                # NOUVEAU BLOC
+                # NOUVEAU BLOC (SÉCURISÉ)
                 if t == 'mate':
-                    sf = StockfishAnalyzer().get_engine()
+                    analyzer = StockfishAnalyzer()
+                    sf = analyzer.get_engine()
                     if sf:
-                        sf.set_fen_position(board_after.fen())
-                        sim_board = board_after.copy()
-                        seq_fr = []
-                        seq_eng = []
-                        for _ in range(abs(val) * 2): 
-                            best_uci = sf.get_best_move()
-                            if not best_uci: break
-                            move_obj_sim = sim_board.parse_uci(best_uci)
-                            san_fr = ChessUtils.convert_english_to_french_notation(sim_board.san(move_obj_sim))
-                            seq_fr.append(san_fr)
-                            san_eng = sim_board.san(move_obj_sim)
-                            seq_eng.append(san_eng)
-                            sim_board.push(move_obj_sim)
-                            sf.set_fen_position(sim_board.fen())
+                        try:
+                            sim_board = board_after.copy()
+                            seq_eng = []
+                            for _ in range(abs(val) * 2): 
+                                if sim_board.is_game_over(): break
+                                best_uci = analyzer._get_cached_best_move(sim_board.fen())
+                                if not best_uci: break
+                                move_obj_sim = sim_board.parse_uci(best_uci)
+                                san_eng = sim_board.san(move_obj_sim)
+                                seq_eng.append(san_eng)
+                                sim_board.push(move_obj_sim)
 
-                        is_in_trap = False
-                        if future_moves:
-                            match_len = min(len(future_moves), len(seq_eng))
-                            if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
-                                is_in_trap = True
-                                
-                        if is_in_trap:
-                            tactics.append(f"Mat inévitable (suite illustrée)")
-                        else:
-                            tactics.append(f"Mat inévitable via : {' '.join(seq_fr)}")
+                            is_in_trap = False
+                            if future_moves:
+                                match_len = min(len(future_moves), len(seq_eng))
+                                if match_len > 0 and all(future_moves[i] == seq_eng[i] for i in range(match_len)):
+                                    is_in_trap = True
+                                    
+                            formatted_seq = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board_after.turn == chess.WHITE), start_move_number=board_after.fullmove_number) if seq_eng else ""
+                            
+                            if is_in_trap:
+                                tactics.append("Mat inévitable (suite illustrée)")
+                            else:
+                                tactics.append(f"Mat inévitable via : {formatted_seq}")
+                        except Exception as e:
+                            Logger.debug_log(f"Erreur simulation mat : {e}", "WARNING")
                     
                 elif t == 'cp':
                     cp_val = val * player_multiplier
@@ -181,7 +192,6 @@ class AIAnalyzer:
                         piece_lost = None
                         lost_square = None
                         seq_eng = []
-                        seq_fr = []
                         
                         sim_board = board_after.copy()
                         analyzer = StockfishAnalyzer()
@@ -197,8 +207,7 @@ class AIAnalyzer:
                         if sf:
                             for _ in range(6):
                                 if sim_board.is_game_over(): break
-                                sf.set_fen_position(sim_board.fen())
-                                best_uci = sf.get_best_move()
+                                best_uci = analyzer._get_cached_best_move(sim_board.fen())
                                 if not best_uci: break
                                 
                                 move_obj_sim = sim_board.parse_uci(best_uci)
@@ -225,16 +234,17 @@ class AIAnalyzer:
                                         
                                 san_eng = sim_board.san(move_obj_sim)
                                 seq_eng.append(san_eng)
-                                seq_fr.append(ChessUtils.convert_english_to_french_notation(san_eng))
                                 sim_board.push(move_obj_sim)
                                 
                         mat_after = get_material_score(sim_board, original_color)
                         mat_opp_after = get_material_score(sim_board, not original_color)
                         
-                        # Correction : Calcul strict des pertes nettes pour le joueur fautif
                         blunderer_loss = mat_opp_before - mat_opp_after
                         opponent_loss = mat_before - mat_after
                         net_loss_for_blunderer = blunderer_loss - opponent_loss
+
+                        formatted_seq = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board_after.turn == chess.WHITE), start_move_number=board_after.fullmove_number) if seq_eng else ""
+                        formatted_seq_3 = ChessUtils.parse_stockfish_pv(" ".join(seq_eng[:3]), is_white_turn=(board_after.turn == chess.WHITE), start_move_number=board_after.fullmove_number) if seq_eng else ""
 
                         if net_loss_for_blunderer > 0:
                             if piece_lost:
@@ -248,7 +258,7 @@ class AIAnalyzer:
                                 adj_mise = "mise" if is_fem else "mis"
                                 adj_exp = "exposée" if is_fem else "exposé"
 
-                                if len(seq_fr) == 1:
+                                if len(seq_eng) == 1:
                                     loss_desc = f"{piece_lost} en {lost_square} est {adj_mise} en prise directe"
                                 else:
                                     loss_desc = f"{piece_lost} en {lost_square} est {adj_exp} à une perte matérielle en quelques coups"
@@ -256,15 +266,15 @@ class AIAnalyzer:
                                 if is_in_trap:
                                     tactics.append(f"{loss_desc} (suite illustrée)")
                                 else:
-                                    tactics.append(f"{loss_desc} via : {' '.join(seq_fr)}")
+                                    tactics.append(f"{loss_desc} via : {formatted_seq}")
                             else:
-                                seq_str = " via : " + " ".join(seq_fr[:3]) if seq_fr else ""
+                                seq_str = f" via : {formatted_seq_3}" if formatted_seq_3 else ""
                                 if delta <= -150:
                                     tactics.append(f"Expose le joueur à une lourde perte matérielle (pion clé ou qualité){seq_str}")
                                 else:
                                     tactics.append(f"Entraîne une perte matérielle ou concède un avantage tactique décisif{seq_str}")
                         else:
-                            seq_str = " via : " + " ".join(seq_fr[:3]) if seq_fr else ""
+                            seq_str = f" via : {formatted_seq_3}" if formatted_seq_3 else ""
                             if delta <= -150:
                                 tactics.append(f"Erreur stratégique majeure causant une détérioration critique de la position{seq_str}")
                             elif delta <= -80:
@@ -314,7 +324,11 @@ class AIAnalyzer:
                     board_after = board.copy()
                     board_after.push(move_obj)
                     board_best = board.copy()
-                    if best_uci: board_best.push(chess.Move.from_uci(best_uci))
+                    if best_uci:
+                        try:
+                            board_best.push(chess.Move.from_uci(best_uci))
+                        except Exception:
+                            pass
                     
                     # CORRECTION : Définition de player_multiplier
                     player_multiplier = 1 if board.turn == chess.WHITE else -1
@@ -369,20 +383,17 @@ class AIAnalyzer:
                         if not best_pv_san:
                             try:
                                 sim_board = board.copy()
-                                engine.set_fen_position(sim_board.fen())
                                 pv_list = []
                                 for _ in range(abs(val_after_raw) * 2): 
-                                    m_best = engine.get_best_move()
+                                    m_best = analyzer._get_cached_best_move(sim_board.fen())
                                     if not m_best: break
                                     m_sim = sim_board.parse_uci(m_best)
                                     pv_list.append(sim_board.san(m_sim))
                                     sim_board.push(m_sim)
-                                    engine.set_fen_position(sim_board.fen())
                                 
                                 if pv_list:
                                     best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
                                     alt_recom_value = best_pv_san
-                                engine.set_fen_position(board.fen())
                             except Exception:
                                 pass
 
@@ -432,17 +443,17 @@ class AIAnalyzer:
                         tactics = " ; ".join([t for t in tact_list if not any(term in t.lower() for term in ["perte", "expose", "gaffe"])])
                     
                     if "via :" in tactics:
-                        tactics = tactics.replace("via :", "- Séquence forcée de l'ordinateur :")
+                        tactics = tactics.replace("via :", "- Meilleure ligne calculée :")
                     elif "(suite illustrée)" in tactics:
-                        tactics = tactics.replace("(suite illustrée)", "- Séquence forcée de l'ordinateur : (illustrée dans la partie)")
+                        tactics = tactics.replace("(suite illustrée)", "- Meilleure ligne calculée : (illustrée dans la partie)")
                         
                     eval_exacte = mate_status if mate_status else qualif_math
                     if tactics:
                         eval_exacte += f" - Tactique : {tactics}"
                         
-                    if "- Séquence forcée de l'ordinateur :" in eval_exacte:
-                        parts = eval_exacte.split("- Séquence forcée de l'ordinateur :", 1)
-                        eval_exacte = f'{parts[0]}- Séquence forcée de l\'ordinateur : "{parts[1].strip()}"'
+                    if "- Meilleure ligne calculée :" in eval_exacte:
+                        parts = eval_exacte.split("- Meilleure ligne calculée :", 1)
+                        eval_exacte = f'{parts[0]}- Meilleure ligne calculée : "{parts[1].strip()}"'
                     
                     if best_pv_san is None:
                         alt_recom_value = "Aucune"
@@ -450,20 +461,17 @@ class AIAnalyzer:
                     if delta < -30 and best_uci and not board_after.is_checkmate() and best_pv_san is None:
                         try:
                             sim_board = board.copy()
-                            engine.set_fen_position(sim_board.fen())
                             pv_list = []
                             for _ in range(4):
-                                m_best = engine.get_best_move()
+                                m_best = analyzer._get_cached_best_move(sim_board.fen())
                                 if not m_best: break
                                 m_sim = sim_board.parse_uci(m_best)
                                 pv_list.append(sim_board.san(m_sim))
                                 sim_board.push(m_sim)
-                                engine.set_fen_position(sim_board.fen())
                             
                             best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
                             if best_pv_san:
                                 alt_recom_value = best_pv_san
-                            engine.set_fen_position(board.fen())
                         except Exception:
                             pass
 
