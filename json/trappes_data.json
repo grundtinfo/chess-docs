@@ -373,25 +373,25 @@
     "explication_defense": "Jouer 5... De7 permet de neutraliser le clouage sur la colonne e tout en laissant le Fou f8 libre de se développer. Le coup 5... Dd7 est une erreur majeure qui paralyse l'aile Roi et expose les Noirs à une attaque dévastatrice."
   },
   {
-    "nom": "Piège de l'Ouverture du Fou",
-    "coups": "1. e4 e5 2. Fc4 Cf6 3. d4 exd4 4. Cf3 Cxe4 5. Dxd4 Nd6 6. O-O Nxc4 7. Te1 Fe7 8. Dxg7 Tf8 9. Fh6",
-    "conseil_defense": "Ne reculez pas le cavalier en d6 au sixième coup. Préférez développer le fou en e7 ou jouer c6 pour assurer la sécurité de votre position et parer la pression sur la colonne e.",
-    "coup_defense": "6... Fe7",
+    "nom": "Lasso de la Tour du Fou (Piège de l'Ouverture du Fou)",
+    "coups": "1. e4 e5 2. Fc4 Cf6 3. d4 exd4 4. Cf3 Cxe4 5. Dxd4 Cd6 6. O-O Cxc4 7. Te1+ Fe7 8. Dxg7 Tf8 9. Fh6",
+    "conseil_defense": "Ne reculez pas le cavalier en d6 au 5ème coup (5... Cd6??), car cela paralyse votre développement. Préférez développer vos autres pièces ou attaquer la Dame, car l'attaque sur la colonne e après le roque blanc est dévastatrice.",
+    "coup_defense": "5... Cf6",
     "fleches_defense": [
-      "f8e7"
+      "e4f6"
     ],
     "fleches_menace": [
-      "d4g7",
       "e1e7",
-      "f1h6"
+      "d4g7",
+      "c1h6"
     ],
     "defenseur": "Noirs",
-    "explication_defense": "Développer le fou en e7 permet de parer le clouage et de préparer le roque pour éviter l'enfermement de la tour après l'attaque de la dame et de la tour sur la colonne e."
+    "explication_defense": "Reculer le cavalier en f6 au lieu de d6 permet de protéger l'aile roi et de laisser la diagonale libre pour le développement du Fou, évitant ainsi le clouage mortel sur la colonne e."
   },
   {
     "nom": "Piège de l'attaque h4 (Jeu Italien)",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. Fc4 Fc5 4. d3 Cf6 5. Cc3 O-O 6. Fg5 h6 7. h4 hxg5 8. hxg5 Ch7 9. g6 Cf6 10. Cg5 d5 11. Fxd5 Cxd5 12. Th8+ Rxh8 13. Dh5+ Rg8 14. Dh7",
-    "conseil_defense": "Ne capturez pas mécaniquement le fou en g5 avec le pion h6 si cela ouvre la colonne h et permet une attaque fulgurante avec la tour et la dame[cite: 3]. Préférez consolider l'aile roi ou jouer de manière plus positionnelle.",
+    "conseil_defense": "Ne capturez pas mécaniquement le fou en g5 avec le pion h6 si cela ouvre la colonne h et permet une attaque fulgurante avec la tour et la dame. Préférez consolider l'aile roi ou jouer de manière plus positionnelle.",
     "coup_defense": "7... Te8 ou 7... d6",
     "fleches_defense": [
       "e8e7",
@@ -404,6 +404,38 @@
       "h5h7"
     ],
     "defenseur": "Noirs",
-    "explication_defense": "Éviter d'ouvrir la colonne h en prenant en g5 permet de maintenir la structure de pions intacte devant le roi et de parer l'attaque de mat[cite: 3]."
+    "explication_defense": "Éviter d'ouvrir la colonne h en prenant en g5 permet de maintenir la structure de pions intacte devant le roi et de parer l'attaque de mat."
+  },
+  {
+    "nom": "Piège de la Défense Philidor (Variante du Cavalier Roi)",
+    "coups": "1. e4 e5 2. Cf3 d6 3. d4 Cf6 4. dxe5 Cxe4 5. Dd5 Cc5 6. Fg5 Fe7 7. exd6 Dxd6 8. Cc3 c6 9. Dxd6 Fxd6 10. O-O-O",
+    "conseil_defense": "Ne chassez pas la Dame adverse prématurément avec c6. Cela permet aux Blancs d'échanger les Dames et de gagner un tempo crucial avec le grand roque (O-O-O), attaquant votre Fou et ciblant votre Roi exposé au centre.",
+    "coup_defense": "8... O-O",
+    "fleches_defense": [
+      "e8g8"
+    ],
+    "fleches_menace": [
+      "d1d6",
+      "h1e1"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Roquer immédiatement met le Roi à l'abri. Évitez de jouer c6 qui force un échange de Dames défavorable et ouvre prématurément la colonne d pour la Tour blanche."
+  },
+  {
+    "nom": "Piège de l'Ouverture du Fou (Variante d5)",
+    "coups": "1. e4 e5 2. Fc4 Cf6 3. d3 d5 4. exd5 Dxd5 5. De2 e4 6. Cg3 De5 7. O-O Ca6 8. Fg5 f6 9. f3 De5",
+    "conseil_defense": "Ne surestimez pas l'avance de vos pions au centre face à une ouverture de type Ouverte du Fou. Veillez à ne pas exposer votre Dame trop tôt aux attaques de pièces et maintenez la sécurité de votre roque.",
+    "coup_defense": "5... Fe7 ou 5... Cc6",
+    "fleches_defense": [
+      "f8e7",
+      "b8c6"
+    ],
+    "fleches_menace": [
+      "d1e2",
+      "e2e4",
+      "g3f5"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Développer les pièces mineures (comme le Fou en e7 ou le Cavalier en c6) plutôt que de lancer des poussées de pions prématurées permet d'éviter l'accumulation de menaces et de préparer sereinement le roque."
   }
 ]
