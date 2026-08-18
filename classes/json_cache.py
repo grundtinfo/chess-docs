@@ -8,12 +8,17 @@ class CacheManager:
 
     @classmethod
     def load_cache(cls):
+        Logger.debug_log(f"Étape Cache : Lecture du cache global depuis {cls.CACHE_FILE}", "DEBUG")
         if not os.path.exists(cls.CACHE_FILE):
+            Logger.debug_log("Étape Cache : Fichier cache introuvable, initialisation d'un cache vide.", "DEBUG")
             return {}
         try:
             with open(cls.CACHE_FILE, "rb") as f:
-                return orjson.loads(f.read())
-        except Exception:
+                data = orjson.loads(f.read())
+                Logger.debug_log(f"Étape Cache : Cache chargé avec succès ({len(data)} entrées).", "DEBUG")
+                return data
+        except Exception as e:
+            Logger.debug_log(f"Erreur lors de la lecture du cache : {e}", "ERROR")
             return {}
 
     @classmethod

@@ -6,6 +6,7 @@ from io import StringIO
 from reportlab.platypus import Flowable
 from svglib.svglib import svg2rlg
 from reportlab.graphics import renderPDF
+from classes.logger import Logger
 
 _SVG_DRAWING_CACHE = {}
 
@@ -39,8 +40,10 @@ class ChessboardFlowable(Flowable):
             )
             
             if cache_key in _SVG_DRAWING_CACHE:
+                Logger.debug_log("Étape Rendu PDF : Diagramme d'échiquier récupéré depuis le cache mémoire.", "DEBUG")
                 drawing = _SVG_DRAWING_CACHE[cache_key]
             else:
+                Logger.debug_log(f"Étape Rendu PDF : Génération SVG d'un nouvel échiquier (FEN: {self.fen[:15]}...).", "DEBUG")
                 board = chess.Board(self.fen)
                 arrows = []
                 

@@ -63,6 +63,7 @@ class ChessUtils:
 
     @staticmethod
     def get_opening_name(board):
+        Logger.debug_log("Étape Analyse : Recherche du nom de l'ouverture en cours...", "DEBUG")
         opening_name = "Ouverture Inconnue"
         
         if OPENIX_AVAILABLE:
@@ -76,6 +77,7 @@ class ChessUtils:
                 matches = _op_lib.find_openings_after_moves(move_stack)
                 if matches:
                     opening_name = matches[0].name
+                    Logger.debug_log(f"Étape Analyse : Ouverture identifiée par Openix -> {opening_name}", "DEBUG")
             except Exception as e:
                 Logger.debug_log(f"Erreur lookup Openix: {e}", "ERROR")
 
@@ -87,12 +89,16 @@ class ChessUtils:
             cache_key = f"opening_{opening_name}"
             
             if cache_key not in cache_global:
+                Logger.debug_log(f"Étape Analyse : Traduction de l'ouverture '{opening_name}' (non mise en cache).", "DEBUG")
                 traduit = AIAnalyzer.translate_opening_name(opening_name)
                 cache_global[cache_key] = traduit
                 CacheManager.save_cache(cache_global)
-            
+            else:
+                Logger.debug_log("Étape Analyse : Nom d'ouverture traduit récupéré depuis le cache.", "DEBUG")
+                
             return cache_global[cache_key]
 
+        Logger.debug_log("Étape Analyse : Aucune ouverture formelle reconnue.", "DEBUG")
         return opening_name
     
     @staticmethod

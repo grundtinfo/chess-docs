@@ -30,11 +30,20 @@ from classes.pdf_components import ChessboardFlowable, EloProgressionChart, PDFU
 from classes.json_cache import CacheManager
 
 def parse_game_record(game, username, deep_analysis=False, progress_callback=None, existing_game=None):
+    Logger.debug_log(f"Étape Parsing : Début du traitement de la partie (ID/URL: {game.get('url', 'Inconnu')})", "DEBUG")
+    
     pgn_text = game.get("pgn")
-    if not pgn_text: return None
+    if not pgn_text: 
+        Logger.debug_log("Étape Parsing : PGN introuvable. Abandon de l'analyse pour cette partie.", "DEBUG")
+        return None
 
-    try: game_obj = chess.pgn.read_game(StringIO(pgn_text))
-    except Exception: return None
+    try: 
+        game_obj = chess.pgn.read_game(StringIO(pgn_text))
+        Logger.debug_log("Étape Parsing : PGN lu avec succès par chess.pgn.", "DEBUG")
+    except Exception as e: 
+        Logger.debug_log(f"Erreur de lecture du PGN : {e}", "ERROR")
+        return None
+        
     if not game_obj: return None
 
     white_name, black_name = game.get("white", {}).get("username", ""), game.get("black", {}).get("username", "")
@@ -147,6 +156,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         return result_data
 
     # --- 3) ENRICHISSEMENT & REPRISE (Coup par Coup) ---
+    Logger.debug_log("Étape Analyse Profonde : Démarrage de l'évaluation coup par coup...", "DEBUG")
     board_before = game_obj.board()
     analyzer = StockfishAnalyzer()
     engine = analyzer.get_engine(depth=Config.DEFAULT_STOCKFISH_DEPTH)
@@ -154,6 +164,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
     for idx, move in enumerate(moves, start=1):
         move_raw_en = san_moves[idx - 1]
         ply_data = details[idx - 1]
+        Logger.debug_log(f"Étape Analyse Profonde : Évaluation du pli {idx}/{len(moves)} (Coup : {move_raw_en})", "DEBUG")
         
         # Mode Reprise : On vérifie un à un les coups déjà calculés
         is_analyzed = (ply_data.get("precision", -9999) != -9999) or (ply_data.get("comment", "") != "")

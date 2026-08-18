@@ -57,10 +57,14 @@ class StockfishAnalyzer:
         if len(self._best_move_cache) > 3000:
             self._best_move_cache.clear()
 
+    # --- NOUVEAU BLOC ---
     def _get_cached_eval(self, fen):
         if not self.engine: return {"type": "cp", "value": 0}
         if fen in self._eval_cache:
+            Logger.debug_log("Étape Stockfish : Évaluation trouvée dans le cache mémoire.", "DEBUG")
             return self._eval_cache[fen]
+        
+        Logger.debug_log("Étape Stockfish : Calcul de l'évaluation pour la position...", "DEBUG")
         self._check_cache_limits()
         self.engine.set_fen_position(fen)
         evaluation = self.engine.get_evaluation()
