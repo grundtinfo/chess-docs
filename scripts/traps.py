@@ -3,6 +3,7 @@ import sys
 import re
 import json
 import chess
+from pathlib import Path
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, KeepTogether, PageBreak
@@ -16,7 +17,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from classes.config import Config
 from classes.logger import Logger
 from classes.chess_utils import ChessUtils
-from classes.engines import OllamaManager
+from classes.engines import StockfishAnalyzer
 from classes.ai_analyzer import AIAnalyzer
 from classes.pdf_components import ChessboardFlowable, PDFUtils
 
@@ -58,9 +59,10 @@ def normalize_defense_spec(defense_text):
 def split_move_options(moves_text):
     return [m.strip() for m in re.split(r'\s+ou\s+|\s*,\s*', moves_text) if m.strip()]
 
-def generate_moves_table(piege):
+def generate_moves_table(piege, stockfish_depth=18):
     from classes.json_cache import CacheManager
     Logger.debug_log(f"Génération table des coups pour le piège {piege.get('nom', 'sans nom')}", "INFO")
+    StockfishAnalyzer().get_engine(depth=stockfish_depth)
     moves = ChessUtils.parse_moves(piege.get("coups", ""))
     rows, board, current_row = [], chess.Board(), None
 
@@ -123,7 +125,7 @@ def generate_fen_positions(piege):
     defense_options = split_move_options(defense_text)
 
     if defense_order is not None:
-        index = 2 * (defense_order - 1) if piege.get("defenseur") == "Noirs" else 2 * defense_order - 3
+        index = 2 * defense_order - 1 if piege.get("defenseur") == "Noirs" else 2 * defense_order - 2
         fen_intermediaire = positions[index] if 0 <= index < len(positions) else positions[-2]
     else:
         fen_intermediaire = positions[-3] if len(positions) >= 3 else positions[-2]
@@ -154,14 +156,15 @@ def generer_pdf(stockfish_depth=18, verbose=1):
     Logger.debug_log("🔄 Génération du guide des pièges d'ouverture assistée par IA...", "ESSENTIAL")
     Logger.debug_log(f"Profondeur Stockfish retenue : {ChessUtils.resolve_stockfish_depth(stockfish_depth)}", "ESSENTIAL")
     
-    ollama = OllamaManager()
-    ollama.start()
-    
+    base_dir = Path(__file__).resolve().parent.parent
+    data_path = base_dir / "json" / "trappes_data.json"
+    output_path = base_dir / "guide_pieges_et_defenses.pdf"
+
     try:
-        with open('../json/trappes_data.json', 'r', encoding='utf-8') as f: trappes_data = json.load(f)
+        with data_path.open('r', encoding='utf-8') as f: trappes_data = json.load(f)
         Logger.debug_log(f"{len(trappes_data)} pièges chargés depuis le fichier JSON", "INFO")
             
-        doc = SimpleDocTemplate("../guide_pieges_et_defenses.pdf", pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
+        doc = SimpleDocTemplate(str(output_path), pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
         styles = getSampleStyleSheet()
         title_style = ParagraphStyle('Title', parent=styles['Heading1'], fontSize=22, leading=26, textColor=Config.COLOR_PRIMARY, spaceAfter=15)
         intro_style = ParagraphStyle('Intro', parent=styles['Normal'], fontSize=11, leading=16, textColor=Config.COLOR_TEXT, spaceAfter=8)
@@ -201,7 +204,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
             table_data = [[Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style), Paragraph("<b>Noir</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style)]]
             orient = get_trap_orientation(piege)
             
-            for row in generate_moves_table(piege):
+            for row in generate_moves_table(piege, stockfish_depth):
                 fen = row.get("black_fen") or row.get("white_fen")
                 diag = ChessboardFlowable(fen, size=105, orientation=orient) if fen else ""
                 table_data.append([diag, Paragraph(row.get("white",""), bold_style), Paragraph(row.get("white_comment",""), normal_style), Paragraph(row.get("black",""), bold_style), Paragraph(row.get("black_comment",""), normal_style)])
@@ -221,9 +224,9 @@ def generer_pdf(stockfish_depth=18, verbose=1):
         footer = lambda c, d: PDFUtils.ajouter_pied_page(c, d, "Guide des 20 Pièges d'Ouverture")
         doc.build(elements, onFirstPage=footer, onLaterPages=footer)
         Logger.debug_log("PDF généré avec succès", "ESSENTIAL")
-    
     finally:
-        ollama.stop()
+        pass
+
 
 if __name__ == "__main__":
     import argparse

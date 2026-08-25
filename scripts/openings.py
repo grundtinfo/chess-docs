@@ -15,6 +15,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 from classes.config import Config
 from classes.logger import Logger
 from classes.chess_utils import ChessUtils
+from classes.engines import StockfishAnalyzer
 from classes.ai_analyzer import AIAnalyzer
 from classes.pdf_components import ChessboardFlowable, PDFUtils
 
@@ -22,8 +23,9 @@ def get_orientation(item):
     orientation = item.get("Orientation", "Blancs")
     return chess.BLACK if orientation.lower().startswith("n") else chess.WHITE
 
-def generate_moves_table(item):
+def generate_moves_table(item, stockfish_depth=18):
     from classes.json_cache import CacheManager
+    StockfishAnalyzer().get_engine(depth=stockfish_depth)
     coups_str = item.get("coups", "")
     moves = ChessUtils.parse_moves(coups_str)
     rows = []
@@ -129,7 +131,7 @@ def build_pdf(output_path, source_name, data):
         orientation = get_orientation(item)
         explications = item.get('explications', {})
         Logger.debug_log(f"Génération de la table de coups pour la variante {idx+1}", "INFO")
-        rows = generate_moves_table(item)
+        rows = generate_moves_table(item, stockfish_depth)
         
         table_data = [[Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>N°</b>", normal_style), Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Noir</b>", normal_style), Paragraph("<b>Commentaire</b>", normal_style)]]
         
