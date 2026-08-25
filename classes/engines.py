@@ -51,11 +51,19 @@ class StockfishAnalyzer:
         return self.engine
 
     def _check_cache_limits(self):
-        # Maintient le cache en dessous de 3000 FEN pour éviter la saturation RAM
-        if len(self._eval_cache) > 3000:
-            self._eval_cache.clear()
-        if len(self._best_move_cache) > 3000:
-            self._best_move_cache.clear()
+        # Maintient le cache en dessous de 3000 FEN via une purge partielle (FIFO)
+        MAX_CACHE = 3000
+        PURGE_AMOUNT = 500
+        
+        if len(self._eval_cache) > MAX_CACHE:
+            keys_to_delete = list(self._eval_cache.keys())[:PURGE_AMOUNT]
+            for k in keys_to_delete:
+                del self._eval_cache[k]
+                
+        if len(self._best_move_cache) > MAX_CACHE:
+            keys_to_delete = list(self._best_move_cache.keys())[:PURGE_AMOUNT]
+            for k in keys_to_delete:
+                del self._best_move_cache[k]
 
     # --- NOUVEAU BLOC ---
     def _get_cached_eval(self, fen):
@@ -118,3 +126,32 @@ class StockfishAnalyzer:
             return best_move_french, best_eval, best_move_uci
         except Exception:
             return None, None, None
+
+    def get_fast_pv_sequence(self, board, max_moves=6):
+        """Extrait la ligne principale quasi-instantanément en exploitant la Transposition Table."""
+        if not self.engine: return []
+        
+        seq_eng = []
+        original_depth = self.engine.get_engine_parameters().get("Depth", Config.DEFAULT_STOCKFISH_DEPTH)
+        
+        try:
+            # Profondeur minimale : le calcul tape directement dans le cache interne de Stockfish
+            self.engine.set_depth(2)
+            sim_board = board.copy()
+            
+            for _ in range(max_moves):
+                if sim_board.is_game_over(): break
+                
+                self.engine.set_fen_position(sim_board.fen())
+                best_uci = self.engine.get_best_move()
+                
+                if not best_uci: break
+                
+                move_obj_sim = sim_board.parse_uci(best_uci)
+                seq_eng.append(sim_board.san(move_obj_sim))
+                sim_board.push(move_obj_sim)
+        finally:
+            # Restauration immédiate de la profondeur de calcul
+            self.engine.set_depth(original_depth)
+            
+        return seq_eng

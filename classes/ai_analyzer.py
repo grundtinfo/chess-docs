@@ -152,22 +152,13 @@ class AIAnalyzer:
                 player_multiplier = 1 if board_before.turn == chess.WHITE else -1
 
                 # NOUVEAU BLOC
-                # NOUVEAU BLOC (SÉCURISÉ)
                 if t == 'mate':
                     analyzer = StockfishAnalyzer()
                     sf = analyzer.get_engine()
                     if sf:
                         try:
-                            sim_board = board_after.copy()
-                            seq_eng = []
-                            for _ in range(abs(val) * 2): 
-                                if sim_board.is_game_over(): break
-                                best_uci = analyzer._get_cached_best_move(sim_board.fen())
-                                if not best_uci: break
-                                move_obj_sim = sim_board.parse_uci(best_uci)
-                                san_eng = sim_board.san(move_obj_sim)
-                                seq_eng.append(san_eng)
-                                sim_board.push(move_obj_sim)
+                            # Appel unique de la méthode optimisée
+                            seq_eng = analyzer.get_fast_pv_sequence(board_after, max_moves=abs(val) * 2)
 
                             is_in_trap = False
                             if future_moves:
@@ -205,12 +196,12 @@ class AIAnalyzer:
                         mat_opp_before = get_material_score(sim_board, not original_color)
                         
                         if sf:
-                            for _ in range(6):
-                                if sim_board.is_game_over(): break
-                                best_uci = analyzer._get_cached_best_move(sim_board.fen())
-                                if not best_uci: break
-                                
-                                move_obj_sim = sim_board.parse_uci(best_uci)
+                            # Appel unique de la méthode optimisée
+                            seq_eng = analyzer.get_fast_pv_sequence(board_after, max_moves=6)
+                            
+                            # Identification de la pièce perdue basée sur la séquence
+                            for san_move in seq_eng:
+                                move_obj_sim = sim_board.parse_san(san_move)
                                 target_piece = sim_board.piece_at(move_obj_sim.to_square)
                                 
                                 if target_piece and target_piece.color != original_color:
@@ -231,9 +222,7 @@ class AIAnalyzer:
                                         
                                     if is_new_loss:
                                         lost_square = chess.square_name(move_obj_sim.to_square)
-                                        
-                                san_eng = sim_board.san(move_obj_sim)
-                                seq_eng.append(san_eng)
+                                
                                 sim_board.push(move_obj_sim)
                                 
                         mat_after = get_material_score(sim_board, original_color)

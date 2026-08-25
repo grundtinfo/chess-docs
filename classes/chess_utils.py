@@ -276,8 +276,16 @@ class ChessUtils:
         recent_archives = archives[-months:] if months and months > 0 else archives
         games = []
         for archive_url in recent_archives:
-            try: games.extend(request_with_retry(archive_url).json().get("games", []))
-            except Exception: pass
+            try:
+                archive_games = request_with_retry(archive_url).json().get("games", [])
+                # Conserver uniquement les parties disposant d'un PGN avec un résultat final
+                finished_games = [
+                    g for g in archive_games 
+                    if g.get("pgn") and not g.get("pgn").strip().endswith("*")
+                ]
+                games.extend(finished_games)
+            except Exception: 
+                pass
         return games
 
     @staticmethod

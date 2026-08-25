@@ -97,13 +97,25 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
     if needs_recalc:
         board_for_opening = game_obj.board()
         found_name = "Ouverture Inconnue"
-        for m in moves[:20]:
+        moves_to_check = moves[:20]
+        
+        # 1. On pousse d'abord tous les coups ciblés
+        for m in moves_to_check:
+            board_for_opening.push(m)
+            
+        # 2. Recherche inversée : la première trouvée est la plus spécifique
+        for _ in range(len(moves_to_check)):
+            op_name = ChessUtils.get_opening_name(board_for_opening)
+            
+            if op_name != "Ouverture Inconnue" and not ChessUtils.is_raw_opening(op_name):
+                found_name = op_name
+                break # Interruption immédiate de la boucle
+                
             try:
-                board_for_opening.push(m)
-                op_name = ChessUtils.get_opening_name(board_for_opening)
-                if op_name != "Ouverture Inconnue" and not ChessUtils.is_raw_opening(op_name):
-                    found_name = op_name
-            except Exception: continue
+                board_for_opening.pop()
+            except IndexError:
+                break
+                
         best_opening_name = found_name if found_name != "Ouverture Inconnue" else cached_opening
 
     result_data = {
@@ -537,6 +549,11 @@ def main():
         for g in raw_games:
             game_id = g.get("url")
             if not game_id: continue
+
+            # Ignorer la partie si le PGN est absent ou se termine par un résultat indéterminé '*'
+            pgn_text = g.get("pgn", "")
+            if not pgn_text or pgn_text.strip().endswith("*"):
+                continue
             
             if args.game_id and args.game_id not in game_id: continue
             if args.opponent and args.opponent.lower() not in (g.get("white", {}).get("username", "").lower(), g.get("black", {}).get("username", "").lower()): continue
