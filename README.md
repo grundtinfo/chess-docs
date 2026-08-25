@@ -1,189 +1,84 @@
-# ♟️ Chess-Docs
+# Chess-Docs
 
-**Générateur de guides PDF pour les pièges et ouvertures aux échecs**
+Outil Python qui produit des guides PDF d'échecs et des rapports d'analyse à partir de données JSON et des archives publiques de Chess.com.
 
-Chess-Docs est un outil Python qui génère des guides PDF d'échecs avec diagrammes, analyses de coups et commentaires pédagogiques.
+## État actuel
 
----
+- Génération des guides d'ouvertures depuis `json/opening_*.json`.
+- Analyse des positions et des meilleurs coups avec Stockfish quand le moteur est disponible.
+- Identification des ouvertures via `Openix`, avec traduction locale des noms.
+- Génération de rapports joueurs Chess.com, avec cache par partie et reprise des analyses incomplètes.
+- Rendu des échiquiers, flèches, FEN et notation française via ReportLab et `python-chess`.
+- Le parcours des pièges est présent dans `scripts/traps.py`, mais il est actuellement bloqué par l'import de `OllamaManager`, absent de `classes/engines.py`.
 
-## 🎯 Fonctionnalités
+## Installation
 
-- ✅ Génération automatique de guides PDF
-- ✅ Analyse Stockfish avec profondeur configurable explicitement depuis les scripts
-- ✅ Support de multiples pièges et ouvertures
-- ✅ Diagrammes interactifs avec flèches et annotations
-- ✅ Données structurées en JSON
-- ✅ Mise en page professionnelle avec ReportLab
-- ✅ Support des notations d'échecs (FEN) et conversions FR ↔ EN
-- ✅ Environnement Python isolé via un venv local déjà présent dans le dépôt
-- ✅ Fallback automatique si Stockfish ou Ollama ne sont pas disponibles
-
----
-
-## 📋 Prérequis
-
-- Python 3.12 (fourni dans le venv local du projet)
-- Terminal Linux / WSL2
-- Connexion Internet pour installer les dépendances et télécharger Stockfish / Ollama / le modèle LLM
-- Ollama installé localement pour les commentaires générés par IA
-
----
-
-## 📦 Installation locale
-
-### 1. Activer le venv local
+Python 3.12 est recommandé. Depuis la racine du dépôt :
 
 ```bash
-source bin/activate
-```
-
-### 2. Installer les dépendances Python
-
-```bash
+python3 -m venv .venv
+source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -r requirements.txt
 ```
 
-Packages principaux utilisés :
-- `python-chess` — logique d'échecs et manipulation des positions
-- `reportlab` — génération des PDF
-- `stockfish` — interface Python avec le moteur Stockfish
-- `pillow`, `svglib`, `cairo` — rendu des diagrammes
-- `requests`, `ollama` — intégration avec Ollama et requêtes HTTP
+`requirements.txt` contient notamment `python-chess`, `reportlab`, `stockfish`, `requests`, `orjson`, `openix` et `aider-chat`.
 
-### 3. Installer et préparer Ollama
+## Utilisation
 
-Si Ollama n'est pas encore installé :
-
-```bash
-curl -fsSL https://ollama.com/install.sh | sh
-```
-
-Puis démarrez le serveur :
-
-```bash
-ollama serve
-```
-
-Dans un autre terminal, téléchargez le modèle utilisé par le projet :
-
-```bash
-ollama pull mistral:7b
-```
-
-Vérifiez la présence du modèle :
-
-```bash
-ollama list
-```
-
----
-
-## 🚀 Utilisation
-
-### 1. Installer Stockfish (optionnel mais recommandé)
+Installer Stockfish (optionnel) :
 
 ```bash
 python scripts/setup_stockfish.py
 ```
 
-### 2. Générer les guides PDF
+Le script télécharge Stockfish 18 dans `~/stockfish`, teste le binaire et tente de créer `/usr/local/sbin/stockfish`. Le moteur cherche d'abord un binaire local dans `stockfish/stockfish/`, puis `stockfish` dans le `PATH`.
+
+Générer toutes les ouvertures :
 
 ```bash
-python scripts/traps.py
 python scripts/openings.py
 ```
 
-Résultats attendus :
-- `guide_pieges_et_defenses.pdf`
-- `guide_opening_fried_liever_attack.pdf`
-- `guide_opening_sicilian_defense.pdf`
-
-### 3. Consulter les PDFs
-
-Les fichiers générés contiennent :
-- 📊 diagrammes des positions clés
-- 🔍 analyses de coups via Stockfish (si disponible)
-- 💡 commentaires pédagogiques via Ollama
-- 🎯 notifications de pièges et tactiques
-
----
-
-## ⚙️ Configuration actuelle du projet
-
-### Stockfish
-
-La profondeur de calcul est pilotée explicitement depuis les scripts :
-- `scripts/openings.py`
-- `scripts/traps.py`
-
-La valeur par défaut est `18` et peut être adaptée directement dans les signatures des fonctions principales.
-
-### Ollama
-
-Le modèle LLM utilisé dans ce projet est :
-- `mistral:7b`
-
-Il doit être téléchargé localement avec :
+Exemples d'options :
 
 ```bash
-ollama pull mistral:7b
+python scripts/openings.py --opening fried_liever_attack --stockfish-depth 18 --verbose
+python scripts/openings.py --opening sicilian_defense --stockfish-depth 20
 ```
 
----
+Les PDF sont écrits à la racine, avec le nom `guide_opening_<source>.pdf`.
 
-## 📁 Structure du projet
-
-```text
-chess-docs/
-├── bin/                           # venv local et exécutables Python
-├── include/                       # en-têtes Python
-├── json/                          # données structurées
-├── scripts/
-│   ├── chess_lib.py              # logique commune, Stockfish, Ollama
-│   ├── openings.py               # génération des guides d'ouvertures
-│   ├── traps.py                  # génération des guides de pièges
-│   └── setup_stockfish.py        # installation de Stockfish
-├── stockfish/                    # binaire Stockfish local
-├── pyvenv.cfg                     # configuration du venv
-├── requirements.txt              # dépendances Python
-├── README.md
-├── QUICK_START.md
-└── guide_*.pdf                   # PDFs générés
-```
-
----
-
-## 🐛 Dépannage
-
-### Ollama n'est pas disponible
-
-Les scripts peuvent continuer à fonctionner, mais les commentaires IA seront remplacés par un fallback générique.
-
-### Stockfish n'est pas disponible
-
-Les scripts continuent à s'exécuter avec une analyse de secours.
-
-### ImportError sur un package
+Générer un rapport Chess.com :
 
 ```bash
-source bin/activate
-python -m pip install -r requirements.txt
+python scripts/chesscom_report.py <joueur>
+python scripts/chesscom_report.py <joueur> --months 3 --max-games 10 --verbose
+python scripts/chesscom_report.py <joueur> --opponent <adversaire> --incomplete-only
+python scripts/chesscom_report.py <joueur> --game-id 123456789
 ```
 
-### Le PDF n'est pas généré
+Le rapport est enregistré sous `<joueur>_report_avance.pdf` (ou `<joueur>_vs_<adversaire>_report_avance.pdf`). Les parties sont conservées dans `json/player_<joueur>/game_<id>.json`. Les parties terminées disposant d'un PGN sont téléchargées depuis l'API publique Chess.com; `--max-games 0` signifie toutes les parties candidates.
 
-Vérifiez :
-- ✅ le venv est activé
-- ✅ Ollama est lancé si vous voulez des commentaires IA
-- ✅ les fichiers JSON existent dans `json/`
-- ✅ le répertoire racine est accessible en écriture
+## Données et cache
 
----
+- `json/trappes_data.json` : données des pièges.
+- `json/opening_*.json` : sources des guides d'ouvertures.
+- `json/player_<joueur>/` : état détaillé des parties analysées.
+- `json/cache_analyses.json` : cache des commentaires et traductions d'ouvertures.
+- `logs/` : journaux éventuels.
 
-## 📝 Notes importantes
+Les caches et les rapports PDF sont ignorés par Git. Les analyses de parties peuvent contenir des données récupérées depuis Chess.com : vérifier les conditions d'utilisation du service avant une redistribution.
 
-- Le venv local du projet est déjà présent dans `bin/` ; activez-le avant chaque session.
-- Les commentaires IA reposent sur Ollama et le modèle `mistral:7b`.
-- Stockfish est optionnel mais recommandé pour une analyse plus riche.
-- La génération des PDF peut prendre un peu de temps selon la profondeur Stockfish et le nombre de positions traitées.
+## Tests et diagnostic
+
+```bash
+python -m unittest discover -s tests -v
+python -m compileall -q classes scripts tests
+python scripts/openings.py --help
+python scripts/chesscom_report.py --help
+```
+
+## Organisation
+
+`classes/` contient les utilitaires, le cache, Stockfish, l'analyse et le rendu PDF. `scripts/` contient les points d'entrée. `json/` contient les sources et caches. `tests/` contient les tests du rapport joueur. Les documents techniques et procédures se trouvent dans `docs/`.
