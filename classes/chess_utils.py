@@ -295,22 +295,22 @@ class ChessUtils:
         
         moves = pv_str.split()
         formatted_moves = []
-        current_move = start_move_number
-        white_to_move = is_white_turn
+        current_move = int(start_move_number)
+        white_to_move = bool(is_white_turn)
         
         for i, move_eng in enumerate(moves):
             move_fr = ChessUtils.convert_english_to_french_notation(move_eng)
             
             if white_to_move:
-                # Coup des blancs : on ajoute toujours le numéro de coup
-                formatted_moves.append(f"{current_move}.{move_fr}")
+                # Coup des blancs : ajout du point et d'un espace typographique
+                formatted_moves.append(f"{current_move}. {move_fr}")
             else:
                 # Coup des noirs
                 if i == 0:
                     # C'est le tout premier coup de la séquence
-                    formatted_moves.append(f"{current_move}...{move_fr}")
+                    formatted_moves.append(f"{current_move}... {move_fr}")
                 else:
-                    # Suite normale, on l'ajoute simplement pour qu'il soit séparé par un espace
+                    # Suite normale
                     formatted_moves.append(move_fr)
                 
                 # Le tour complet est terminé, on incrémente le numéro de coup

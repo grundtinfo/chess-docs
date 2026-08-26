@@ -371,20 +371,15 @@ class AIAnalyzer:
 
                         if not best_pv_san:
                             try:
-                                sim_board = board.copy()
-                                pv_list = []
-                                for _ in range(abs(val_after_raw) * 2): 
-                                    m_best = analyzer._get_cached_best_move(sim_board.fen())
-                                    if not m_best: break
-                                    m_sim = sim_board.parse_uci(m_best)
-                                    pv_list.append(sim_board.san(m_sim))
-                                    sim_board.push(m_sim)
+                                # REMPLACEMENT OPTIMISÉ : Utilisation de get_fast_pv_sequence 
+                                max_mate_moves = abs(val_after_raw) * 2
+                                seq_eng = analyzer.get_fast_pv_sequence(board, max_moves=max_mate_moves)
                                 
-                                if pv_list:
-                                    best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
+                                if seq_eng:
+                                    best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
                                     alt_recom_value = best_pv_san
-                            except Exception:
-                                pass
+                            except Exception as e:
+                                Logger.debug_log(f"Erreur extraction PV mat : {e}", "WARNING")
 
                         if not is_mate_for_player:
                             if t_before != 'mate':
@@ -449,20 +444,13 @@ class AIAnalyzer:
 
                     if delta < -30 and best_uci and not board_after.is_checkmate() and best_pv_san is None:
                         try:
-                            sim_board = board.copy()
-                            pv_list = []
-                            for _ in range(4):
-                                m_best = analyzer._get_cached_best_move(sim_board.fen())
-                                if not m_best: break
-                                m_sim = sim_board.parse_uci(m_best)
-                                pv_list.append(sim_board.san(m_sim))
-                                sim_board.push(m_sim)
-                            
-                            best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(pv_list), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
-                            if best_pv_san:
+                            # REMPLACEMENT OPTIMISÉ : Utilisation de get_fast_pv_sequence
+                            seq_eng = analyzer.get_fast_pv_sequence(board, max_moves=4)
+                            if seq_eng:
+                                best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
                                 alt_recom_value = best_pv_san
-                        except Exception:
-                            pass
+                        except Exception as e:
+                            Logger.debug_log(f"Erreur extraction PV alternative : {e}", "WARNING")
 
                     # Construction directe du commentaire déterministe
                     comment_final = f"{eval_exacte}."

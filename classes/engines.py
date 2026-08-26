@@ -1,4 +1,5 @@
 import os
+import concurrent.futures
 from classes.logger import Logger
 from classes.config import Config
 from classes.chess_utils import ChessUtils
@@ -20,6 +21,8 @@ class StockfishAnalyzer:
             cls._instance._init_attempted = False
             cls._instance._eval_cache = {}
             cls._instance._best_move_cache = {}
+            # File d'attente d'exécution avec 1 worker pour gérer le timeout
+            cls._instance._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         return cls._instance
     
     def get_engine(self, depth=None):
@@ -51,9 +54,10 @@ class StockfishAnalyzer:
         return self.engine
 
     def _check_cache_limits(self):
-        # Maintient le cache en dessous de 3000 FEN via une purge partielle (FIFO)
+        # Maintient le cache avec une purge dynamique plus agressive (50%)
+        # pour éviter la saturation mémoire sur les parties de plus de 100 coups.
         MAX_CACHE = 3000
-        PURGE_AMOUNT = 500
+        PURGE_AMOUNT = 1500
         
         if len(self._eval_cache) > MAX_CACHE:
             keys_to_delete = list(self._eval_cache.keys())[:PURGE_AMOUNT]
@@ -65,7 +69,59 @@ class StockfishAnalyzer:
             for k in keys_to_delete:
                 del self._best_move_cache[k]
 
-    # --- NOUVEAU BLOC ---
+    def _reset_engine(self):
+        """Réinitialise l'instance Stockfish en cas de blocage (Watchdog)."""
+        Logger.debug_log("Réinitialisation forcée du moteur Stockfish suite à un blocage...", "WARNING")
+        if self.engine:
+            try:
+                self.engine.__del__() # Tente de tuer le processus proprement
+            except Exception:
+                pass
+        self.engine = None
+        self._init_attempted = False
+        self.get_engine()
+
+    def _run_with_watchdog(self, task_name, func, *args, **kwargs):
+        """
+        Exécute une fonction Stockfish. Ajuste le timeout dynamiquement 
+        selon la profondeur ET le nombre de coups de façon exponentielle.
+        """
+        if not self.engine:
+            return None
+            
+        import math
+        depth = self.engine.get_engine_parameters().get("Depth", Config.DEFAULT_STOCKFISH_DEPTH)
+        
+        # Récupération du numéro de coup pour ajustement exponentiel
+        move_number = 1
+        try:
+            fen = self.engine.get_fen_position()
+            if fen:
+                move_number = int(fen.split()[-1])
+        except Exception:
+            pass
+        
+        # Timeout exponentiel : (5 + depth * 1.5) * e^(move_number / 100)
+        # Accorde plus de temps aux calculs profonds en fin de parties longues
+        calculated_timeout = (5 + depth * 1.5) * math.exp(move_number / 100.0)
+        timeout = min(int(calculated_timeout), 120) # Limite stricte à 120s
+        
+        future = self._executor.submit(func, *args, **kwargs)
+        elapsed = 0
+        
+        while elapsed < timeout:
+            try:
+                # Attend 1 seconde maximum pour voir si le calcul est fini
+                return future.result(timeout=1.0)
+            except concurrent.futures.TimeoutError:
+                elapsed += 1
+                Logger.debug_log(f"[{task_name}] Calcul en cours (Profondeur: {depth}, Coup: {move_number}) - {elapsed}s / {timeout}s", "INFO")
+        
+        # Si on sort de la boucle, le moteur est figé
+        Logger.debug_log(f"[{task_name}] Stockfish a figé (Timeout de {timeout}s dépassé). Reprise de l'application...", "ERROR")
+        self._reset_engine()
+        return None
+
     def _get_cached_eval(self, fen):
         if not self.engine: return {"type": "cp", "value": 0}
         if fen in self._eval_cache:
@@ -75,7 +131,12 @@ class StockfishAnalyzer:
         Logger.debug_log("Étape Stockfish : Calcul de l'évaluation pour la position...", "DEBUG")
         self._check_cache_limits()
         self.engine.set_fen_position(fen)
-        evaluation = self.engine.get_evaluation()
+        
+        # Modification : Appel sécurisé
+        evaluation = self._run_with_watchdog("Évaluation", self.engine.get_evaluation)
+        if not evaluation:
+            return {"type": "cp", "value": 0} # Sécurité pour que le programme continue
+            
         self._eval_cache[fen] = evaluation
         return evaluation
 
@@ -85,7 +146,12 @@ class StockfishAnalyzer:
             return self._best_move_cache[fen]
         self._check_cache_limits()
         self.engine.set_fen_position(fen)
-        best_move = self.engine.get_best_move()
+        
+        # Modification : Appel sécurisé
+        best_move = self._run_with_watchdog("Meilleur Coup", self.engine.get_best_move)
+        if not best_move:
+            return None # Sécurité pour que le programme continue
+            
         self._best_move_cache[fen] = best_move
         return best_move
 
@@ -143,7 +209,8 @@ class StockfishAnalyzer:
                 if sim_board.is_game_over(): break
                 
                 self.engine.set_fen_position(sim_board.fen())
-                best_uci = self.engine.get_best_move()
+                
+                best_uci = self._run_with_watchdog("Séquence Rapide", self.engine.get_best_move)
                 
                 if not best_uci: break
                 
