@@ -89,18 +89,19 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         temp_board = game_obj.board()
         for idx, move in enumerate(moves, start=1):
             san_eng = san_moves[idx - 1]
+            is_capture = temp_board.is_capture(move) # <-- À vérifier AVANT de pousser le coup
+            temp_board.push(move) # <-- MODIFICATION : Pousse le coup AVANT de générer le FEN
+            
             if idx > len(details):
                 san_fr = ChessUtils.convert_english_to_french_notation(san_eng)
-                is_capture = temp_board.is_capture(move)
                 phase = "opening" if idx <= 12 else "middlegame" if idx <= 30 else "endgame"
                 
                 details.append({
                     "ply": idx, "move_number": (idx + 1) // 2, "color": "white" if idx % 2 != 0 else "black",
-                    "move": san_fr, "raw_san": san_eng, "comment": "", "fen": temp_board.fen(),
+                    "move": san_fr, "raw_san": san_eng, "comment": "", "fen": temp_board.fen(), # FEN maintenant 100% correct
                     "delta": 0, "precision": -9999, "phase": phase,
                     "uci": move.uci(), "is_capture": is_capture, "tactics": ""
                 })
-            temp_board.push(move)
 
     cached_opening = existing_game.get("opening", "Ouverture Inconnue") if existing_game else "Ouverture Inconnue"
     needs_recalc = ChessUtils.is_raw_opening(cached_opening)
@@ -254,8 +255,11 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
             opening_blunders_data.append({
                 "move_number": (idx + 1) // 2, "color": "white" if idx % 2 != 0 else "black",
-                "played_move": san_fr, "played_uci": move.uci(), "best_uci": best_uci,
-                "stockfish_pv": best_move_fr, "fen": board_before.fen(), "tactics": tactics_detected
+                "played_move": move_label, # <-- MODIFICATION : Conserve les annotations comme ??
+                "played_uci": move.uci(), "best_uci": best_uci,
+                "best_move_san": best_move_fr, # <-- NOUVEAU : C'est ce qui ira dans la colonne "Bleue"
+                "stockfish_pv": alt_recom, # <-- NOUVEAU : Sauvegarde de la ligne calculée complète
+                "fen": board_before.fen(), "tactics": tactics_detected
             })
 
         board_before.push(move)
@@ -360,11 +364,19 @@ def render_game_analysis_table(game, normal_style, bold_style):
         Paragraph(f"<i>{termination_reason}</i>", normal_style), "", ""
     ])
 
-    t = Table(table_data, colWidths=[120, 30, 50, 50, 260], repeatRows=1)
+    t = Table(table_data, colWidths=[110, 35, 55, 55, 255], repeatRows=1)
     t.setStyle(TableStyle([
-        ('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-        ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, Config.COLOR_BG_LIGHT]),
-        ('LINEBELOW', (0,0), (-1,-1), 0.5, Config.COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6),
+        ('BACKGROUND', (0, 0), (-1, 0), Config.COLOR_PRIMARY), 
+        ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+        ('ALIGN', (0, 0), (0, -1), 'CENTER'),                    # Diag centré
+        ('ALIGN', (1, 0), (3, -1), 'CENTER'),                    # N°, Blanc, Noir centrés
+        ('ALIGN', (4, 0), (4, -1), 'LEFT'),                      # Analyse justifiée
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),                  # Centrage vertical
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, Config.COLOR_BG_LIGHT]),
+        ('INNERGRID', (0, 0), (-1, -2), 0.5, Config.COLOR_BORDER), # Sépare les colonnes
+        ('BOX', (0, 0), (-1, -2), 0.5, Config.COLOR_BORDER),       # Encadrement
+        ('LINEBELOW', (0, -1), (-1, -1), 0.5, Config.COLOR_BORDER),# Ligne finale (Fin)
+        ('PADDING', (0, 0), (-1, -1), 6),
         ('SPAN', (2, -1), (4, -1))
     ]))
     elements.append(t)
@@ -444,7 +456,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
             player_elos.append(g["analysis"].get("est_elo_white" if is_white else "est_elo_black", 1200))
             opponent_elos.append(g["analysis"].get("est_elo_black" if is_white else "est_elo_white", 1200))
             
-        if len(cat_games) > 1:
+        if len(cat_games) > 0: 
             elements.extend([
                 EloProgressionChart(cat_games, player_name),
                 Spacer(1, 5),
@@ -500,7 +512,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                 ) if fen else ""
                 
                 summary = AIAnalyzer.get_stockfish_theory_summary(op_name, sample.get('played_move', ''), sample.get('stockfish_pv', ''), sample.get('tactics', ''))
-                best_reply_san = sample['stockfish_pv'].split()[0] if sample.get('stockfish_pv') else "N/A"
+                best_reply_san = sample.get('best_move_san', 'N/A') # <-- MODIFICATION : Corrige l'en-tête du tableau
                 
                 summary_pdf = summary.replace('\n', '<br/>')
                 summary_pdf = summary_pdf.replace("Explication de l'erreur :", "<b>Explication de l'erreur :</b>")
@@ -513,11 +525,18 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                     Paragraph(summary_pdf, normal_style)
                 ])
                 
-            t_blunder = Table(blunder_data, colWidths=[120, 30, 60, 60, 230], repeatRows=1)
+            t_blunder = Table(blunder_data, colWidths=[110, 35, 65, 65, 235], repeatRows=1)
             t_blunder.setStyle(TableStyle([
-                ('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-                ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, Config.COLOR_BG_LIGHT]),
-                ('LINEBELOW', (0,0), (-1,-1), 0.5, Config.COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6)
+                ('BACKGROUND', (0, 0), (-1, 0), Config.COLOR_PRIMARY), 
+                ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+                ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+                ('ALIGN', (1, 0), (3, -1), 'CENTER'),
+                ('ALIGN', (4, 0), (4, -1), 'LEFT'),
+                ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, Config.COLOR_BG_LIGHT]),
+                ('INNERGRID', (0, 0), (-1, -1), 0.5, Config.COLOR_BORDER), 
+                ('BOX', (0, 0), (-1, -1), 0.5, Config.COLOR_BORDER),
+                ('PADDING', (0, 0), (-1, -1), 6)
             ]))
             
             elements.extend([t_blunder, Spacer(1, 15)])

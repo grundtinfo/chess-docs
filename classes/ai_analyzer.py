@@ -221,35 +221,59 @@ class AIAnalyzer:
                         if sf:
                             seq_eng = analyzer.get_fast_pv_sequence(board_after, max_moves=6)
                             
+                            # MODIFICATION : Traçage des pièces d'origine pour éviter les hallucinations
+                            orig_pieces = {sq: p for sq, p in board_after.piece_map().items() if p.color == original_color}
+                            current_positions = {sq: sq for sq in orig_pieces.keys()}
+                            lost_pieces = []
+                            
                             for san_move in seq_eng:
                                 try:
                                     move_obj_sim = sim_board.parse_san(san_move)
-                                    # On s'assure que la pièce capturée était physiquement sur la case JUSTE APRÈS la gaffe
-                                    target_piece = board_after.piece_at(move_obj_sim.to_square)
-                                    sim_target = sim_board.piece_at(move_obj_sim.to_square)
+                                    from_sq = move_obj_sim.from_square
+                                    to_sq = move_obj_sim.to_square
                                     
-                                    if target_piece and sim_target and target_piece == sim_target and target_piece.color != original_color:
-                                        pt = target_piece.piece_type
-                                        is_new_loss = False
-                                        if pt == chess.QUEEN:
-                                            piece_lost = "Dame"
-                                            is_new_loss = True
-                                        elif pt == chess.ROOK and piece_lost != "Dame":
-                                            piece_lost = "Tour"
-                                            is_new_loss = True
-                                        elif pt == chess.BISHOP and piece_lost not in ["Dame", "Tour"]:
-                                            piece_lost = "Fou"
-                                            is_new_loss = True
-                                        elif pt == chess.KNIGHT and piece_lost not in ["Dame", "Tour", "Fou"]:
-                                            piece_lost = "Cavalier"
-                                            is_new_loss = True
+                                    # 1. Détection de capture
+                                    captured_sq = to_sq
+                                    if sim_board.is_en_passant(move_obj_sim):
+                                        captured_sq = to_sq - 8 if sim_board.turn == chess.WHITE else to_sq + 8
+                                        
+                                    captured_piece = sim_board.piece_at(captured_sq)
+                                    if captured_piece and captured_piece.color == original_color:
+                                        orig_sq = None
+                                        for start_sq, curr_sq in current_positions.items():
+                                            if curr_sq == captured_sq:
+                                                orig_sq = start_sq
+                                                break
+                                        if orig_sq is not None:
+                                            lost_pieces.append((orig_pieces[orig_sq].piece_type, orig_sq))
+                                            del current_positions[orig_sq] # La pièce n'est plus sur l'échiquier
                                             
-                                        if is_new_loss:
-                                            lost_square = chess.square_name(move_obj_sim.to_square)
-                                    
+                                    # 2. Mise à jour de la position de la pièce si elle a bougé
+                                    if sim_board.turn == original_color:
+                                        orig_sq = None
+                                        for start_sq, curr_sq in current_positions.items():
+                                            if curr_sq == from_sq:
+                                                orig_sq = start_sq
+                                                break
+                                        if orig_sq is not None:
+                                            current_positions[orig_sq] = to_sq
+                                            
                                     sim_board.push(move_obj_sim)
                                 except Exception:
                                     break
+                                
+                            if lost_pieces:
+                                piece_values = {chess.QUEEN: 9, chess.ROOK: 5, chess.BISHOP: 3, chess.KNIGHT: 3, chess.PAWN: 1}
+                                lost_pieces.sort(key=lambda x: piece_values.get(x[0], 0), reverse=True)
+                                best_lost_pt, best_orig_sq = lost_pieces[0]
+                                
+                                if best_lost_pt == chess.QUEEN: piece_lost = "Dame"
+                                elif best_lost_pt == chess.ROOK: piece_lost = "Tour"
+                                elif best_lost_pt == chess.BISHOP: piece_lost = "Fou"
+                                elif best_lost_pt == chess.KNIGHT: piece_lost = "Cavalier"
+                                
+                                if piece_lost:
+                                    lost_square = chess.square_name(best_orig_sq)
                                 
                         mat_after = get_material_score(sim_board, original_color)
                         mat_opp_after = get_material_score(sim_board, not original_color)
@@ -299,7 +323,9 @@ class AIAnalyzer:
 
         # Suppression des félicitations tactiques (fourchette, échec) si le coup est mathématiquement une gaffe absolue
         if delta is not None and delta <= -150:
-            tactics = [t for t in tactics if not any(kw in t for kw in ['fourchette', 'Échec direct', 'Découverte'])]
+            # MODIFICATION : Liste étendue et comparaison insensible à la casse
+            bad_kws = ['fourchette', 'échec direct', 'découverte', 'attaque simultanément', 'clouage immobilisant']
+            tactics = [t for t in tactics if not any(kw in t.lower() for kw in bad_kws)]
                 
         tactics_comment = " ; ".join(tactics) if tactics else ""
         
