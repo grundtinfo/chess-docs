@@ -45,10 +45,21 @@ class AIAnalyzer:
 
     @staticmethod
     def get_stockfish_theory_summary(opening_name, bad_move, stockfish_line, tactics=""):
-        summary = f"Ligne Stockfish : {stockfish_line}\n\nDans l'ouverture {opening_name}, suite au coup {bad_move}, c'est la ligne recommandée par le moteur pour rééquilibrer la position."
+        tactics_clean = tactics.replace("- Meilleure ligne calculée :", "").strip() if tactics else ""
         
-        if tactics:
-            tactics_clean = tactics.replace("- Meilleure ligne calculée :", "").strip()
+        # Adaptation dynamique selon le contexte tactique
+        if "mat" in tactics_clean.lower():
+            objectif = "concrétiser une opportunité de mat ou éviter une défaite rapide"
+        elif any(kw in tactics_clean.lower() for kw in ["perte", "expose", "prise"]):
+            objectif = "préserver le matériel et maintenir la stabilité de la position"
+        elif any(kw in tactics_clean.lower() for kw in ["avantage", "gain"]):
+            objectif = "accentuer l'avantage tactique et concrétiser la domination"
+        else:
+            objectif = "obtenir la meilleure continuité positionnelle selon le moteur"
+
+        summary = f"Ligne Stockfish : {stockfish_line}\n\nDans l'ouverture {opening_name}, suite au coup {bad_move}, c'est la ligne recommandée par le moteur pour {objectif}."
+        
+        if tactics_clean:
             summary += f"\n\nExplication de l'erreur : {tactics_clean}"
             
         Logger.debug_log(f"[Génération Théorie] {opening_name} | Coup {bad_move} -> {summary}", "DEBUG")
@@ -80,13 +91,27 @@ class AIAnalyzer:
         return result.strip()
 
     @staticmethod
-    def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None, delta=None):
+    def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None, delta=None, best_eval=None, best_pv_san=None):
         Logger.debug_log(f"Détection des tactiques pour le coup {move_obj.uci()}...", "INFO")
         tactics = []
         moving_piece = board_before.piece_at(move_obj.from_square)
         moving_piece_name = ChessUtils.get_piece_name_fr(moving_piece)
         to_square_name = chess.square_name(move_obj.to_square)
         
+        board_after = board_before.copy()
+        board_after.push(move_obj)
+
+        # Détection d'un mat manqué si le meilleur coup alternatif offrait un mat forcé
+        if best_eval and not board_after.is_checkmate():
+            t_best = getattr(best_eval, 'type', 'cp') if hasattr(best_eval, 'type') else (best_eval.get('type', 'cp') if isinstance(best_eval, dict) else 'cp')
+            val_best_raw = getattr(best_eval, 'value', 0) if hasattr(best_eval, 'value') else (best_eval.get('value', 0) if isinstance(best_eval, dict) else 0)
+            
+            # Dans board_best, val_best_raw < 0 indique que l'adversaire subit un mat (mat forcé pour le joueur)
+            if t_best == 'mate' and val_best_raw is not None and val_best_raw < 0:
+                mate_in_best = abs(val_best_raw)
+                alt_str = f" (meilleur coup : {best_pv_san})" if best_pv_san else ""
+                tactics.append(f"Manque un échec et mat forcé en {mate_in_best} coup(s){alt_str}")
+
         if board_before.is_capture(move_obj):
             captured_piece = board_before.piece_at(move_obj.to_square)
             if captured_piece:
@@ -95,9 +120,6 @@ class AIAnalyzer:
             else:
                 tactics.append(f"{moving_piece_name} prend en passant en {to_square_name}")
         
-        board_after = board_before.copy()
-        board_after.push(move_obj)
-        
         if board_after.is_checkmate():
             tactics.append(f"Mat par {moving_piece_name} en {to_square_name}")
         else:
@@ -105,17 +127,17 @@ class AIAnalyzer:
                 defender_color = board_after.turn
                 attacker_color = not defender_color
                 king_sq = board_after.king(defender_color)
-                checkers = board_after.attackers(attacker_color, king_sq)
-                
-                if move_obj.to_square not in checkers and len(checkers) > 0:
-                    checker_sq = list(checkers)[0]
-                    checker_piece = board_after.piece_at(checker_sq)
-                    checker_name = ChessUtils.get_piece_name_fr(checker_piece)
-                    tactics.append(f"Découverte d'une attaque menant à un échec par {checker_name} (démasqué par {moving_piece_name})")
-                elif len(checkers) > 1:
-                    tactics.append(f"Échec double impliquant {moving_piece_name} en {to_square_name}")
-                else:
-                    tactics.append(f"Échec direct par {moving_piece_name} en {to_square_name}")
+                if king_sq is not None:
+                    checkers = board_after.attackers(attacker_color, king_sq)
+                    if move_obj.to_square not in checkers and len(checkers) > 0:
+                        checker_sq = list(checkers)[0]
+                        checker_piece = board_after.piece_at(checker_sq)
+                        checker_name = ChessUtils.get_piece_name_fr(checker_piece)
+                        tactics.append(f"Découverte d'une attaque menant à un échec par {checker_name} (démasqué par {moving_piece_name})")
+                    elif len(checkers) > 1:
+                        tactics.append(f"Échec double impliquant {moving_piece_name} en {to_square_name}")
+                    else:
+                        tactics.append(f"Échec direct par {moving_piece_name} en {to_square_name}")
                 
             attacks = board_after.attacks(move_obj.to_square)
             targets = []
@@ -130,13 +152,12 @@ class AIAnalyzer:
 
             defender_color = board_after.turn
             pinned_pieces = []
-            # Optimization: vérifie uniquement les cases occupées par le défenseur (~10-16 cases au lieu de 64)
-            # Correction : Utilisation de chess.SquareSet car occupied_co retourne un entier non itérable
             for sq in chess.SquareSet(board_after.occupied_co[defender_color]):
                 if board_after.is_pinned(defender_color, sq):
                     if not board_before.is_pinned(defender_color, sq):
                         piece = board_after.piece_at(sq)
-                        pinned_pieces.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
+                        if piece:
+                            pinned_pieces.append(f"{ChessUtils.get_piece_name_fr(piece)} en {chess.square_name(sq)}")
                             
             if pinned_pieces:
                 tactics.append(f"Le coup crée un clouage immobilisant : {', '.join(pinned_pieces)}")
@@ -151,13 +172,11 @@ class AIAnalyzer:
 
                 player_multiplier = 1 if board_before.turn == chess.WHITE else -1
 
-                # NOUVEAU BLOC
                 if t == 'mate':
                     analyzer = StockfishAnalyzer()
                     sf = analyzer.get_engine()
                     if sf:
                         try:
-                            # Appel unique de la méthode optimisée
                             seq_eng = analyzer.get_fast_pv_sequence(board_after, max_moves=abs(val) * 2)
 
                             is_in_trap = False
@@ -177,7 +196,7 @@ class AIAnalyzer:
                     
                 elif t == 'cp':
                     cp_val = val * player_multiplier
-                    if cp_val >= 300 and delta is not None and delta >= 150 and not any("Capture" in t for t in tactics):
+                    if cp_val >= 300 and delta is not None and delta >= 150 and not any("prend" in t for t in tactics):
                         tactics.append("Prépare un gain matériel décisif imminent")
                     elif delta is not None and delta <= -30:
                         piece_lost = None
@@ -196,34 +215,35 @@ class AIAnalyzer:
                         mat_opp_before = get_material_score(sim_board, not original_color)
                         
                         if sf:
-                            # Appel unique de la méthode optimisée
                             seq_eng = analyzer.get_fast_pv_sequence(board_after, max_moves=6)
                             
-                            # Identification de la pièce perdue basée sur la séquence
                             for san_move in seq_eng:
-                                move_obj_sim = sim_board.parse_san(san_move)
-                                target_piece = sim_board.piece_at(move_obj_sim.to_square)
-                                
-                                if target_piece and target_piece.color != original_color:
-                                    pt = target_piece.piece_type
-                                    is_new_loss = False
-                                    if pt == chess.QUEEN:
-                                        piece_lost = "Dame"
-                                        is_new_loss = True
-                                    elif pt == chess.ROOK and piece_lost != "Dame":
-                                        piece_lost = "Tour"
-                                        is_new_loss = True
-                                    elif pt == chess.BISHOP and piece_lost not in ["Dame", "Tour"]:
-                                        piece_lost = "Fou"
-                                        is_new_loss = True
-                                    elif pt == chess.KNIGHT and piece_lost not in ["Dame", "Tour", "Fou"]:
-                                        piece_lost = "Cavalier"
-                                        is_new_loss = True
-                                        
-                                    if is_new_loss:
-                                        lost_square = chess.square_name(move_obj_sim.to_square)
-                                
-                                sim_board.push(move_obj_sim)
+                                try:
+                                    move_obj_sim = sim_board.parse_san(san_move)
+                                    target_piece = sim_board.piece_at(move_obj_sim.to_square)
+                                    
+                                    if target_piece and target_piece.color != original_color:
+                                        pt = target_piece.piece_type
+                                        is_new_loss = False
+                                        if pt == chess.QUEEN:
+                                            piece_lost = "Dame"
+                                            is_new_loss = True
+                                        elif pt == chess.ROOK and piece_lost != "Dame":
+                                            piece_lost = "Tour"
+                                            is_new_loss = True
+                                        elif pt == chess.BISHOP and piece_lost not in ["Dame", "Tour"]:
+                                            piece_lost = "Fou"
+                                            is_new_loss = True
+                                        elif pt == chess.KNIGHT and piece_lost not in ["Dame", "Tour", "Fou"]:
+                                            piece_lost = "Cavalier"
+                                            is_new_loss = True
+                                            
+                                        if is_new_loss:
+                                            lost_square = chess.square_name(move_obj_sim.to_square)
+                                    
+                                    sim_board.push(move_obj_sim)
+                                except Exception:
+                                    break
                                 
                         mat_after = get_material_score(sim_board, original_color)
                         mat_opp_after = get_material_score(sim_board, not original_color)
@@ -284,7 +304,6 @@ class AIAnalyzer:
     def generate_move_comment(move_raw, move_san, board_state, is_trap=False, played_continuation=None, best_alternative=None, future_moves=None, precomputed_data=None):
         raw = ChessUtils.remove_special_chars(move_raw.strip())
         board = chess.Board(board_state.fen())
-        turn_color = "Blancs" if board.turn == chess.WHITE else "Noirs"
         
         continuation = played_continuation if played_continuation is not None else future_moves
         
@@ -312,139 +331,13 @@ class AIAnalyzer:
                 if eval_before and eval_after and move_obj:
                     board_after = board.copy()
                     board_after.push(move_obj)
-                    board_best = board.copy()
-                    if best_uci:
-                        try:
-                            board_best.push(chess.Move.from_uci(best_uci))
-                        except Exception:
-                            pass
                     
-                    # CORRECTION : Définition de player_multiplier
-                    player_multiplier = 1 if board.turn == chess.WHITE else -1
-                    
-                    val_before = ChessUtils.get_eval_value(eval_before, board)
-                    val_after = ChessUtils.get_eval_value(eval_after, board_after)
-                    val_best = ChessUtils.get_eval_value(best_eval, board_best)
-                    
-                    # Évaluations relatives au joueur qui vient de jouer
-                    eval_player_before = val_before
-                    eval_player_after = -val_after
-                    eval_player_best = -val_best
-                    
-                    delta = eval_player_after - eval_player_best
-                    swing = eval_player_after - eval_player_before
-                    if move_obj and best_uci and move_obj.uci() == best_uci: delta = 0
-
                     san_eng = board.san(move_obj).strip() 
                     san_fr = ChessUtils.convert_english_to_french_notation(san_eng)
 
-                    is_sacrifice = False
-                    piece_moved = board.piece_at(move_obj.from_square)
-                    piece_name = ChessUtils.get_piece_name_fr(piece_moved) if piece_moved else "Pièce"
-                    
-                    if piece_moved and piece_moved.piece_type in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT]:
-                        if board.is_attacked_by(not board.turn, move_obj.to_square):
-                            is_sacrifice = True
-
-                    t_before = eval_before.get('type', 'cp') if isinstance(eval_before, dict) else getattr(eval_before, 'type', 'cp')
-                    t_after = eval_after.get('type', 'cp') if isinstance(eval_after, dict) else getattr(eval_after, 'type', 'cp')
-                    val_after_raw = eval_after.get('value', 0) if isinstance(eval_after, dict) else (eval_after.value if hasattr(eval_after, 'value') and eval_after.value is not None else 0)
-                    
-                    mate_status = ""
-                    is_blunder_into_mate = False
-
-                    if board_after.is_checkmate():
-                        mate_status = "Échec et mat sur l'échiquier"
-                    elif t_after == 'mate' and val_after_raw != 0:
-                        side_to_move_after = board_after.turn
-                        val_after_absolute = val_after_raw if side_to_move_after == chess.WHITE else -val_after_raw
-                        winning_side = "les Blancs" if val_after_absolute > 0 else "les Noirs"
-                        
-                        is_mate_for_player = (val_after_absolute > 0 and board.turn == chess.WHITE) or (val_after_absolute < 0 and board.turn == chess.BLACK)
-                        
-                        mate_in = abs(val_after_raw)
-                        
-                        is_mate_missed = False
-                        if is_mate_for_player and continuation:
-                            if len(continuation) >= mate_in * 2:
-                                is_mate_missed = True
-
-                        if not best_pv_san:
-                            try:
-                                # REMPLACEMENT OPTIMISÉ : Utilisation de get_fast_pv_sequence 
-                                max_mate_moves = abs(val_after_raw) * 2
-                                seq_eng = analyzer.get_fast_pv_sequence(board, max_moves=max_mate_moves)
-                                
-                                if seq_eng:
-                                    best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
-                                    alt_recom_value = best_pv_san
-                            except Exception as e:
-                                Logger.debug_log(f"Erreur extraction PV mat : {e}", "WARNING")
-
-                        if not is_mate_for_player:
-                            if t_before != 'mate':
-                                mate_status = f"Gaffe critique - Autorise un Mat forcé en {mate_in} coups par {winning_side}"
-                            else:
-                                mate_status = f"Mat forcé en {mate_in} coups par {winning_side}"
-                            is_blunder_into_mate = True
-                        elif is_mate_for_player and not is_mate_missed:
-                            mate_status = f"Mat forcé en {mate_in} coups par {winning_side}"
-
-                    eval_symbol = ""
-                    qualif_math = "Coup solide"
-                    
-                    mate_in_val = (val_after_raw * player_multiplier) if t_after == 'mate' else 0
-                    if is_sacrifice and t_after == 'mate' and 0 < mate_in_val <= 3: 
-                        eval_symbol = "!!"
-                        qualif_math = "Coup brillant"
-                    elif delta <= -300: 
-                        eval_symbol = "??"
-                        qualif_math = "Gaffe majeure"
-                    elif delta <= -150: 
-                        eval_symbol = "?"
-                        qualif_math = "Erreur sérieuse"
-                    elif delta <= -80: 
-                        eval_symbol = "?!"
-                        qualif_math = "Imprécision"
-                    elif delta <= -30: 
-                        eval_symbol = "!?"
-                        qualif_math = "Coup douteux"
-                    elif delta == 0 and swing >= 300: 
-                        eval_symbol = "!"
-                        qualif_math = "Excellent coup"
-                    elif delta > -10: 
-                        qualif_math = "Meilleur coup"
-                    
-                    pdf_move_str = f"{san_fr}{eval_symbol}"
-                    
-                    tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, continuation, delta=delta)
-                    
-                    if board_after.is_checkmate():
-                        tactics = ""
-                    
-                    if qualif_math in ["Meilleur coup", "Excellent coup", "Coup brillant", "Coup solide"] and tactics:
-                        tact_list = tactics.split(" ; ")
-                        tactics = " ; ".join([t for t in tact_list if not any(term in t.lower() for term in ["perte", "expose", "gaffe"])])
-                    
-                    if "via :" in tactics:
-                        tactics = tactics.replace("via :", "- Meilleure ligne calculée :")
-                    elif "(suite illustrée)" in tactics:
-                        tactics = tactics.replace("(suite illustrée)", "- Meilleure ligne calculée : (illustrée dans la partie)")
-                        
-                    eval_exacte = mate_status if mate_status else qualif_math
-                    if tactics:
-                        eval_exacte += f" - Tactique : {tactics}"
-                        
-                    if "- Meilleure ligne calculée :" in eval_exacte:
-                        parts = eval_exacte.split("- Meilleure ligne calculée :", 1)
-                        eval_exacte = f'{parts[0]}- Meilleure ligne calculée : "{parts[1].strip()}"'
-                    
-                    if best_pv_san is None:
-                        alt_recom_value = "Aucune"
-
-                    if delta < -30 and best_uci and not board_after.is_checkmate() and best_pv_san is None:
+                    # Extraction de la meilleure alternative uniquement si le coup n'est pas un mat immédiat
+                    if best_uci and move_obj.uci() != best_uci and not board_after.is_checkmate():
                         try:
-                            # REMPLACEMENT OPTIMISÉ : Utilisation de get_fast_pv_sequence
                             seq_eng = analyzer.get_fast_pv_sequence(board, max_moves=4)
                             if seq_eng:
                                 best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
@@ -452,9 +345,121 @@ class AIAnalyzer:
                         except Exception as e:
                             Logger.debug_log(f"Erreur extraction PV alternative : {e}", "WARNING")
 
-                    # Construction directe du commentaire déterministe
+                    t_before = eval_before.get('type', 'cp') if isinstance(eval_before, dict) else getattr(eval_before, 'type', 'cp')
+                    t_after = eval_after.get('type', 'cp') if isinstance(eval_after, dict) else getattr(eval_after, 'type', 'cp')
+                    val_after_raw = eval_after.get('value', 0) if isinstance(eval_after, dict) else (eval_after.value if hasattr(eval_after, 'value') and eval_after.value is not None else 0)
+
+                    mate_status = ""
+                    is_blunder_into_mate = False
+                    is_mate_for_player = False
+
+                    if board_after.is_checkmate():
+                        mate_status = "Échec et mat sur l'échiquier"
+                        is_mate_for_player = True
+                    elif t_after == 'mate' and val_after_raw != 0:
+                        side_to_move_after = board_after.turn
+                        # val_after_raw < 0 dans board_after signifie que l'adversaire subit le mat (le joueur gagne par mat)
+                        is_mate_for_player = (val_after_raw < 0)
+                        winning_side = "les Blancs" if (side_to_move_after == chess.WHITE and val_after_raw > 0) or (side_to_move_after == chess.BLACK and val_after_raw < 0) else "les Noirs"
+                        mate_in = abs(val_after_raw)
+
+                        if not is_mate_for_player:
+                            if t_before != 'mate':
+                                mate_status = f"Gaffe critique - Autorise un Mat forcé en {mate_in} coups par {winning_side}"
+                            else:
+                                mate_status = f"Mat forcé en {mate_in} coups par {winning_side}"
+                            is_blunder_into_mate = True
+                        else:
+                            mate_status = f"Mat forcé en {mate_in} coups par {winning_side}"
+
+                    val_before = ChessUtils.get_eval_value(eval_before, board)
+                    val_after = ChessUtils.get_eval_value(eval_after, board_after)
+                    
+                    board_best = board.copy()
+                    if best_uci:
+                        try:
+                            board_best.push(chess.Move.from_uci(best_uci))
+                        except Exception:
+                            pass
+                    val_best = ChessUtils.get_eval_value(best_eval, board_best) if best_eval else val_before
+
+                    eval_player_before = val_before
+                    eval_player_after = -val_after
+                    eval_player_best = -val_best
+
+                    delta = eval_player_after - eval_player_best
+                    swing = eval_player_after - eval_player_before
+
+                    # Un mat sur l'échiquier ou l'exécution du meilleur coup force delta = 0
+                    if board_after.is_checkmate() or (best_uci and move_obj.uci() == best_uci):
+                        delta = 0
+
+                    is_sacrifice = False
+                    piece_moved = board.piece_at(move_obj.from_square)
+                    if piece_moved and piece_moved.piece_type in [chess.QUEEN, chess.ROOK, chess.BISHOP, chess.KNIGHT]:
+                        if board.is_attacked_by(not board.turn, move_obj.to_square):
+                            is_sacrifice = True
+
+                    eval_symbol = ""
+                    qualif_math = "Coup solide"
+
+                    if board_after.is_checkmate():
+                        qualif_math = "Meilleur coup"
+                        eval_symbol = ""
+                        alt_recom_value = "Aucune"
+                    elif is_blunder_into_mate:
+                        eval_symbol = "??"
+                        qualif_math = "Gaffe majeure"
+                    elif is_sacrifice and is_mate_for_player and 0 < abs(val_after_raw) <= 3:
+                        eval_symbol = "!!"
+                        qualif_math = "Coup brillant"
+                    elif delta <= -300:
+                        eval_symbol = "??"
+                        qualif_math = "Gaffe majeure"
+                    elif delta <= -150:
+                        eval_symbol = "?"
+                        qualif_math = "Erreur sérieuse"
+                    elif delta <= -80:
+                        eval_symbol = "?!"
+                        qualif_math = "Imprécision"
+                    elif delta <= -30:
+                        eval_symbol = "!?"
+                        qualif_math = "Coup douteux"
+                    elif delta == 0 and swing >= 300:
+                        eval_symbol = "!"
+                        qualif_math = "Excellent coup"
+                    elif delta > -10:
+                        qualif_math = "Meilleur coup"
+
+                    pdf_move_str = f"{san_fr}{eval_symbol}"
+
+                    tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, continuation, delta=delta, best_eval=best_eval, best_pv_san=best_pv_san)
+
+                    if board_after.is_checkmate():
+                        tactics = ""
+
+                    if qualif_math in ["Meilleur coup", "Excellent coup", "Coup brillant", "Coup solide"] and tactics and "Manque" not in tactics:
+                        tact_list = tactics.split(" ; ")
+                        tactics = " ; ".join([t for t in tact_list if not any(term in t.lower() for term in ["perte", "expose", "gaffe"])])
+
+                    if "via :" in tactics:
+                        tactics = tactics.replace("via :", "- Meilleure ligne calculée :")
+                    elif "(suite illustrée)" in tactics:
+                        tactics = tactics.replace("(suite illustrée)", "- Meilleure ligne calculée : (illustrée dans la partie)")
+
+                    eval_exacte = mate_status if mate_status else qualif_math
+                    if tactics:
+                        eval_exacte += f" - Tactique : {tactics}"
+
+                    if "- Meilleure ligne calculée :" in eval_exacte:
+                        parts = eval_exacte.split("- Meilleure ligne calculée :", 1)
+                        eval_exacte = f'{parts[0]}- Meilleure ligne calculée : "{parts[1].strip()}"'
+
+                    if board_after.is_checkmate() or (best_uci and move_obj.uci() == best_uci):
+                        alt_recom_value = "Aucune"
+
                     comment_final = f"{eval_exacte}."
-                    if alt_recom_value != "Aucune" and (not best_uci or move_obj.uci() != best_uci):
+                    if alt_recom_value != "Aucune" and (not best_uci or move_obj.uci() != best_uci) and not board_after.is_checkmate():
                         comment_final += f" L'alternative recommandée était : {alt_recom_value}."
 
                     Logger.debug_log(f"[Génération Commentaire] {pdf_move_str} -> {comment_final.strip()}", "DEBUG")
@@ -464,18 +469,18 @@ class AIAnalyzer:
             except Exception as e:
                 Logger.debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")
                 return "Analyse impossible : erreur de calcul.", ChessUtils.convert_english_to_french_notation(move_san), tactics, "Aucune"
-        
+
         san_fr_fb = ChessUtils.convert_english_to_french_notation(move_san)
-        
-        if "x" in raw: 
+
+        if "x" in raw:
             fallback_comment = "Coup de prise : attention à la position des pièces."
-        elif "#" in raw: 
+        elif "#" in raw:
             fallback_comment = "Échec et mat. La partie est terminée."
-        elif "+" in raw: 
+        elif "+" in raw:
             fallback_comment = "Coup d'échec : menace immédiate."
-        else: 
+        else:
             fallback_comment = "Coup neutre : pas de menace immédiate."
-            
+
         Logger.debug_log(f"[Génération Fallback] {san_fr_fb} -> {fallback_comment}", "DEBUG")
-        
+
         return fallback_comment, san_fr_fb, tactics, "Aucune"
