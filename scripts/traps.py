@@ -3,6 +3,7 @@ import sys
 import re
 import json
 import chess
+import hashlib
 from pathlib import Path
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
@@ -148,6 +149,74 @@ def ajouter_pied_page(canvas, doc):
     canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
     canvas.restoreState()
 
+def estimate_trap_elo(piege, stockfish_depth):
+    from classes.json_cache import CacheManager
+    cache = CacheManager.load_cache()
+    
+    coups_str = piege.get("coups", "")
+    # Empreinte MD5 et version 2 pour forcer le recalcul (tuple au lieu d'int)
+    cache_key = f"elo_trap_v2_{hashlib.md5(coups_str.encode()).hexdigest()}"
+    
+    if cache_key in cache:
+        return cache[cache_key]
+
+    analyzer = StockfishAnalyzer()
+    engine = analyzer.get_engine(depth=stockfish_depth)
+    if not engine: return 1200, 1200
+    
+    moves = ChessUtils.parse_moves(coups_str)
+    board = chess.Board()
+    attacker_color_str = "white" if piege.get("defenseur") == "Noirs" else "black"
+    
+    details = []
+    for move in moves:
+        san = move.get("san")
+        color = move.get("color")
+        if not san: continue
+        
+        # On évalue tous les coups (attaquant et défenseur)
+        eval_before, eval_after, move_obj = analyzer.analyze_move(board, san)
+        _, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
+        
+        if eval_after and best_eval and move_obj:
+            board_after = board.copy()
+            board_after.push(move_obj)
+            
+            val_after = ChessUtils.get_eval_value(eval_after, board_after)
+            
+            board_best = board.copy()
+            if best_uci:
+                try: board_best.push(chess.Move.from_uci(best_uci))
+                except Exception: pass
+            val_best = ChessUtils.get_eval_value(best_eval, board_best)
+            
+            multiplier = 1 if board.turn == chess.WHITE else -1
+            eval_player_after = val_after * multiplier
+            eval_player_best = val_best * multiplier
+            
+            delta = eval_player_after - eval_player_best
+            if board_after.is_checkmate() or (best_uci and move_obj.uci() == best_uci):
+                delta = 0
+                
+            details.append({"color": color, "precision": delta})
+        
+        try: board.push(board.parse_san(san))
+        except Exception: break
+        
+    w_elo, b_elo = ChessUtils.calculate_elo_from_details(details)
+    
+    if attacker_color_str == "white":
+        elo_attaquant, elo_defenseur = w_elo, b_elo
+    else:
+        elo_attaquant, elo_defenseur = b_elo, w_elo
+        
+    result = (elo_attaquant, elo_defenseur)
+    
+    cache[cache_key] = result
+    CacheManager.save_cache(cache)
+    
+    return result
+
 def generer_pdf(stockfish_depth=18, verbose=1):
     enabled, level = (True, max(int(verbose), 1)) if verbose else (False, 0)
     Logger.set_debug_enabled(enabled, level=level)
@@ -162,7 +231,13 @@ def generer_pdf(stockfish_depth=18, verbose=1):
 
     try:
         with data_path.open('r', encoding='utf-8') as f: trappes_data = json.load(f)
-        Logger.debug_log(f"{len(trappes_data)} pièges chargés depuis le fichier JSON", "INFO")
+        Logger.debug_log("Calcul et tri des pièges par niveau ELO...", "ESSENTIAL")
+        for piege in trappes_data:
+            elo_att, elo_def = estimate_trap_elo(piege, stockfish_depth)
+            piege['elo_attaquant'] = elo_att
+            piege['elo_defenseur'] = elo_def
+            
+        trappes_data.sort(key=lambda p: (p['elo_attaquant'], p['elo_defenseur']))
             
         doc = SimpleDocTemplate(str(output_path), pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
         styles = getSampleStyleSheet()
@@ -198,7 +273,9 @@ def generer_pdf(stockfish_depth=18, verbose=1):
             
             if not fen_final or not validate_fen(fen_final): continue
             
-            meta = f"<b>Analyse :</b> {analyze_position(fen_final)} | <b>Type :</b> {classify_trap(piege)} | <b>Difficulté :</b> {estimate_difficulty(piege)}"
+            elo_attaquant = piege.get("elo_attaquant", 1200)
+            elo_defenseur = piege.get("elo_defenseur", 1200)
+            meta = f"<b>ELO Attaquant :</b> ~{elo_attaquant} (Défenseur : ~{elo_defenseur}) | <b>Analyse :</b> {analyze_position(fen_final)} | <b>Type :</b> {classify_trap(piege)} | <b>Difficulté :</b> {estimate_difficulty(piege)}"
             bloc.extend([Paragraph(meta, normal_style), Spacer(1, 10)])
 
             table_data = [[Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style), Paragraph("<b>Noir</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style)]]

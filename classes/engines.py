@@ -70,15 +70,31 @@ class StockfishAnalyzer:
                 del self._best_move_cache[k]
 
     def _reset_engine(self):
-        """Réinitialise l'instance Stockfish en cas de blocage (Watchdog)."""
+        """Réinitialise l'instance Stockfish et le pool de threads en cas de blocage (Watchdog)."""
         Logger.debug_log("Réinitialisation forcée du moteur Stockfish suite à un blocage...", "WARNING")
+        
         if self.engine:
             try:
-                self.engine.__del__() # Tente de tuer le processus proprement
-            except Exception:
-                pass
+                # 1. Tuer brutalement le processus système (évite le blocage de __del__)
+                if hasattr(self.engine, '_process') and self.engine._process:
+                    self.engine._process.kill()
+            except Exception as e:
+                Logger.debug_log(f"Erreur lors du kill du processus : {e}", "ERROR")
+        
         self.engine = None
         self._init_attempted = False
+        
+        # 2. Le thread précédent étant définitivement bloqué, on recrée l'executor
+        try:
+            # cancel_futures=True nettoie la file d'attente (disponible Python 3.9+)
+            self._executor.shutdown(wait=False, cancel_futures=True) 
+        except Exception:
+            pass
+        
+        # On instancie un tout nouveau worker pour les prochains calculs
+        import concurrent.futures
+        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        
         self.get_engine()
 
     def _run_with_watchdog(self, task_name, func, *args, **kwargs):
