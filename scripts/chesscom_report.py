@@ -49,11 +49,23 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
     white_name, black_name = game.get("white", {}).get("username", ""), game.get("black", {}).get("username", "")
     result_text = game_obj.headers.get("Result", "*")
     
+    w_res = game.get("white", {}).get("result", "")
+    b_res = game.get("black", {}).get("result", "")
+
     if result_text == "*":
-        w_res, b_res = game.get("white", {}).get("result", ""), game.get("black", {}).get("result", "")
         if w_res == "win": result_text = "1-0"
         elif b_res == "win": result_text = "0-1"
         elif w_res in ["agreed", "repetition", "stalemate", "insufficient", "50move", "timevsinsufficient"]: result_text = "1/2-1/2"
+
+    term_str = "Partie terminée."
+    if w_res == "win": term_str = f"Victoire des Blancs (Noirs : {b_res})"
+    elif b_res == "win": term_str = f"Victoire des Noirs (Blancs : {w_res})"
+    elif w_res in ["agreed", "repetition", "stalemate", "insufficient", "50move", "timevsinsufficient"]: 
+        term_str = f"Nulle ({w_res})"
+    elif w_res in ["timeout", "abandoned", "resigned"] or b_res in ["timeout", "abandoned", "resigned"]:
+        term_str = "Victoire par abandon ou temps."
+        if w_res in ["timeout", "abandoned", "resigned"]: term_str = f"Victoire des Noirs (Blancs : {w_res})"
+        else: term_str = f"Victoire des Blancs (Noirs : {b_res})"
 
     board_before = game_obj.board()
     moves, san_moves = [], []
@@ -123,6 +135,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         "is_complete": existing_game.get("is_complete", False) if existing_game else False,
         "date": datetime.fromtimestamp(game.get("end_time", 0)).strftime("%Y-%m-%d %H:%M") if game.get("end_time") else None,
         "end_time": game.get("end_time"),
+        "termination": term_str,
         "result": result_text,
         "time_class": game.get("time_class", "inconnu"),
         "opponent_type": ChessUtils.classify_opponent_type(black_name if white_name == username else white_name),
@@ -200,10 +213,22 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
                     
                     val_before = ChessUtils.get_eval_value(eval_before, board_before)
                     val_after = ChessUtils.get_eval_value(eval_after, board_after)
-                    val_best = ChessUtils.get_eval_value(best_eval, board_after) if best_eval else val_before
                     
-                    swing = (-val_after) - val_before
-                    precision = min((-val_after) - (-val_best), swing)
+                    board_best = board_before.copy()
+                    if best_uci:
+                        try: board_best.push(chess.Move.from_uci(best_uci))
+                        except Exception: pass
+                    val_best = ChessUtils.get_eval_value(best_eval, board_best) if best_eval else val_before
+                    
+                    player_color = board_before.turn
+                    multiplier = 1 if player_color == chess.WHITE else -1
+                    
+                    eval_player_before = val_before * multiplier
+                    eval_player_after = val_after * multiplier
+                    eval_player_best = val_best * multiplier
+                    
+                    swing = eval_player_after - eval_player_before
+                    precision = min(eval_player_after - eval_player_best, swing)
                     if best_uci and move_obj.uci() == best_uci and swing > -50: 
                         precision = 0
             except Exception as e: 
@@ -329,11 +354,18 @@ def render_game_analysis_table(game, normal_style, bold_style):
             Paragraph(row.get("black", ""), bold_style), Paragraph("<br/>".join(parts) if parts else "<i>Développement validé.</i>", normal_style)
         ])
         
+    termination_reason = game.get("termination", "Fin de la partie.")
+    table_data.append([
+        "", Paragraph("<b>Fin</b>", normal_style), 
+        Paragraph(f"<i>{termination_reason}</i>", normal_style), "", ""
+    ])
+
     t = Table(table_data, colWidths=[120, 30, 50, 50, 260], repeatRows=1)
     t.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
         ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, Config.COLOR_BG_LIGHT]),
-        ('LINEBELOW', (0,0), (-1,-1), 0.5, Config.COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6)
+        ('LINEBELOW', (0,0), (-1,-1), 0.5, Config.COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6),
+        ('SPAN', (2, -1), (4, -1))
     ]))
     elements.append(t)
     return elements

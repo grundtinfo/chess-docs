@@ -195,8 +195,12 @@ class AIAnalyzer:
                             Logger.debug_log(f"Erreur simulation mat : {e}", "WARNING")
                     
                 elif t == 'cp':
-                    cp_val = val * player_multiplier
-                    if cp_val >= 300 and delta is not None and delta >= 150 and not any("prend" in t for t in tactics):
+                    val_white_centric = ChessUtils.get_eval_value(eval_after, board_after)
+                    player_color = board_before.turn
+                    multiplier = 1 if player_color == chess.WHITE else -1
+                    cp_val = val_white_centric * multiplier
+                    
+                    if cp_val >= 300 and delta is not None and delta >= 150 and not any("prend" in tact for tact in tactics):
                         tactics.append("Prépare un gain matériel décisif imminent")
                     elif delta is not None and delta <= -30:
                         piece_lost = None
@@ -220,9 +224,11 @@ class AIAnalyzer:
                             for san_move in seq_eng:
                                 try:
                                     move_obj_sim = sim_board.parse_san(san_move)
-                                    target_piece = sim_board.piece_at(move_obj_sim.to_square)
+                                    # On s'assure que la pièce capturée était physiquement sur la case JUSTE APRÈS la gaffe
+                                    target_piece = board_after.piece_at(move_obj_sim.to_square)
+                                    sim_target = sim_board.piece_at(move_obj_sim.to_square)
                                     
-                                    if target_piece and target_piece.color != original_color:
+                                    if target_piece and sim_target and target_piece == sim_target and target_piece.color != original_color:
                                         pt = target_piece.piece_type
                                         is_new_loss = False
                                         if pt == chess.QUEEN:
@@ -290,7 +296,11 @@ class AIAnalyzer:
                                 tactics.append(f"Concession positionnelle permettant à l'adversaire de prendre l'initiative{seq_str}")
                             else:
                                 tactics.append(f"Coup douteux qui déséquilibre ou affaiblit la position{seq_str}")
-                        
+
+        # Suppression des félicitations tactiques (fourchette, échec) si le coup est mathématiquement une gaffe absolue
+        if delta is not None and delta <= -150:
+            tactics = [t for t in tactics if not any(kw in t for kw in ['fourchette', 'Échec direct', 'Découverte'])]
+                
         tactics_comment = " ; ".join(tactics) if tactics else ""
         
         if tactics_comment:
@@ -383,9 +393,13 @@ class AIAnalyzer:
                             pass
                     val_best = ChessUtils.get_eval_value(best_eval, board_best) if best_eval else val_before
 
-                    eval_player_before = val_before
-                    eval_player_after = -val_after
-                    eval_player_best = -val_best
+                    # Alignement strict sur la couleur du joueur ayant joué le coup
+                    player_color = board.turn
+                    multiplier = 1 if player_color == chess.WHITE else -1
+
+                    eval_player_before = val_before * multiplier
+                    eval_player_after = val_after * multiplier
+                    eval_player_best = val_best * multiplier
 
                     delta = eval_player_after - eval_player_best
                     swing = eval_player_after - eval_player_before
