@@ -330,22 +330,22 @@ def render_game_analysis_table(game, normal_style, bold_style):
     for row in rows:
         fen = row.get("black_fen") or row.get("white_fen")
         
-        fleches_blanches, fleches_noires, fleches_rouges = [], [], []
+        fleches_blanches, fleches_noires, fleches_bordeaux = [], [], []
         
         # Attribution des flèches selon la couleur et si c'est une prise
         if row.get("white_uci"):
-            if row.get("white_is_capture"): fleches_rouges.append(row["white_uci"])
+            if row.get("white_is_capture"): fleches_bordeaux.append(row["white_uci"])
             else: fleches_blanches.append(row["white_uci"])
                 
         if row.get("black_uci"):
-            if row.get("black_is_capture"): fleches_rouges.append(row["black_uci"])
+            if row.get("black_is_capture"): fleches_bordeaux.append(row["black_uci"])
             else: fleches_noires.append(row["black_uci"])
 
         diag = ChessboardFlowable(
             fen, size=110, 
             fleches_blanches=fleches_blanches, 
             fleches_noires=fleches_noires, 
-            fleches_rouges=fleches_rouges, 
+            fleches_bordeaux=fleches_bordeaux, 
             orientation=orientation
         ) if fen else ""
         

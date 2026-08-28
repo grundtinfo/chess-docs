@@ -11,7 +11,7 @@ from classes.logger import Logger
 _SVG_DRAWING_CACHE = {}
 
 class ChessboardFlowable(Flowable):
-    def __init__(self, fen, size=150, fleches_defense=None, fleches_menace=None, fleches_oranges=None, fleches_bleues=None, fleches_blanches=None, fleches_noires=None, fleches_rouges=None, orientation=chess.WHITE):
+    def __init__(self, fen, size=150, fleches_defense=None, fleches_menace=None, fleches_oranges=None, fleches_bleues=None, fleches_blanches=None, fleches_noires=None, fleches_rouges=None, fleches_bordeaux=None, orientation=chess.WHITE):
         Flowable.__init__(self)
         self.fen = fen
         self.size = size
@@ -22,6 +22,7 @@ class ChessboardFlowable(Flowable):
         self.fleches_blanches = fleches_blanches or []
         self.fleches_noires = fleches_noires or []
         self.fleches_rouges = fleches_rouges or []
+        self.fleches_bordeaux = fleches_bordeaux or []
         self.orientation = orientation
 
     def wrap(self, availWidth, availHeight): 
@@ -36,7 +37,8 @@ class ChessboardFlowable(Flowable):
                 self.fen, self.size, self.orientation,
                 tuple(self.fleches_defense), tuple(self.fleches_menace),
                 tuple(self.fleches_oranges), tuple(self.fleches_bleues),
-                tuple(self.fleches_blanches), tuple(self.fleches_noires), tuple(self.fleches_rouges)
+                tuple(self.fleches_blanches), tuple(self.fleches_noires), tuple(self.fleches_rouges),
+                tuple(self.fleches_bordeaux)
             )
             
             if cache_key in _SVG_DRAWING_CACHE:
@@ -60,6 +62,7 @@ class ChessboardFlowable(Flowable):
                 add_arrows(self.fleches_blanches, "white")
                 add_arrows(self.fleches_noires, "black")
                 add_arrows(self.fleches_rouges, "red")
+                add_arrows(self.fleches_bordeaux, "#800020") # Hex pour le Bordeaux
 
                 svg = chess.svg.board(board=board, size=self.size, arrows=arrows, orientation=self.orientation)
                 drawing = svg2rlg(StringIO(svg))
