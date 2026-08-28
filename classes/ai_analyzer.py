@@ -341,6 +341,17 @@ class AIAnalyzer:
         raw = ChessUtils.remove_special_chars(move_raw.strip())
         board = chess.Board(board_state.fen())
         
+        cache_key = None
+        trap_cache = {}
+        if is_trap:
+            from classes.json_cache import CacheManager
+            trap_cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
+            cache_key = f"{board_state.fen()}_{raw}"
+            if cache_key in trap_cache:
+                Logger.debug_log(f"[Cache Trap] Récupération de l'analyse pour le coup {raw}", "INFO")
+                cached = trap_cache[cache_key]
+                return cached.get("comment", ""), cached.get("move_str", ""), cached.get("tactics", ""), cached.get("alt_recom", "Aucune")
+
         continuation = played_continuation if played_continuation is not None else future_moves
         
         analyzer = StockfishAnalyzer()
@@ -504,7 +515,20 @@ class AIAnalyzer:
 
                     Logger.debug_log(f"[Génération Commentaire] {pdf_move_str} -> {comment_final.strip()}", "DEBUG")
 
-                    return comment_final.strip(), pdf_move_str, tactics, alt_recom_value
+                    result_tuple = (comment_final.strip(), pdf_move_str, tactics, alt_recom_value)
+
+                    if is_trap and cache_key:
+                        trap_cache[cache_key] = {
+                            "comment": result_tuple[0],
+                            "move_str": result_tuple[1],
+                            "tactics": result_tuple[2],
+                            "alt_recom": result_tuple[3]
+                        }
+                        from classes.json_cache import CacheManager
+                        CacheManager.save_cache(trap_cache, CacheManager.TRAP_CACHE_FILE)
+                        Logger.debug_log(f"[Cache Trap] Nouvelle analyse sauvegardée pour {raw}", "DEBUG")
+
+                    return result_tuple
 
             except Exception as e:
                 Logger.debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")

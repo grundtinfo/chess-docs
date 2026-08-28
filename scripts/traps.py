@@ -85,7 +85,7 @@ def generate_moves_table(piege, stockfish_depth=18):
             coup_annote = cache[cache_key]["coup_annote"]
             Logger.debug_log(f"[Cache Hit] Coup {move_san}", "DEBUG")
         else:
-            commentaire, coup_annote, _, _ = AIAnalyzer.generate_move_comment(move.get("raw", ""), move_san, board, is_trap=False, future_moves=future_moves)
+            commentaire, coup_annote, _, _ = AIAnalyzer.generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves)
             Logger.debug_log(f"[Génération IA] {move_san} -> {commentaire.strip()}", "DEBUG")
             cache[cache_key] = {"commentaire": commentaire, "coup_annote": coup_annote}
             cache_updated = True
