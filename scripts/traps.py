@@ -272,9 +272,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
             
             if not fen_final or not validate_fen(fen_final): continue
             
-            elo_attaquant = piege.get("elo_attaquant", 1200)
-            elo_defenseur = piege.get("elo_defenseur", 1200)
-            meta = f"<b>ELO Attaquant :</b> ~{elo_attaquant} (Défenseur : ~{elo_defenseur}) | <b>Analyse :</b> {analyze_position(fen_final)} | <b>Type :</b> {classify_trap(piege)} | <b>Difficulté :</b> {estimate_difficulty(piege)}"
+            meta = f"<b>Analyse :</b> {analyze_position(fen_final)} | <b>Type :</b> {classify_trap(piege)} | <b>Difficulté :</b> {estimate_difficulty(piege)}"
             bloc.extend([Paragraph(meta, normal_style), Spacer(1, 10)])
 
             table_data = [[Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style), Paragraph("<b>Noir</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style)]]
