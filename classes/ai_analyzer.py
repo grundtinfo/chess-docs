@@ -339,7 +339,7 @@ class AIAnalyzer:
     @staticmethod
     def generate_move_comment(move_raw, move_san, board_state, is_trap=False, played_continuation=None, best_alternative=None, future_moves=None, precomputed_data=None):
         raw = ChessUtils.remove_special_chars(move_raw.strip())
-        board = chess.Board(board_state.fen())
+        board = board_state.copy()
         
         cache_key = None
         trap_cache = {}
@@ -382,13 +382,43 @@ class AIAnalyzer:
                     san_eng = board.san(move_obj).strip() 
                     san_fr = ChessUtils.convert_english_to_french_notation(san_eng)
 
-                    # Extraction de la meilleure alternative uniquement si le coup n'est pas un mat immédiat
-                    if best_uci and move_obj.uci() != best_uci and not board_after.is_checkmate():
+                    # OPTIMISATION : Calculer le delta AVANT d'invoquer get_fast_pv_sequence pour économiser les appels Stockfish
+                    val_before = ChessUtils.get_eval_value(eval_before, board)
+                    val_after = ChessUtils.get_eval_value(eval_after, board_after)
+                    
+                    board_best = board.copy()
+                    if best_uci:
                         try:
-                            seq_eng = analyzer.get_fast_pv_sequence(board, max_moves=4)
-                            if seq_eng:
-                                best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
+                            board_best.push(chess.Move.from_uci(best_uci))
+                        except Exception:
+                            pass
+                    val_best = ChessUtils.get_eval_value(best_eval, board_best) if best_eval else val_before
+
+                    player_color = board.turn
+                    multiplier = 1 if player_color == chess.WHITE else -1
+
+                    eval_player_before = val_before * multiplier
+                    eval_player_after = val_after * multiplier
+                    eval_player_best = val_best * multiplier
+
+                    delta = eval_player_after - eval_player_best
+                    swing = eval_player_after - eval_player_before
+
+                    if board_after.is_checkmate() or (best_uci and move_obj.uci() == best_uci):
+                        delta = 0
+
+                    # Extraction de la meilleure alternative uniquement si le coup est douteux ou pire (delta <= -30)
+                    if best_uci and move_obj.uci() != best_uci and not board_after.is_checkmate() and delta <= -30:
+                        try:
+                            # Prise en charge d'un précalcul éventuel pour mutualiser les calculs
+                            best_pv_san = precomputed_data.get('best_pv_san') if precomputed_data else None
+                            if best_pv_san:
                                 alt_recom_value = best_pv_san
+                            else:
+                                seq_eng = analyzer.get_fast_pv_sequence(board, max_moves=4)
+                                if seq_eng:
+                                    best_pv_san = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
+                                    alt_recom_value = best_pv_san
                         except Exception as e:
                             Logger.debug_log(f"Erreur extraction PV alternative : {e}", "WARNING")
 
@@ -405,7 +435,6 @@ class AIAnalyzer:
                         is_mate_for_player = True
                     elif t_after == 'mate' and val_after_raw != 0:
                         side_to_move_after = board_after.turn
-                        # val_after_raw < 0 dans board_after signifie que l'adversaire subit le mat (le joueur gagne par mat)
                         is_mate_for_player = (val_after_raw < 0)
                         winning_side = "les Blancs" if (side_to_move_after == chess.WHITE and val_after_raw > 0) or (side_to_move_after == chess.BLACK and val_after_raw < 0) else "les Noirs"
                         mate_in = abs(val_after_raw)
@@ -418,32 +447,6 @@ class AIAnalyzer:
                             is_blunder_into_mate = True
                         else:
                             mate_status = f"Mat forcé en {mate_in} coups par {winning_side}"
-
-                    val_before = ChessUtils.get_eval_value(eval_before, board)
-                    val_after = ChessUtils.get_eval_value(eval_after, board_after)
-                    
-                    board_best = board.copy()
-                    if best_uci:
-                        try:
-                            board_best.push(chess.Move.from_uci(best_uci))
-                        except Exception:
-                            pass
-                    val_best = ChessUtils.get_eval_value(best_eval, board_best) if best_eval else val_before
-
-                    # Alignement strict sur la couleur du joueur ayant joué le coup
-                    player_color = board.turn
-                    multiplier = 1 if player_color == chess.WHITE else -1
-
-                    eval_player_before = val_before * multiplier
-                    eval_player_after = val_after * multiplier
-                    eval_player_best = val_best * multiplier
-
-                    delta = eval_player_after - eval_player_best
-                    swing = eval_player_after - eval_player_before
-
-                    # Un mat sur l'échiquier ou l'exécution du meilleur coup force delta = 0
-                    if board_after.is_checkmate() or (best_uci and move_obj.uci() == best_uci):
-                        delta = 0
 
                     is_sacrifice = False
                     piece_moved = board.piece_at(move_obj.from_square)
