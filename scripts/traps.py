@@ -21,6 +21,7 @@ from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer
 from classes.ai_analyzer import AIAnalyzer
 from classes.pdf_components import ChessboardFlowable, PDFUtils
+from classes.json_cache import CacheManager
 
 def classify_trap(piege):
     coups = piege["coups"]
@@ -61,14 +62,13 @@ def split_move_options(moves_text):
     return [m.strip() for m in re.split(r'\s+ou\s+|\s*,\s*', moves_text) if m.strip()]
 
 def generate_moves_table(piege, stockfish_depth=18):
-    from classes.json_cache import CacheManager
     Logger.debug_log(f"Génération table des coups pour le piège {piege.get('nom', 'sans nom')}", "INFO")
     StockfishAnalyzer().get_engine(depth=stockfish_depth)
     moves = ChessUtils.parse_moves(piege.get("coups", ""))
     rows, board, current_row = [], chess.Board(), None
 
-    # Chargement du cache
-    cache = CacheManager.load_cache()
+    # Chargement du cache dédié aux pièges
+    cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
     cache_updated = False
 
     for i, move in enumerate(moves):
@@ -106,7 +106,7 @@ def generate_moves_table(piege, stockfish_depth=18):
                 
     # Sauvegarde uniquement s'il y a eu des modifications
     if cache_updated:
-        CacheManager.save_cache(cache)
+        CacheManager.save_cache(cache, CacheManager.TRAP_CACHE_FILE)
         
     return rows
 
@@ -150,8 +150,7 @@ def ajouter_pied_page(canvas, doc):
     canvas.restoreState()
 
 def estimate_trap_elo(piege, stockfish_depth):
-    from classes.json_cache import CacheManager
-    cache = CacheManager.load_cache()
+    cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
     
     coups_str = piege.get("coups", "")
     # Empreinte MD5 et version 2 pour forcer le recalcul (tuple au lieu d'int)
@@ -213,7 +212,7 @@ def estimate_trap_elo(piege, stockfish_depth):
     result = (elo_attaquant, elo_defenseur)
     
     cache[cache_key] = result
-    CacheManager.save_cache(cache)
+    CacheManager.save_cache(cache, CacheManager.TRAP_CACHE_FILE)
     
     return result
 

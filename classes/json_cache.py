@@ -5,15 +5,17 @@ from classes.logger import Logger
 
 class CacheManager:
     CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "json", "cache_analyses.json")
+    TRAP_CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "json", "cache_traps.json")
 
     @classmethod
-    def load_cache(cls):
-        Logger.debug_log(f"Étape Cache : Lecture du cache global depuis {cls.CACHE_FILE}", "DEBUG")
-        if not os.path.exists(cls.CACHE_FILE):
+    def load_cache(cls, filepath=None):
+        target_file = filepath or cls.CACHE_FILE
+        Logger.debug_log(f"Étape Cache : Lecture du cache depuis {target_file}", "DEBUG")
+        if not os.path.exists(target_file):
             Logger.debug_log("Étape Cache : Fichier cache introuvable, initialisation d'un cache vide.", "DEBUG")
             return {}
         try:
-            with open(cls.CACHE_FILE, "rb") as f:
+            with open(target_file, "rb") as f:
                 data = orjson.loads(f.read())
                 Logger.debug_log(f"Étape Cache : Cache chargé avec succès ({len(data)} entrées).", "DEBUG")
                 return data
@@ -22,9 +24,10 @@ class CacheManager:
             return {}
 
     @classmethod
-    def save_cache(cls, cache_data):
-        os.makedirs(os.path.dirname(cls.CACHE_FILE), exist_ok=True)
-        with open(cls.CACHE_FILE, "wb") as f:
+    def save_cache(cls, cache_data, filepath=None):
+        target_file = filepath or cls.CACHE_FILE
+        os.makedirs(os.path.dirname(target_file), exist_ok=True)
+        with open(target_file, "wb") as f:
             f.write(orjson.dumps(cache_data, option=orjson.OPT_INDENT_2))
 
     @staticmethod
