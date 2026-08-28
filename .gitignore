@@ -17,7 +17,7 @@ scripts/stockfish
 *.log
 # ignore players data
 json/player_*
-json/cache_analyses.json
+json/cache_*.json
 .continue
 .venv
 .aider*
