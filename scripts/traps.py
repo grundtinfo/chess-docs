@@ -90,19 +90,63 @@ def generate_moves_table(piege, stockfish_depth=18):
             cache[cache_key] = {"commentaire": commentaire, "coup_annote": coup_annote}
             cache_updated = True
         
-        try: board.push(board.parse_san(move_san))
-        except Exception: pass
+        try: 
+            move_obj = board.parse_san(move_san)
+            is_capture = board.is_capture(move_obj)
+            board.push(move_obj)
+            is_mate = board.is_checkmate()
+            move_uci = move_obj.uci()
+        except Exception: 
+            is_capture = False
+            is_mate = False
+            move_uci = None
+            
         fen_after = board.fen()
 
         if move.get("color") == "white":
-            current_row = {"move_number": move["move_number"], "white": coup_annote, "white_comment": commentaire, "white_fen": fen_after, "black": "", "black_comment": "", "black_fen": None}
+            current_row = {
+                "move_number": move["move_number"], 
+                "white": coup_annote, 
+                "white_comment": commentaire, 
+                "white_fen": fen_after, 
+                "white_uci": move_uci,
+                "white_is_capture": is_capture,
+                "white_is_mate": is_mate,
+                "black": "", 
+                "black_comment": "", 
+                "black_fen": None,
+                "black_uci": None,
+                "black_is_capture": False,
+                "black_is_mate": False
+            }
             rows.append(current_row)
         else:
             if not current_row or current_row["move_number"] != move["move_number"]:
-                current_row = {"move_number": move["move_number"], "white": "", "white_comment": "", "white_fen": None, "black": coup_annote, "black_comment": commentaire, "black_fen": fen_after}
+                current_row = {
+                    "move_number": move["move_number"], 
+                    "white": "", 
+                    "white_comment": "", 
+                    "white_fen": None, 
+                    "white_uci": None,
+                    "white_is_capture": False,
+                    "white_is_mate": False,
+                    "black": coup_annote, 
+                    "black_comment": commentaire, 
+                    "black_fen": fen_after,
+                    "black_uci": move_uci,
+                    "black_is_capture": is_capture,
+                    "black_is_mate": is_mate
+                }
                 rows.append(current_row)
             else:
-                current_row.update({"black": coup_annote, "black_comment": commentaire, "black_fen": fen_after})
+                current_row.update({
+                    "black": coup_annote, 
+                    "black_comment": commentaire, 
+                    "black_fen": fen_after,
+                    "black_uci": move_uci,
+                    "black_is_capture": is_capture,
+                    "black_is_mate": is_mate
+                })
                 
     # Sauvegarde uniquement s'il y a eu des modifications
     if cache_updated:
@@ -126,8 +170,18 @@ def generate_fen_positions(piege):
     defense_options = split_move_options(defense_text)
 
     if defense_order is not None:
-        index = 2 * defense_order - 1 if piege.get("defenseur") == "Noirs" else 2 * defense_order - 2
-        fen_intermediaire = positions[index] if 0 <= index < len(positions) else positions[-2]
+        # Correction : on recule correctement d'un demi-coup selon la couleur du défenseur
+        if piege.get("defenseur") == "Noirs":
+            index = 2 * defense_order - 2
+        else:
+            index = 2 * defense_order - 3
+            
+        if index < 0:
+            fen_intermediaire = chess.Board().fen()
+        elif 0 <= index < len(positions):
+            fen_intermediaire = positions[index]
+        else:
+            fen_intermediaire = positions[-2]
     else:
         fen_intermediaire = positions[-3] if len(positions) >= 3 else positions[-2]
 
@@ -279,8 +333,38 @@ def generer_pdf(stockfish_depth=18, verbose=1):
             orient = get_trap_orientation(piege)
             
             for row in generate_moves_table(piege, stockfish_depth):
+                # Le diagramme affiche la position finale du tour : après le noir s'il existe, sinon après le blanc
                 fen = row.get("black_fen") or row.get("white_fen")
-                diag = ChessboardFlowable(fen, size=105, orientation=orient) if fen else ""
+
+                fleches_blanches = []
+                fleches_noires = []
+                fleches_bordeaux = []
+
+                # Traitement des flèches pour le coup blanc
+                if row.get("white_uci"):
+                    if row.get("white_is_mate"):
+                        pass # Pas de flèche si c'est un mat des blancs
+                    elif row.get("white_is_capture"):
+                        fleches_bordeaux.append(row["white_uci"])
+                    else:
+                        fleches_blanches.append(row["white_uci"])
+                
+                # Traitement des flèches pour le coup noir
+                if row.get("black_uci"):
+                    if row.get("black_is_capture"):
+                        fleches_bordeaux.append(row["black_uci"])
+                    else:
+                        fleches_noires.append(row["black_uci"])
+
+                diag = ChessboardFlowable(
+                    fen, 
+                    size=105, 
+                    orientation=orient,
+                    fleches_blanches=fleches_blanches,
+                    fleches_noires=fleches_noires,
+                    fleches_bordeaux=fleches_bordeaux
+                ) if fen else ""
+                
                 table_data.append([diag, Paragraph(row.get("white",""), bold_style), Paragraph(row.get("white_comment",""), normal_style), Paragraph(row.get("black",""), bold_style), Paragraph(row.get("black_comment",""), normal_style)])
 
             t_coups = Table(table_data, colWidths=[120, 50, 140, 50, 140], repeatRows=1)
@@ -295,7 +379,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
             t_diags.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('BACKGROUND', (0,0), (-1,0), Config.COLOR_BG_LIGHT), ('BOX', (0,0), (-1,-1), 1, Config.COLOR_BORDER)]))
             elements.extend([KeepTogether([t_diags, Spacer(1, 15)]), Paragraph(f"<b>Idée :</b> {piege.get('conseil_defense', '')}", normal_style), Paragraph(f"<b>Défense :</b> {piege.get('coup_defense', '')} - {piege.get('explication_defense', '')}", normal_style)])
 
-        footer = lambda c, d: PDFUtils.ajouter_pied_page(c, d, "Guide des 20 Pièges d'Ouverture")
+        footer = lambda c, d: PDFUtils.ajouter_pied_page(c, d, "Guide des Pièges d'Ouverture")
         doc.build(elements, onFirstPage=footer, onLaterPages=footer)
         Logger.debug_log("PDF généré avec succès", "ESSENTIAL")
     finally:
