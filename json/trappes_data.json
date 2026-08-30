@@ -437,5 +437,20 @@
     ],
     "defenseur": "Noirs",
     "explication_defense": "Développer les pièces mineures (comme le Fou en e7 ou le Cavalier en c6) plutôt que de lancer des poussées de pions prématurées permet d'éviter l'accumulation de menaces et de préparer sereinement le roque."
+  },
+  {
+    "nom": "Piège de Halosar (Gambit Blackmar-Diemer)",
+    "coups": "1. d4 d5 2. e4 dxe4 3. Nc3 Nf6 4. f3 exf3 5. Qxf3 Qxd4 6. Be3 Qb4 7. O-O-O Bg4 8. Nb5",
+    "conseil_defense": "Ne capturez pas aveuglément le matériel avec la Dame au début de la partie au détriment de votre développement, et restez vigilants face aux menaces d'échec et mat ou de fourchette sur c7 après le grand roque blanc.",
+    "coup_defense": "7... Na6",
+    "fleches_defense": [
+      "b8a6"
+    ],
+    "fleches_menace": [
+      "b5c7",
+      "d1d8"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Développer le cavalier en a6 (7... Na6) permet de parer la menace de fourchette et d'échec et mat en c7, évitant ainsi le piège fatal si les Noirs s'obstinent à capturer le cavalier en f3 (8... Bxf3?? 9. Nxc7#)."
   }
 ]
