@@ -103,8 +103,8 @@ class ChessUtils:
     
     @staticmethod
     def is_raw_opening(name):
-        if name in ["Ouverture Inconnue", "None", ""]: return True
-        if re.match(r'^[A-E]\d{2}$', name): return True
+        if not name or name in ["Ouverture Inconnue", "None", ""]: return True
+        if re.match(r'^[A-E]\d{2}$', str(name)): return True
         return False
 
     @staticmethod

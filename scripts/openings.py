@@ -18,22 +18,27 @@ from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer
 from classes.ai_analyzer import AIAnalyzer
 from classes.pdf_components import ChessboardFlowable, PDFUtils
+from classes.json_cache import CacheManager
 
 def get_orientation(item):
     orientation = item.get("Orientation", "Blancs")
     return chess.BLACK if orientation.lower().startswith("n") else chess.WHITE
 
 def generate_moves_table(item, stockfish_depth=18):
+    import os
     from classes.json_cache import CacheManager
-    StockfishAnalyzer().get_engine(depth=stockfish_depth)
+    StockfishAnalyzer().get_engine(depth=Config.DEFAULT_STOCKFISH_DEPTH)
     coups_str = item.get("coups", "")
     moves = ChessUtils.parse_moves(coups_str)
     rows = []
     board = chess.Board()
     current_row = None
     
-    # Chargement du cache
-    cache = CacheManager.load_cache()
+    # Chargement du cache spécifique à l'ouverture
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    opening_name = item.get("nom", "inconnue")
+    cache_data = CacheManager.load_opening_data(base_dir, opening_name)
+    cache = cache_data.get("analyses", {})
     cache_updated = False
     
     for i, move in enumerate(moves):
@@ -60,7 +65,14 @@ def generate_moves_table(item, stockfish_depth=18):
             move_obj = board.parse_san(move_san)
             is_capture = board.is_capture(move_obj)
             arrow_notation = chess.square_name(move_obj.from_square) + chess.square_name(move_obj.to_square)
-            arrow_color = "#FF0000" if is_capture else "#00AA00"
+            
+            if is_capture:
+                arrow_color = "#800020"  # Bordeaux pour les prises
+            elif move["color"] == "white":
+                arrow_color = "white"    # Flèche blanche pour un coup blanc
+            else:
+                arrow_color = "black"    # Flèche noire pour un coup noir
+                
             board.push(move_obj)
             fen_after = board.fen()
         except Exception:
@@ -93,7 +105,9 @@ def generate_moves_table(item, stockfish_depth=18):
                 })
 
     if cache_updated:
-        CacheManager.save_cache(cache)
+        cache_data["analyses"] = cache
+        cache_data["opening_name"] = opening_name
+        CacheManager.save_opening_data(base_dir, opening_name, cache_data)
 
     return rows
 
@@ -105,7 +119,7 @@ def ajouter_pied_page(canvas, doc):
     canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
     canvas.restoreState()
 
-def build_pdf(output_path, source_name, data):
+def build_pdf(output_path, source_name, data, stockfish_depth=18):
     Logger.debug_log(f"Début génération PDF ouvertures: {output_path}", "INFO")
     doc = SimpleDocTemplate(output_path, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
     styles = getSampleStyleSheet()
@@ -137,17 +151,20 @@ def build_pdf(output_path, source_name, data):
         
         for row in rows:
             fen_row = row.get('black_fen') or row.get('white_fen')
-            fleches_defense, fleches_menace = [], []
+            fleches_blanches, fleches_noires, fleches_bordeaux = [], [], []
             
             # Itération sécurisée sur les couleurs de flèches (Blancs et Noirs)
             for arrow_notation, arrow_color in [(row.get('white_arrow'), row.get('white_arrow_color')), (row.get('black_arrow'), row.get('black_arrow_color'))]:
                 if arrow_notation and arrow_color:
-                    if arrow_color == "#FF0000":
-                        fleches_menace.append(arrow_notation)
-                    elif arrow_color == "#00AA00":
-                        fleches_defense.append(arrow_notation)
-                    
-            diag = ChessboardFlowable(fen_row, size=120, fleches_defense=fleches_defense, fleches_menace=fleches_menace, orientation=orientation) if fen_row else ""
+                    if arrow_color == "#800020":
+                        fleches_bordeaux.append(arrow_notation)
+                    elif arrow_color == "white":
+                        fleches_blanches.append(arrow_notation)
+                    elif arrow_color == "black":
+                        fleches_noires.append(arrow_notation)
+
+            
+            diag = ChessboardFlowable(fen_row, size=120, fleches_blanches=fleches_blanches, fleches_noires=fleches_noires, fleches_bordeaux=fleches_bordeaux, orientation=orientation) if fen_row else ""
             
             explication = explications.get(str(row.get('move_number', '')))
             parts = []
@@ -205,8 +222,8 @@ def main(stockfish_depth=18, verbose=1, opening=None):
             output_path = os.path.join(base_dir, f"guide_{os.path.splitext(os.path.basename(source_path))[0]}.pdf")
             Logger.debug_log(f"Traitement du fichier source {source_path}", "INFO")
             Logger.debug_log(f"==== Génération de {output_path} ====", "ESSENTIAL")
-            build_pdf(output_path, os.path.basename(source_path), data)
-        except Exception as exc: 
+            build_pdf(output_path, os.path.basename(source_path), data, stockfish_depth)
+        except Exception as exc:
             Logger.debug_log(f"Impossible de traiter {source_path}: {exc}", "ERROR")
     Logger.debug_log("Génération terminée.", "ESSENTIAL")
 

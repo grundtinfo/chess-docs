@@ -86,3 +86,29 @@ class CacheManager:
         filepath = os.path.join(path, f"game_{safe_id}.json")
         with open(filepath, "wb") as handle:
             handle.write(orjson.dumps(game_data, option=orjson.OPT_INDENT_2))
+
+    @staticmethod
+    def load_opening_data(base_dir, opening_name):
+        safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", opening_name).strip("_") or "inconnue"
+        filepath = os.path.join(base_dir, "json", f"cache_opening_{safe_name}.json")
+        
+        if os.path.exists(filepath):
+            try:
+                with open(filepath, "rb") as handle:
+                    return orjson.loads(handle.read())
+            except Exception as e:
+                from classes.logger import Logger
+                Logger.debug_log(f"Erreur de lecture du cache ouverture {opening_name}: {e}", "ERROR")
+        
+        # Retourne une structure par défaut pour initialiser le mode reprise
+        return {"opening_name": opening_name, "analyses": {}}
+
+    @staticmethod
+    def save_opening_data(base_dir, opening_name, data):
+        safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", opening_name).strip("_") or "inconnue"
+        target_dir = os.path.join(base_dir, "json")
+        os.makedirs(target_dir, exist_ok=True)
+        
+        filepath = os.path.join(target_dir, f"cache_opening_{safe_name}.json")
+        with open(filepath, "wb") as handle:
+            handle.write(orjson.dumps(data, option=orjson.OPT_INDENT_2))
