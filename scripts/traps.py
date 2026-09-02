@@ -342,9 +342,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
 
                 # Traitement des flèches pour le coup blanc
                 if row.get("white_uci"):
-                    if row.get("white_is_mate"):
-                        pass # Pas de flèche si c'est un mat des blancs
-                    elif row.get("white_is_capture"):
+                    if row.get("white_is_capture"):
                         fleches_bordeaux.append(row["white_uci"])
                     else:
                         fleches_blanches.append(row["white_uci"])
