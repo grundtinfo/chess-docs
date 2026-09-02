@@ -1,53 +1,50 @@
 [
   {
-    "nom": "Défense hollandaise contre d4 - Attaque et clouage",
-    "coups": "1. d4 f5 2. Cc3 Cf6 3. Fg5 Fb4",
+    "nom": "Défense hollandaise - Clouage initial et piège du fou b4 sur retard d'échange",
+    "coups": "1. d4 f5 2. c4 e6 3. Cc3 Cf6 4. Cf3 Fb4 5. Dc2 O-O 6. e3 b6 7. Fe2 Fb7 8. O-O d6 9. Cb1 d5 10. a3 Fe7 11. b4",
     "explications": {
-      "3": "Les noirs jouent fou en b4 pour clouer le cavalier blanc en c3 et mettre la pression sur la position."
+      "4": "Les noirs jouent fou b4 pour clouer le cavalier c3 et instaurer une pression immédiate.",
+      "8": "Si les noirs tardent à échanger en c3 après le roque blanc, le clouage est levé et les blancs peuvent jouer Cb1 suivi de a3 et b4 pour enfermer et neutraliser le fou b4.",
+      "11": "Démonstration du risque de perte d'activité ou d'enfermement du fou si l'échange n'est pas effectué au bon moment."
     },
     "Orientation": "Noirs"
   },
   {
-    "nom": "Défense hollandaise - Réponse des blancs par Dd2 et développement",
-    "coups": "1. d4 f5 2. Cc3 Cf6 3. Fg5 Fb4 4. Dd2 e6 5. e3 b6 6. Fe2 Fb7 7. Cf3 O-O 8. O-O",
+    "nom": "Défense hollandaise - Échange en c3 et centralisation du cavalier en e4",
+    "coups": "1. d4 f5 2. c4 e6 3. Cc3 Cf6 4. Cf3 Fb4 5. Dc2 O-O 6. e3 b6 7. Fe2 Fb7 8. O-O Fxc3 9. Dxc3 Ce4 10. Dd3 Tf6",
     "explications": {
-      "4": "Les blancs jouent dame en d2 (ou c2) pour soutenir le cavalier et éviter les pions doublés si les noirs échangent.",
-      "6": "Préparation du fianchetto du fou en b7 pour contrôler la grande diagonale.",
-      "8": "Les blancs roquent et libèrent le clouage du cavalier en c3."
+      "8": "Dès que les blancs roquent et libèrent le clouage, les noirs exécutent Fxc3 pour éviter de voir leur fou piégé.",
+      "9": "Le cavalier s'installe en e4, soutenu par le pion f5 et le fou b7, tout en attaquant la dame c2.",
+      "10": "La montée de tour en f6 (rook lift) est l'idée clé pour basculer la tour vers l'aile roi (g6 ou h6)."
     },
     "Orientation": "Noirs"
   },
   {
-    "nom": "Défense hollandaise - Variante du coup b6 et défense du cavalier",
-    "coups": "1. d4 f5 2. Cc3 Cf6 3. Fg5 Fb4 4. Dd2 e6 5. e3 b6 6. Fe2 Fb7 7. Cf3 O-O 8. O-O d6 9. Ce1 Cbd7",
+    "nom": "Défense hollandaise - Poursuite du développement et erreur 13. Ce1 des Blancs",
+    "coups": "1. d4 f5 2. c4 e6 3. Cc3 Cf6 4. Cf3 Fb4 5. Dc2 O-O 6. e3 b6 7. Fe2 Fb7 8. O-O Fxc3 9. Dxc3 Ce4 10. Dd3 Tf6 11. b3 d6 12. Fb2 Cbd7 13. Ce1 Th6 14. g3 De8",
     "explications": {
-      "9": "Les blancs jouent cavalier en e1 pour éviter l'échange en c3 et préparer une attaque sur l'aile roi, tandis que les noirs développent leur cavalier en d7 en coordination harmonieuse."
+      "11": "Les noirs consolident le centre avec d6 tout en préparant le développement du cavalier en d7.",
+      "13": "13. Ce1 est une erreur typique des blancs voulant chasser le cavalier e4 par f3, car cela retire le défenseur majeur du roi.",
+      "14": "Les noirs repositionnent la dame en e8 afin de la faire pivoter vers h5 ou g6 et renforcer l'assaut."
     },
     "Orientation": "Noirs"
   },
   {
-    "nom": "Défense hollandaise - Installation du cavalier en e4 et pression",
-    "coups": "1. d4 f5 2. Cc3 Cf6 3. Fg5 Fb4 4. Dd2 e6 5. e3 b6 6. Fe2 Fb7 7. Cf3 O-O 8. O-O h6 9. Fh4 g5 10. Fg3 Ce4",
+    "nom": "Défense hollandaise - Motif tactique du sacrifice de dame 14...Dh4",
+    "coups": "1. d4 f5 2. c4 e6 3. Cc3 Cf6 4. Cf3 Fb4 5. Dc2 O-O 6. e3 b6 7. Fe2 Fb7 8. O-O Fxc3 9. Dxc3 Ce4 10. Dd3 Tf6 11. b3 d6 12. Fb2 Cbd7 13. Cd2 Th6 14. g3 Dh4 15. gxh4 Tg6+ 16. Rh1 Cxf2#",
     "explications": {
-      "10": "Le cavalier s'installe en e4, parfaitement soutenu et attaquant la position blanche."
+      "14": "Illustration du piège théorique classique : dans les structures où les blancs jouent Cd2 au lieu de Ce1, le sacrifice de dame 14...Dh4!! mène à un mat étouffé/double échec dévastateur.",
+      "16": "Mat étouffé par le cavalier en f2 combiné au contrôle de la grande diagonale par le fou b7."
     },
     "Orientation": "Noirs"
   },
   {
-    "nom": "Défense hollandaise - Soulèvement de la tour (Rook lift) Rf6",
-    "coups": "1. d4 f5 2. Cc3 Cf6 3. Fg5 Fb4 4. Dd2 e6 5. e3 b6 6. Fe2 Fb7 7. Cf3 O-O 8. O-O h6 9. Fh4 g5 10. Fg3 Ce4 11. Dd3 Tf6",
+    "nom": "Défense hollandaise - Sacrifice décisif en h2 et mat par Cc3",
+    "coups": "1. d4 f5 2. c4 e6 3. Cc3 Cf6 4. Cf3 Fb4 5. Dc2 O-O 6. e3 b6 7. Fe2 Fb7 8. O-O Fxc3 9. Dxc3 Ce4 10. Dd3 Tf6 11. b3 d6 12. Fb2 Cbd7 13. Ce1 Th6 14. g3 De8 15. Ff3 Cdf6 16. Fg2 Txh2 17. Kxh2 Cg4+ 18. Rg1 Dh5 19. Cf3 Cc3 20. Fxc3 Fxf3 21. Tfe1 Dh2+ 22. Rf1 Dxg2#",
     "explications": {
-      "11": "La tour monte en f6 (rook lift), idée d'attaque classique et puissante dans la défense hollandaise pour exploiter l'espace sur l'aile roi."
-    },
-    "Orientation": "Noirs"
-  },
-  {
-    "nom": "Défense hollandaise - Sacrifice de la tour en h2 et mat foudroyant",
-    "coups": "1. d4 f5 2. Cc3 Cf6 3. Fg5 Fb4 4. Dd2 e6 5. e3 b6 6. Fe2 Fb7 7. Cf3 O-O 8. O-O h6 9. Fh4 g5 10. Fg3 Ce4 11. Dd3 Tf6 12. Ce1 f5 13. f3 Cxg3 14. hxg3 Fxc3 15. bxc3 Th6 16. Rf2 Th2 17. Tg1 De8 18. c4 Dh5 19. d5 Ca6 20. dxe6 dxe6",
-    "explications": {
-      "15": "La tour se décale en h6 pour préparer l'attaque frontale sur le roi blanc.",
-      "17": "La dame noire rejoint l'attaque en h5, créant des menaces de mat directes.",
-      "20": "Ouverture des lignes pour finaliser l'assaut décisif contre le roi blanc exposé."
+      "16": "16...Txh2!! est le sacrifice de tour destructeur qui fait sauter la carapace du roi blanc.",
+      "19": "19...Cc3!! est le coup brillant de déviation : il attaque la dame d3 et ouvre la grande diagonale du fou b7.",
+      "22": "Mat imparable sur la case g2, concrétisant la supériorité de l'attaque noire."
     },
     "Orientation": "Noirs"
   }
