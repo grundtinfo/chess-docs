@@ -9,6 +9,7 @@ from datetime import datetime
 from io import StringIO
 from pathlib import Path
 from collections import defaultdict
+from urllib.parse import urlparse
 
 import chess
 import chess.pgn
@@ -32,23 +33,21 @@ from classes.pdf_components import ChessboardFlowable, EloProgressionChart, PDFU
 from classes.json_cache import CacheManager
 
 def is_bot_game(game, player_name=None):
-    opponent_type = str(game.get("opponent_type", "")).lower()
-    if opponent_type in {"robot", "bot", "computer", "engine", "ai"}:
-        return True
-
-    players = [side_name(game, "white"), side_name(game, "black")]
-    if player_name:
-        player_lower = player_name.lower()
-        players = [name for name in players if name.lower() != player_lower]
-
-    bot_pattern = re.compile(r"(?:bot|engine|stockfish|computer|chess\.com|^ai(?:$|[-_\d]))", re.I)
-    return any(bot_pattern.search(name) for name in players)
+    return str(game.get("opponent_type", "")).strip().lower() == "robot"
 
 def side_name(game, color):
     participant = game.get(color, "")
     if isinstance(participant, dict):
-        return str(participant.get("username") or participant.get("name") or "")
-    return str(participant or "")
+        name = str(participant.get("username") or participant.get("name") or "")
+    else:
+        name = str(participant or "")
+
+    parsed = urlparse(name)
+    if parsed.scheme and parsed.netloc:
+        path_parts = [part for part in parsed.path.split("/") if part]
+        if path_parts:
+            return path_parts[-1]
+    return name
 
 def side_result(game, color):
     participant = game.get(color, {})
@@ -88,8 +87,7 @@ def game_category(game, player_name):
     return {
         "daily": "Parties différées",
         "rapid": "Parties rapides",
-        "blitz": "Parties Blitz",
-        "bullet": "Parties Blitz"
+        "blitz": "Parties Blitz"
     }.get(time_class, "Autres parties")
 
 def adjusted_estimated_elo(base_elo, precision, move_count):
@@ -247,7 +245,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         "termination": term_str,
         "result": result_text,
         "time_class": game.get("time_class", "inconnu"),
-        "opponent_type": ChessUtils.classify_opponent_type(opponent_name(game, username)),
+        "opponent_type": str(game.get("opponent_type", "humain")).strip().lower(),
         "white": {"username": white_name, "elo": side_rating(game, "white")},
         "black": {"username": black_name, "elo": side_rating(game, "black")},
         "opening": best_opening_name,
@@ -564,7 +562,11 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         games = [g for g in games if op_lower in (side_name(g, "white").lower(), side_name(g, "black").lower())]
 
     # Tri chronologique préservé et garanti pour la suite
-    games = sorted([g for g in games if g.get("is_complete", True)], key=lambda x: x.get("end_time", 0))
+    games = sorted(
+        [g for g in games if g.get("is_complete", True)],
+        key=lambda game: game.get("end_time") or game.get("start_time") or 0,
+        reverse=True
+    )
 
     for game in games:
         update_estimates(game)
@@ -792,7 +794,8 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                 f"(Blancs) - {g.get('analysis', {}).get('precision_black', 'N/A')}% (Noirs)",
                 normal_style
             ))
-            elements.append(Paragraph(f"Partie : {g.get('white', {}).get('username', 'Blanc')} vs {g.get('black', {}).get('username', 'Noir')} ({g.get('result')})", bold_style))
+            elements.append(Paragraph(f"ID Chess.com : {g.get('id', 'N/A')}", normal_style))
+            elements.append(Paragraph(f"Partie : {white_name} vs {black_name} ({g.get('result')})", bold_style))
             elements.extend(render_game_analysis_table(g, normal_style, bold_style))
             elements.append(Spacer(1, 15))
 
@@ -843,11 +846,6 @@ def main():
             update_estimates(game)
 
         existing_games = state.get("games", {})
-        for cached_game in existing_games.values():
-            cached_game["opponent_type"] = ChessUtils.classify_opponent_type(
-                opponent_name(cached_game, args.player)
-            )
-        
         # --- LOGIQUE DE FILTRAGE ET DE REPRISE ---
         games_to_process = []
         raw_games = ChessUtils.fetch_player_games(args.player, months=args.months)

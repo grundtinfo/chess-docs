@@ -6,6 +6,7 @@ import os
 import time
 import requests
 from datetime import datetime
+from urllib.parse import urlparse
 from classes.config import Config
 from classes.logger import Logger
 
@@ -229,8 +230,19 @@ class ChessUtils:
 
     @staticmethod
     def classify_opponent_type(username):
-        if not username: return "humain"
-        return "robot" if any(token in username.lower() for token in ["bot", "engine", "stockfish", "computer", "ai", "chess.com"]) else "humain"
+        if not username:
+            return "humain"
+
+        candidate = str(username).strip()
+        parsed = urlparse(candidate)
+        if parsed.scheme and parsed.netloc:
+            path_parts = [part for part in parsed.path.split("/") if part]
+            candidate = path_parts[-1] if path_parts else ""
+
+        return "robot" if re.search(
+            r"(?:^|[-_])(bot|engine|stockfish|computer|ai)(?:$|[-_\d])",
+            candidate.lower()
+        ) else "humain"
 
     @staticmethod
     def infer_move_suffix(is_check=False, is_checkmate=False, delta=None):

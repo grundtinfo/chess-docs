@@ -12,6 +12,9 @@ class PlayerReportTests(unittest.TestCase):
     def test_classify_opponent_type_uses_human_default(self):
         self.assertEqual(ChessUtils.classify_opponent_type('gandalf123'), 'humain')
         self.assertEqual(ChessUtils.classify_opponent_type('chess-bot'), 'robot')
+        self.assertEqual(ChessUtils.classify_opponent_type('https://api.chess.com/pub/player/matolic19'), 'humain')
+        self.assertEqual(ChessUtils.classify_opponent_type('ai_bot_7'), 'robot')
+        self.assertEqual(ChessUtils.classify_opponent_type('said'), 'humain')
 
     def test_build_player_state_path_uses_json_subfolder(self):
         base_dir = '/tmp/chess-docs'
@@ -29,14 +32,23 @@ class PlayerReportTests(unittest.TestCase):
 
     def test_is_bot_game_detects_cached_and_opponent_names(self):
         self.assertTrue(is_bot_game({"opponent_type": "robot"}, "Alice"))
-        self.assertTrue(is_bot_game({"white": {"username": "Alice"}, "black": {"username": "ChessBot"}}, "Alice"))
-        self.assertFalse(is_bot_game({"white": {"username": "Alice"}, "black": {"username": "Bob"}}, "Alice"))
+        self.assertFalse(is_bot_game({"opponent_type": "humain", "black": {"username": "ChessBot"}}, "Alice"))
 
     def test_participant_helpers_accept_plain_usernames(self):
         game = {"white": "Alice", "black": "ChessBot"}
         self.assertEqual(side_name(game, "white"), "Alice")
         self.assertEqual(opponent_name(game, "Alice"), "ChessBot")
-        self.assertTrue(is_bot_game(game, "Alice"))
+        self.assertFalse(is_bot_game(game, "Alice"))
+
+    def test_side_name_normalizes_chess_com_player_urls_without_reclassifying(self):
+        game = {
+            "white": "https://api.chess.com/pub/player/grundt07",
+            "black": "https://api.chess.com/pub/player/matolic19",
+            "opponent_type": "humain",
+        }
+        self.assertEqual(side_name(game, "white"), "grundt07")
+        self.assertEqual(side_name(game, "black"), "matolic19")
+        self.assertFalse(is_bot_game(game, "grundt07"))
 
     def test_calculate_precision_from_details_ignores_unanalyzed_plies(self):
         precision = ChessUtils.calculate_precision_from_details([
