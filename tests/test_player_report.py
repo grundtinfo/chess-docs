@@ -5,7 +5,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from classes.chess_utils import ChessUtils
-from scripts.chesscom_report import is_bot_game
+from scripts.chesscom_report import is_bot_game, opponent_name, side_name
 
 
 class PlayerReportTests(unittest.TestCase):
@@ -31,6 +31,12 @@ class PlayerReportTests(unittest.TestCase):
         self.assertTrue(is_bot_game({"opponent_type": "robot"}, "Alice"))
         self.assertTrue(is_bot_game({"white": {"username": "Alice"}, "black": {"username": "ChessBot"}}, "Alice"))
         self.assertFalse(is_bot_game({"white": {"username": "Alice"}, "black": {"username": "Bob"}}, "Alice"))
+
+    def test_participant_helpers_accept_plain_usernames(self):
+        game = {"white": "Alice", "black": "ChessBot"}
+        self.assertEqual(side_name(game, "white"), "Alice")
+        self.assertEqual(opponent_name(game, "Alice"), "ChessBot")
+        self.assertTrue(is_bot_game(game, "Alice"))
 
     def test_calculate_precision_from_details_ignores_unanalyzed_plies(self):
         precision = ChessUtils.calculate_precision_from_details([

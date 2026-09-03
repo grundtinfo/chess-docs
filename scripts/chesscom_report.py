@@ -36,10 +36,7 @@ def is_bot_game(game, player_name=None):
     if opponent_type in {"robot", "bot", "computer", "engine", "ai"}:
         return True
 
-    players = [
-        str(game.get("white", {}).get("username", "")),
-        str(game.get("black", {}).get("username", ""))
-    ]
+    players = [side_name(game, "white"), side_name(game, "black")]
     if player_name:
         player_lower = player_name.lower()
         players = [name for name in players if name.lower() != player_lower]
@@ -47,10 +44,36 @@ def is_bot_game(game, player_name=None):
     bot_pattern = re.compile(r"(?:bot|engine|stockfish|computer|chess\.com|^ai(?:$|[-_\d]))", re.I)
     return any(bot_pattern.search(name) for name in players)
 
+def side_name(game, color):
+    participant = game.get(color, "")
+    if isinstance(participant, dict):
+        return str(participant.get("username") or participant.get("name") or "")
+    return str(participant or "")
+
+def side_result(game, color):
+    participant = game.get(color, {})
+    return participant.get("result", "") if isinstance(participant, dict) else ""
+
+def side_rating(game, color):
+    participant = game.get(color, {})
+    return participant.get("rating") if isinstance(participant, dict) else None
+
+def player_won(game, player_name):
+    player_lower = player_name.lower()
+    return (game.get("result") == "1-0" and side_name(game, "white").lower() == player_lower) or (
+        game.get("result") == "0-1" and side_name(game, "black").lower() == player_lower
+    )
+
+def player_lost(game, player_name):
+    player_lower = player_name.lower()
+    return (game.get("result") == "0-1" and side_name(game, "white").lower() == player_lower) or (
+        game.get("result") == "1-0" and side_name(game, "black").lower() == player_lower
+    )
+
 def opponent_name(game, player_name):
     player_lower = player_name.lower()
-    white_name = str(game.get("white", {}).get("username", ""))
-    return game.get("black", {}).get("username", "") if white_name.lower() == player_lower else white_name
+    white_name = side_name(game, "white")
+    return side_name(game, "black") if white_name.lower() == player_lower else white_name
 
 def game_date(game):
     timestamp = game.get("end_time") or game.get("start_time")
@@ -132,11 +155,10 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         
     if not game_obj: return None
 
-    white_name, black_name = game.get("white", {}).get("username", ""), game.get("black", {}).get("username", "")
+    white_name, black_name = side_name(game, "white"), side_name(game, "black")
     result_text = game_obj.headers.get("Result", "*")
     
-    w_res = game.get("white", {}).get("result", "")
-    b_res = game.get("black", {}).get("result", "")
+    w_res, b_res = side_result(game, "white"), side_result(game, "black")
 
     if result_text == "*":
         if w_res == "win": result_text = "1-0"
@@ -226,8 +248,8 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         "result": result_text,
         "time_class": game.get("time_class", "inconnu"),
         "opponent_type": ChessUtils.classify_opponent_type(opponent_name(game, username)),
-        "white": {"username": white_name, "elo": game.get("white", {}).get("rating")},
-        "black": {"username": black_name, "elo": game.get("black", {}).get("rating")},
+        "white": {"username": white_name, "elo": side_rating(game, "white")},
+        "black": {"username": black_name, "elo": side_rating(game, "black")},
         "opening": best_opening_name,
         "deep_analysis": deep_analysis,
         "analysis": {
@@ -412,7 +434,7 @@ def render_game_analysis_table(game, normal_style, bold_style):
                     "black_uci": ply.get("uci"), "black_is_capture": ply.get("is_capture", False)
                 })
 
-    orientation = chess.WHITE if game["white"]["username"].lower() == game.get("player_focus", "").lower() else chess.BLACK
+    orientation = chess.WHITE if side_name(game, "white").lower() == game.get("player_focus", "").lower() else chess.BLACK
 
     for row in rows:
         fen = row.get("black_fen") or row.get("white_fen")
@@ -481,7 +503,7 @@ def render_opening_focus(game, normal_style, bold_style, section_style):
     elements.append(Spacer(1, 10))
     
     # Définit l'orientation de l'échiquier selon la couleur du joueur focus
-    orientation = chess.WHITE if game["white"]["username"].lower() == game.get("player_focus", "").lower() else chess.BLACK
+    orientation = chess.WHITE if side_name(game, "white").lower() == game.get("player_focus", "").lower() else chess.BLACK
     
     for blunder in blunders_data:
         fen = blunder.get("fen")
@@ -539,7 +561,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     games = list(state.get("games", {}).values())
     if opponent_name:
         op_lower = opponent_name.lower()
-        games = [g for g in games if op_lower in (g["white"]["username"].lower(), g["black"]["username"].lower())]
+        games = [g for g in games if op_lower in (side_name(g, "white").lower(), side_name(g, "black").lower())]
 
     # Tri chronologique préservé et garanti pour la suite
     games = sorted([g for g in games if g.get("is_complete", True)], key=lambda x: x.get("end_time", 0))
@@ -554,8 +576,8 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         return
 
     player_lower = player_name.lower()
-    wins = sum(1 for g in games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_lower) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_lower))
-    losses = sum(1 for g in games if (g["result"] == "0-1" and g["white"]["username"].lower() == player_lower) or (g["result"] == "1-0" and g["black"]["username"].lower() == player_lower))
+    wins = sum(1 for g in games if player_won(g, player_name))
+    losses = sum(1 for g in games if player_lost(g, player_name))
     
     games_bots = [g for g in games if game_category(g, player_name) == "Parties contre les bots"]
     games_daily = [g for g in games if game_category(g, player_name) == "Parties différées"]
@@ -563,8 +585,8 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     games_blitz = [g for g in games if game_category(g, player_name) == "Parties Blitz"]
 
     def get_wdl(cat_games):
-        w = sum(1 for g in cat_games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_lower) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_lower))
-        l = sum(1 for g in cat_games if (g["result"] == "0-1" and g["white"]["username"].lower() == player_lower) or (g["result"] == "1-0" and g["black"]["username"].lower() == player_lower))
+        w = sum(1 for g in cat_games if player_won(g, player_name))
+        l = sum(1 for g in cat_games if player_lost(g, player_name))
         d = len(cat_games) - w - l
         return w, d, l
 
@@ -753,8 +775,8 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         chapter_entries.append((2, cat_title))
 
         for game_index, g in enumerate(cat_games, 1):
-            white_name = g.get("white", {}).get("username", "Blanc")
-            black_name = g.get("black", {}).get("username", "Noir")
+            white_name = side_name(g, "white") or "Blanc"
+            black_name = side_name(g, "black") or "Noir"
             game_title = (
                 f"{cat_title.split(' ', 1)[0]}.{game_index} "
                 f"{white_name} (Blancs) - {black_name} (Noirs) - {game_date(g)}"
@@ -822,8 +844,6 @@ def main():
 
         existing_games = state.get("games", {})
         for cached_game in existing_games.values():
-            white_name = cached_game.get("white", {}).get("username", "")
-            black_name = cached_game.get("black", {}).get("username", "")
             cached_game["opponent_type"] = ChessUtils.classify_opponent_type(
                 opponent_name(cached_game, args.player)
             )
@@ -849,7 +869,7 @@ def main():
                 g["end_time"] = g.get("start_time") or int(time.time())
             
             if args.game_id and args.game_id not in game_id: continue
-            if args.opponent and args.opponent.lower() not in (g.get("white", {}).get("username", "").lower(), g.get("black", {}).get("username", "").lower()): continue
+            if args.opponent and args.opponent.lower() not in (side_name(g, "white").lower(), side_name(g, "black").lower()): continue
                 
             existing_g = existing_games.get(game_id)
             
