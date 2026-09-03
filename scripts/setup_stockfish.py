@@ -14,6 +14,8 @@ import zipfile
 import urllib.request
 import subprocess
 from pathlib import Path
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+from classes.logger import Logger
 
 def get_stockfish_url():
     """Retourne l'URL de téléchargement de Stockfish basée sur l'OS et l'architecture."""
@@ -177,6 +179,7 @@ STOCKFISH_PATH = "{stockfish_path_str}"
     return stockfish_path_str
 
 def main():
+    Logger.configure_file_logging(__file__)
     """Fonction principale."""
     print("=" * 60)
     print("  Installation de Stockfish pour Chess-Docs")

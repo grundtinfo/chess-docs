@@ -815,6 +815,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
 # =====================================================================
 
 def main():
+    Logger.configure_file_logging(__file__)
     parser = argparse.ArgumentParser(description="Génère un rapport PDF avancé (Head-to-Head, IA, Ouvertures)")
     parser.add_argument("player", help="Nom d'utilisateur Chess.com (Toi)")
     parser.add_argument("--opponent", default=None, help="Adversaire spécifique pour un rapport Head-to-Head")

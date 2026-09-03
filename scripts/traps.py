@@ -263,6 +263,7 @@ def estimate_trap_elo(piege, stockfish_depth):
     return result
 
 def generer_pdf(stockfish_depth=18, verbose=1):
+    Logger.configure_file_logging(__file__)
     enabled, level = (True, max(int(verbose), 1)) if verbose else (False, 0)
     Logger.set_debug_enabled(enabled, level=level)
     Logger.debug_log("=== Début de la génération des guides de pièges ===", "ESSENTIAL")

@@ -192,6 +192,7 @@ def collect_source_files(base_dir):
     return sorted(files)
 
 def main(stockfish_depth=18, verbose=1, opening=None):
+    Logger.configure_file_logging(__file__)
     enabled, level = (True, max(int(verbose), 1)) if verbose else (False, 0)
     Logger.set_debug_enabled(enabled, level=level)
     Logger.debug_log("=== Début de la génération des guides d'ouvertures ===", "ESSENTIAL")
