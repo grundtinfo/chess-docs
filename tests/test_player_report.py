@@ -32,6 +32,15 @@ class PlayerReportTests(unittest.TestCase):
         self.assertTrue(is_bot_game({"white": {"username": "Alice"}, "black": {"username": "ChessBot"}}, "Alice"))
         self.assertFalse(is_bot_game({"white": {"username": "Alice"}, "black": {"username": "Bob"}}, "Alice"))
 
+    def test_calculate_precision_from_details_ignores_unanalyzed_plies(self):
+        precision = ChessUtils.calculate_precision_from_details([
+            {"color": "white", "precision": 0},
+            {"color": "black", "precision": -9999},
+            {"color": "black", "precision": -100},
+        ])
+        self.assertEqual(precision["white"], 100.0)
+        self.assertIsNotNone(precision["black"])
+
 
 if __name__ == '__main__':
     unittest.main()

@@ -101,10 +101,10 @@ class PDFUtils:
         except Exception:
             canvas.setFillColorRGB(0.2, 0.2, 0.2)
         
-        # Entête : 1er niveau de chapitrage du document (Niveau 1)
-        first_level_title = canvas.current_chapters_state.get(1, "")
-        if doc.page > 0 and first_level_title:
-            canvas.drawString(36, doc.pagesize[1] - 25, f"{first_level_title}")
+        # L'en-tête affiche le niveau le plus haut actuellement actif.
+        if doc.page > 0 and canvas.current_chapters_state:
+            smallest_level = min(canvas.current_chapters_state)
+            canvas.drawString(36, doc.pagesize[1] - 25, canvas.current_chapters_state[smallest_level])
         
         # Pied de page : Dernier niveau de chapitrage de la page (le plus profond)
         footer_text = f"{title} | " if title else ""

@@ -321,6 +321,9 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
     est_elo_w, est_elo_b = ChessUtils.calculate_elo_from_details(details)
     result_data["analysis"]["est_elo_white"] = est_elo_w
     result_data["analysis"]["est_elo_black"] = est_elo_b
+    precisions = ChessUtils.calculate_precision_from_details(details)
+    result_data["analysis"]["precision_white"] = precisions["white"]
+    result_data["analysis"]["precision_black"] = precisions["black"]
     result_data["analysis"]["summary"] = summarize_details(details)
     result_data["is_complete"] = True
 
@@ -491,6 +494,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         Paragraph(f"Rapport Stratégique : {player_name}" + (f" vs {opponent_name}" if opponent_name else ""), title_style),
         Paragraph(f"Généré le {datetime.now().strftime('%d/%m/%Y à %H:%M')}", subtitle_style),
     ]
+    chapter_entries = []
 
     games = list(state.get("games", {}).values())
     if opponent_name:
@@ -499,6 +503,15 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
 
     # Tri chronologique préservé et garanti pour la suite
     games = sorted([g for g in games if g.get("is_complete", True)], key=lambda x: x.get("end_time", 0))
+
+    for game in games:
+        analysis = game.setdefault("analysis", {})
+        if analysis.get("details") and (
+            analysis.get("precision_white") is None or analysis.get("precision_black") is None
+        ):
+            precisions = ChessUtils.calculate_precision_from_details(analysis["details"])
+            analysis["precision_white"] = precisions["white"]
+            analysis["precision_black"] = precisions["black"]
 
     if not games:
         elements.append(Paragraph("Aucune partie complétée trouvée pour ces critères.", normal_style))
@@ -510,10 +523,10 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     wins = sum(1 for g in games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_lower) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_lower))
     losses = sum(1 for g in games if (g["result"] == "0-1" and g["white"]["username"].lower() == player_lower) or (g["result"] == "1-0" and g["black"]["username"].lower() == player_lower))
     
-    games_bots = [g for g in games if g.get("opponent_type", "").lower() == "robot"]
-    games_daily = [g for g in games if g.get("time_class", "").lower() == "daily" and g not in games_bots]
-    games_rapid = [g for g in games if g.get("time_class", "").lower() == "rapid" and g not in games_bots]
-    games_blitz = [g for g in games if g.get("time_class", "").lower() in ["blitz", "bullet"] and g not in games_bots]
+    games_bots = [g for g in games if is_bot_game(g, player_name)]
+    games_daily = [g for g in games if g.get("time_class", "").lower() == "daily" and not is_bot_game(g, player_name)]
+    games_rapid = [g for g in games if g.get("time_class", "").lower() == "rapid" and not is_bot_game(g, player_name)]
+    games_blitz = [g for g in games if g.get("time_class", "").lower() in ["blitz", "bullet"] and not is_bot_game(g, player_name)]
 
     def get_wdl(cat_games):
         w = sum(1 for g in cat_games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_lower) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_lower))
@@ -528,23 +541,8 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         ("Parties contre les bots", games_bots)
     ]
 
-    table_of_contents = [
-        Spacer(1, 15),
-        Paragraph("Sommaire", section_style),
-        Paragraph("1. Vue d'ensemble", normal_style),
-        Paragraph("2. Forces et Faiblesses & Progression ELO (Par type de jeu)", normal_style),
-        Paragraph("3. Focus Théorique des Ouvertures", normal_style),
-        Paragraph("4. Analyses des parties", normal_style),
-        Paragraph("    4.1 Parties différées", normal_style),
-        Paragraph("    4.2 Parties rapides", normal_style),
-        Paragraph("    4.3 Parties Blitz", normal_style),
-        Paragraph("    4.4 Parties contre les bots", normal_style),
-        PageBreak()
-    ]
-    elements[2:2] = table_of_contents
-
     elements.extend([
-        ChapterMarker("1. Vue d'ensemble"),
+        ChapterMarker("1. Vue d'ensemble", 1),
         Paragraph("1. Vue d'ensemble", section_style),
         Paragraph(f"Analyse basée sur <b>{len(games)} parties</b>.", normal_style),
         Spacer(1, 10),
@@ -554,6 +552,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         Paragraph("<b>Résumé par sous-catégories :</b>", normal_style),
         Spacer(1, 5)
     ])
+    chapter_entries.append((1, "1. Vue d'ensemble"))
 
     cat_table_data = []
     for cat_name, cat_games in categories:
@@ -574,11 +573,12 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         elements.append(cat_table)
 
     elements.extend([
-        ChapterMarker("2. Forces et Faiblesses & Progression ELO (Par type de jeu)"),
+        ChapterMarker("2. Forces et Faiblesses & Progression ELO (Par type de jeu)", 1),
         Paragraph("2. Forces et Faiblesses & Progression ELO (Par type de jeu)", section_style),
         Paragraph("Progression estimée du niveau de performance par catégorie.", normal_style),
         Spacer(1, 10)
     ])
+    chapter_entries.append((1, "2. Forces et Faiblesses & Progression ELO (Par type de jeu)"))
     for cat_name, cat_games in categories:
         if cat_games:
             elements.extend([
@@ -589,10 +589,11 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
 
     elements.extend([
         PageBreak(),
-        ChapterMarker("3. Focus Théorique des Ouvertures"),
+        ChapterMarker("3. Focus Théorique des Ouvertures", 1),
         Paragraph("3. Focus Théorique des Ouvertures (via Stockfish)", section_style),
         Spacer(1, 5)
     ])
+    chapter_entries.append((1, "3. Focus Théorique des Ouvertures"))
 
     openings_blunders = defaultdict(list)
     for g in games:
@@ -694,9 +695,10 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
 
     elements.extend([
         PageBreak(),
-        ChapterMarker("4. Analyses des parties"),
+        ChapterMarker("4. Analyses des parties", 1),
         Paragraph("4. Analyses des parties", section_style)
     ])
+    chapter_entries.append((1, "4. Analyses des parties"))
 
     cat_mapping = [
         ("4.1 Parties différées", games_daily),
@@ -710,59 +712,39 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
             continue
 
         elements.extend([
-            ChapterMarker(cat_title),
+            ChapterMarker(cat_title, 2),
             Paragraph(cat_title, subsection_style),
             Spacer(1, 10)
         ])
+        chapter_entries.append((2, cat_title))
 
-        for g in cat_games:
+        for game_index, g in enumerate(cat_games, 1):
+            white_name = g.get("white", {}).get("username", "Blanc")
+            black_name = g.get("black", {}).get("username", "Noir")
+            game_title = f"{cat_title.split(' ', 1)[0]}.{game_index} {white_name} (Blancs) - {black_name} (Noirs)"
+            g["player_focus"] = player_name
+            elements.append(ChapterMarker(game_title, 3))
+            elements.append(Paragraph(game_title, subsection_style))
+            chapter_entries.append((3, game_title))
+            elements.append(Paragraph(
+                f"ELO estimé : {g.get('analysis', {}).get('est_elo_white', 'N/A')} - "
+                f"{g.get('analysis', {}).get('est_elo_black', 'N/A')} | "
+                f"Précision : {g.get('analysis', {}).get('precision_white', 'N/A')}% - "
+                f"{g.get('analysis', {}).get('precision_black', 'N/A')}%",
+                normal_style
+            ))
             elements.append(Paragraph(f"Partie : {g.get('white', {}).get('username', 'Blanc')} vs {g.get('black', {}).get('username', 'Noir')} ({g.get('result')})", bold_style))
             elements.extend(render_game_analysis_table(g, normal_style, bold_style))
             elements.append(Spacer(1, 15))
 
-    deep_games = [g for g in games if g.get("deep_analysis")]
-    
-    # Séparation par catégorie
-    deep_bots = [g for g in deep_games if is_bot_game(g, player_name)]
-    deep_daily = [g for g in deep_games if g.get("time_class", "").lower() == "daily" and not is_bot_game(g, player_name)]
-    deep_rapid = [g for g in deep_games if g.get("time_class", "").lower() == "rapid" and not is_bot_game(g, player_name)]
-    deep_blitz = [g for g in deep_games if g.get("time_class", "").lower() in ["blitz", "bullet"] and not is_bot_game(g, player_name)]
-
-    categories = [
-        ("4.1 Parties différées", deep_daily, "4.1"),
-        ("4.2 Parties rapides", deep_rapid, "4.2"),
-        ("4.3 Parties blitz", deep_blitz, "4.3"),
-        ("4.4 Parties contre les bots", deep_bots, "4.4")
+    table_of_contents = [
+        Spacer(1, 15),
+        Paragraph("Sommaire", section_style)
     ]
-    
-    doc_game_idx = 1
-    
-    for cat_title, cat_games, cat_prefix in categories:
-        if not cat_games:
-            continue
-            
-        elements.extend([Paragraph(cat_title, subsection_style), Spacer(1, 10)])
-        
-        for idx, g in enumerate(cat_games, 1):
-            if idx > 1 or doc_game_idx > 1: elements.append(Spacer(1, 20))
-            g["player_focus"] = player_name
-            
-            w_pseudo = g['white']['username']
-            b_pseudo = g['black']['username']
-            w_est = g['analysis'].get('est_elo_white', 'N/A')
-            b_est = g['analysis'].get('est_elo_black', 'N/A')
-            
-            title = f"{cat_prefix}.{idx} Partie {doc_game_idx} : {w_pseudo} vs {b_pseudo}"
-            
-            elements.append(KeepTogether([
-                Paragraph(title, subsection_style),
-                Paragraph(f"Ouverture : {g.get('opening', 'Inconnue')} | Résultat {g.get('result', '*')}", normal_style),
-                Paragraph(f"<i>Performance estimée Blanc {w_est} | Noir {b_est}</i>", normal_style),
-                Spacer(1, 10)
-            ]))
-            
-            elements.extend(render_game_analysis_table(g, normal_style, bold_style))
-            doc_game_idx += 1
+    for level, title in chapter_entries:
+        table_of_contents.append(Paragraph(f"{'&nbsp;' * (level - 1) * 4}{title}", normal_style))
+    table_of_contents.append(PageBreak())
+    elements[2:2] = table_of_contents
 
     footer = lambda c, d: PDFUtils.header_footer_callback(c, d, "Rapport Analytique Complet - Chess Docs")
     doc.build(elements, onFirstPage=footer, onLaterPages=footer)
@@ -801,6 +783,9 @@ def main():
         for game in state.get("games", {}).values():
             if "analysis" in game and game["analysis"].get("details"):
                 game["analysis"]["est_elo_white"], game["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(game["analysis"]["details"])
+                precisions = ChessUtils.calculate_precision_from_details(game["analysis"]["details"])
+                game["analysis"]["precision_white"] = precisions["white"]
+                game["analysis"]["precision_black"] = precisions["black"]
 
         existing_games = state.get("games", {})
         for cached_game in existing_games.values():

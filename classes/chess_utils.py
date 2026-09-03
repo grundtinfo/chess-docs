@@ -62,6 +62,24 @@ class ChessUtils:
         return est_w, est_b
 
     @staticmethod
+    def calculate_precision_from_details(details):
+        """Retourne la précision moyenne issue des pertes évaluées par Stockfish."""
+        precisions = {"white": [], "black": []}
+        for ply in details or []:
+            precision = ply.get("precision", -9999)
+            if precision == -9999 or ply.get("color") not in precisions:
+                continue
+
+            loss = min(1000, max(0, -precision))
+            move_precision = max(0.0, min(100.0, 103.1668 * math.exp(-0.04354 * (loss / 10.0))))
+            precisions[ply["color"]].append(move_precision)
+
+        return {
+            color: round(sum(values) / len(values), 1) if values else None
+            for color, values in precisions.items()
+        }
+
+    @staticmethod
     def get_opening_name(board):
         Logger.debug_log("Étape Analyse : Recherche du nom de l'ouverture en cours...", "DEBUG")
         opening_name = "Ouverture Inconnue"
