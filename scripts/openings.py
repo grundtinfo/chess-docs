@@ -25,9 +25,7 @@ def get_orientation(item):
     return chess.BLACK if orientation.lower().startswith("n") else chess.WHITE
 
 def generate_moves_table(item, stockfish_depth=18):
-    import os
-    from classes.json_cache import CacheManager
-    StockfishAnalyzer().get_engine(depth=Config.DEFAULT_STOCKFISH_DEPTH)
+    StockfishAnalyzer().get_engine(depth=stockfish_depth)
     coups_str = item.get("coups", "")
     moves = ChessUtils.parse_moves(coups_str)
     rows = []
@@ -110,14 +108,6 @@ def generate_moves_table(item, stockfish_depth=18):
         CacheManager.save_opening_data(base_dir, opening_name, cache_data)
 
     return rows
-
-def ajouter_pied_page(canvas, doc):
-    canvas.saveState()
-    canvas.setFont('Helvetica', 9)
-    canvas.setFillColor(Config.COLOR_TEXT)
-    canvas.drawString(36, 20, "Guide d'Ouvertures - Chess Docs")
-    canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
-    canvas.restoreState()
 
 def build_pdf(output_path, source_name, data, stockfish_depth=18):
     Logger.debug_log(f"Début génération PDF ouvertures: {output_path}", "INFO")

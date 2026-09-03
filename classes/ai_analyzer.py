@@ -1,8 +1,5 @@
-import json
 import chess
 import re
-import time
-from classes.config import Config
 from classes.logger import Logger
 from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer
@@ -337,15 +334,16 @@ class AIAnalyzer:
         return tactics_comment
 
     @staticmethod
-    def generate_move_comment(move_raw, move_san, board_state, is_trap=False, played_continuation=None, best_alternative=None, future_moves=None, precomputed_data=None):
+    def generate_move_comment(move_raw, move_san, board_state, is_trap=False, played_continuation=None, best_alternative=None, future_moves=None, precomputed_data=None, trap_cache=None):
         raw = ChessUtils.remove_special_chars(move_raw.strip())
         board = board_state.copy()
         
         cache_key = None
-        trap_cache = {}
+        owns_trap_cache = trap_cache is None
         if is_trap:
             from classes.json_cache import CacheManager
-            trap_cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
+            if owns_trap_cache:
+                trap_cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
             cache_key = f"{board_state.fen()}_{raw}"
             if cache_key in trap_cache:
                 Logger.debug_log(f"[Cache Trap] Récupération de l'analyse pour le coup {raw}", "INFO")
@@ -527,9 +525,10 @@ class AIAnalyzer:
                             "tactics": result_tuple[2],
                             "alt_recom": result_tuple[3]
                         }
-                        from classes.json_cache import CacheManager
-                        CacheManager.save_cache(trap_cache, CacheManager.TRAP_CACHE_FILE)
-                        Logger.debug_log(f"[Cache Trap] Nouvelle analyse sauvegardée pour {raw}", "DEBUG")
+                        if owns_trap_cache:
+                            from classes.json_cache import CacheManager
+                            CacheManager.save_cache(trap_cache, CacheManager.TRAP_CACHE_FILE)
+                            Logger.debug_log(f"[Cache Trap] Nouvelle analyse sauvegardée pour {raw}", "DEBUG")
 
                     return result_tuple
 
@@ -563,7 +562,6 @@ class AIAnalyzer:
             
         try:
             Logger.debug_log(f"[Focus Ouverture] Forçage de la ligne Stockfish pour {played_move_uci}", "INFO")
-            _, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
             seq_eng = analyzer.get_fast_pv_sequence(board, max_moves=4)
             
             if seq_eng:
@@ -581,6 +579,7 @@ class AIAnalyzer:
                         break
                 return pv_san, fleches
             else:
+                _, _, best_uci = analyzer.get_best_move_with_eval(board.copy())
                 return "Aucune", [best_uci] if best_uci else []
         except Exception as e:
             Logger.debug_log(f"Erreur lors du forçage de la ligne Stockfish : {e}", "WARNING")

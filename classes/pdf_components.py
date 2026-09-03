@@ -76,6 +76,16 @@ class ChessboardFlowable(Flowable):
 
 class PDFUtils:
     @staticmethod
+    def ajouter_pied_page(canvas, doc, title=""):
+        canvas.saveState()
+        canvas.setFont("Helvetica", 9)
+        canvas.setFillColor(Config.COLOR_TEXT)
+        if title:
+            canvas.drawString(36, 20, title)
+        canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
+        canvas.restoreState()
+
+    @staticmethod
     def header_footer_callback(canvas, doc, title=""):
         canvas.saveState()
         

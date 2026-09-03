@@ -85,7 +85,7 @@ def generate_moves_table(piege, stockfish_depth=18):
             coup_annote = cache[cache_key]["coup_annote"]
             Logger.debug_log(f"[Cache Hit] Coup {move_san}", "DEBUG")
         else:
-            commentaire, coup_annote, _, _ = AIAnalyzer.generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves)
+            commentaire, coup_annote, _, _ = AIAnalyzer.generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves, trap_cache=cache)
             Logger.debug_log(f"[Génération IA] {move_san} -> {commentaire.strip()}", "DEBUG")
             cache[cache_key] = {"commentaire": commentaire, "coup_annote": coup_annote}
             cache_updated = True
@@ -194,14 +194,6 @@ def generate_fen_positions(piege):
         except Exception: pass
 
     return fen_final, fen_intermediaire, fen_defense
-
-def ajouter_pied_page(canvas, doc):
-    canvas.saveState()
-    canvas.setFont('Helvetica', 9)
-    canvas.setFillColor(Config.COLOR_TEXT)
-    canvas.drawString(36, 20, "Guide des 20 Pièges d'Ouverture")
-    canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
-    canvas.restoreState()
 
 def estimate_trap_elo(piege, stockfish_depth):
     cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)

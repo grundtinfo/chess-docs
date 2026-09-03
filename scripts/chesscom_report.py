@@ -13,13 +13,11 @@ from urllib.parse import urlparse
 
 import chess
 import chess.pgn
-import requests
 
-from functools import partial
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
-from reportlab.platypus import Flowable, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, KeepTogether
+from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle, KeepTogether
 
 # Ajoute le répertoire parent au chemin de recherche des modules
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))

@@ -5,7 +5,6 @@ import math
 import os
 import time
 import requests
-from datetime import datetime
 from urllib.parse import urlparse
 from classes.config import Config
 from classes.logger import Logger
