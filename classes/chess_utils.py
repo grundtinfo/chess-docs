@@ -104,7 +104,7 @@ class ChessUtils:
             from classes.json_cache import CacheManager
             
             cache_global = CacheManager.load_cache()
-            cache_key = f"opening_{opening_name}"
+            cache_key = f"opening_fr_v2_{opening_name}"
             
             if cache_key not in cache_global:
                 Logger.debug_log(f"Étape Analyse : Traduction de l'ouverture '{opening_name}' (non mise en cache).", "DEBUG")

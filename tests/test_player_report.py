@@ -5,6 +5,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from classes.chess_utils import ChessUtils
+from classes.ai_analyzer import AIAnalyzer
 from scripts.chesscom_report import is_bot_game, opponent_name, side_name
 
 
@@ -58,6 +59,16 @@ class PlayerReportTests(unittest.TestCase):
         ])
         self.assertEqual(precision["white"], 100.0)
         self.assertIsNotNone(precision["black"])
+
+    def test_translate_compound_opening_names_before_generic_terms(self):
+        self.assertEqual(
+            AIAnalyzer.translate_opening_name("King's Indian Defense"),
+            "Défense Est-Indienne"
+        )
+        self.assertEqual(
+            AIAnalyzer.translate_opening_name("English Opening"),
+            "Ouverture Anglaise"
+        )
 
 
 if __name__ == '__main__':

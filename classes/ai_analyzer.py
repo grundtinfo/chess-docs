@@ -38,6 +38,21 @@ _OPENING_TRANSLATIONS = [
     (re.compile(r"\bGrob\b", re.I), "Grob"), (re.compile(r"\bBorg\b", re.I), "Borg")
 ]
 
+_OPENING_PHRASES = [
+    (re.compile(r"\bKing's Indian Defense\b", re.I), "Défense Est-Indienne"),
+    (re.compile(r"\bQueen's Indian Defense\b", re.I), "Défense Ouest-Indienne"),
+    (re.compile(r"\bKing's Indian Attack\b", re.I), "Attaque Est-Indienne"),
+    (re.compile(r"\bQueen's Indian Attack\b", re.I), "Attaque Ouest-Indienne"),
+    (re.compile(r"\bKing's Pawn Game\b", re.I), "Partie du Pion du Roi"),
+    (re.compile(r"\bQueen's Pawn Game\b", re.I), "Partie du Pion de la Dame"),
+    (re.compile(r"\bEnglish Opening\b", re.I), "Ouverture Anglaise"),
+    (re.compile(r"\bItalian Game\b", re.I), "Partie Italienne"),
+    (re.compile(r"\bScotch Game\b", re.I), "Partie Écossaise"),
+    (re.compile(r"\bVienna Game\b", re.I), "Partie Viennoise"),
+    (re.compile(r"\bFour Knights Game\b", re.I), "Partie des Quatre Cavaliers"),
+    (re.compile(r"\bTwo Knights Defense\b", re.I), "Défense des Deux Cavaliers"),
+]
+
 class AIAnalyzer:
 
     @staticmethod
@@ -69,6 +84,9 @@ class AIAnalyzer:
             return opening_name
 
         result = opening_name.strip()
+        for compiled_pattern, fr_str in _OPENING_PHRASES:
+            result = compiled_pattern.sub(fr_str, result)
+
         for compiled_pattern, fr_str in _OPENING_TRANSLATIONS:
             result = compiled_pattern.sub(fr_str, result)
             
