@@ -24,6 +24,10 @@ python scripts/chesscom_report.py NOM_UTILISATEUR --months 1 --max-games 5
 
 Les PDF apparaissent à la racine. Les données du rapport sont conservées dans `json/player_NOM_UTILISATEUR/` pour permettre la reprise.
 
+Le rapport contient un sommaire complet, des chapitres 4.X et un sous-chapitre daté pour chaque partie. Chaque partie affiche les couleurs, les ELO estimés et la précision des Blancs et des Noirs. Les parties contre les robots Chess.com sont analysées en priorité lorsque `--max-games` est utilisé.
+
+La précision est calculée à partir des évaluations Stockfish et mise en cache avec la partie. L'ELO estimé combine cette précision avec l'estimation existante, avec une pondération progressive selon le nombre de coups analysés.
+
 ## Vérifications
 
 ```bash

@@ -1,5 +1,6 @@
 import argparse
 import json
+import math
 import os
 import re
 import sys
@@ -45,6 +46,50 @@ def is_bot_game(game, player_name=None):
 
     bot_pattern = re.compile(r"(?:bot|engine|stockfish|computer|chess\.com|^ai(?:$|[-_\d]))", re.I)
     return any(bot_pattern.search(name) for name in players)
+
+def opponent_name(game, player_name):
+    player_lower = player_name.lower()
+    white_name = str(game.get("white", {}).get("username", ""))
+    return game.get("black", {}).get("username", "") if white_name.lower() == player_lower else white_name
+
+def game_date(game):
+    timestamp = game.get("end_time") or game.get("start_time")
+    if not timestamp:
+        return "Date inconnue"
+    return datetime.fromtimestamp(timestamp).strftime("%d/%m/%Y")
+
+def game_category(game, player_name):
+    if is_bot_game(game, player_name):
+        return "Parties contre les bots"
+    time_class = str(game.get("time_class", "")).lower()
+    return {
+        "daily": "Parties différées",
+        "rapid": "Parties rapides",
+        "blitz": "Parties Blitz",
+        "bullet": "Parties Blitz"
+    }.get(time_class, "Autres parties")
+
+def adjusted_estimated_elo(base_elo, precision, move_count):
+    """Calibre l'estimation existante avec précision et taille de l'échantillon."""
+    if precision is None:
+        return base_elo
+
+    precision_elo = 400 + 2800 / (1 + math.exp(-(precision - 70) / 10))
+    sample_weight = min(0.5, max(0.15, (move_count - 10) / 100))
+    return round((base_elo * (1 - sample_weight)) + (precision_elo * sample_weight))
+
+def update_estimates(game):
+    analysis = game.setdefault("analysis", {})
+    details = analysis.get("details", [])
+    if not details:
+        return
+
+    precisions = ChessUtils.calculate_precision_from_details(details)
+    base_white, base_black = ChessUtils.calculate_elo_from_details(details)
+    analysis["precision_white"] = precisions["white"]
+    analysis["precision_black"] = precisions["black"]
+    analysis["est_elo_white"] = adjusted_estimated_elo(base_white, precisions["white"], len(details))
+    analysis["est_elo_black"] = adjusted_estimated_elo(base_black, precisions["black"], len(details))
 
 def refresh_opening_blunder_data(game):
     for blunder in game.get("analysis", {}).get("opening_blunders", []):
@@ -180,7 +225,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         "termination": term_str,
         "result": result_text,
         "time_class": game.get("time_class", "inconnu"),
-        "opponent_type": ChessUtils.classify_opponent_type(black_name if white_name == username else white_name),
+        "opponent_type": ChessUtils.classify_opponent_type(opponent_name(game, username)),
         "white": {"username": white_name, "elo": game.get("white", {}).get("rating")},
         "black": {"username": black_name, "elo": game.get("black", {}).get("rating")},
         "opening": best_opening_name,
@@ -318,12 +363,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             progress_callback(result_data)
 
     # 6. Clôture de l'analyse (Calcul ELO et Résumé final)
-    est_elo_w, est_elo_b = ChessUtils.calculate_elo_from_details(details)
-    result_data["analysis"]["est_elo_white"] = est_elo_w
-    result_data["analysis"]["est_elo_black"] = est_elo_b
-    precisions = ChessUtils.calculate_precision_from_details(details)
-    result_data["analysis"]["precision_white"] = precisions["white"]
-    result_data["analysis"]["precision_black"] = precisions["black"]
+    update_estimates(result_data)
     result_data["analysis"]["summary"] = summarize_details(details)
     result_data["is_complete"] = True
 
@@ -505,13 +545,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     games = sorted([g for g in games if g.get("is_complete", True)], key=lambda x: x.get("end_time", 0))
 
     for game in games:
-        analysis = game.setdefault("analysis", {})
-        if analysis.get("details") and (
-            analysis.get("precision_white") is None or analysis.get("precision_black") is None
-        ):
-            precisions = ChessUtils.calculate_precision_from_details(analysis["details"])
-            analysis["precision_white"] = precisions["white"]
-            analysis["precision_black"] = precisions["black"]
+        update_estimates(game)
 
     if not games:
         elements.append(Paragraph("Aucune partie complétée trouvée pour ces critères.", normal_style))
@@ -523,10 +557,10 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     wins = sum(1 for g in games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_lower) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_lower))
     losses = sum(1 for g in games if (g["result"] == "0-1" and g["white"]["username"].lower() == player_lower) or (g["result"] == "1-0" and g["black"]["username"].lower() == player_lower))
     
-    games_bots = [g for g in games if is_bot_game(g, player_name)]
-    games_daily = [g for g in games if g.get("time_class", "").lower() == "daily" and not is_bot_game(g, player_name)]
-    games_rapid = [g for g in games if g.get("time_class", "").lower() == "rapid" and not is_bot_game(g, player_name)]
-    games_blitz = [g for g in games if g.get("time_class", "").lower() in ["blitz", "bullet"] and not is_bot_game(g, player_name)]
+    games_bots = [g for g in games if game_category(g, player_name) == "Parties contre les bots"]
+    games_daily = [g for g in games if game_category(g, player_name) == "Parties différées"]
+    games_rapid = [g for g in games if game_category(g, player_name) == "Parties rapides"]
+    games_blitz = [g for g in games if game_category(g, player_name) == "Parties Blitz"]
 
     def get_wdl(cat_games):
         w = sum(1 for g in cat_games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_lower) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_lower))
@@ -721,16 +755,19 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
         for game_index, g in enumerate(cat_games, 1):
             white_name = g.get("white", {}).get("username", "Blanc")
             black_name = g.get("black", {}).get("username", "Noir")
-            game_title = f"{cat_title.split(' ', 1)[0]}.{game_index} {white_name} (Blancs) - {black_name} (Noirs)"
+            game_title = (
+                f"{cat_title.split(' ', 1)[0]}.{game_index} "
+                f"{white_name} (Blancs) - {black_name} (Noirs) - {game_date(g)}"
+            )
             g["player_focus"] = player_name
             elements.append(ChapterMarker(game_title, 3))
             elements.append(Paragraph(game_title, subsection_style))
             chapter_entries.append((3, game_title))
             elements.append(Paragraph(
-                f"ELO estimé : {g.get('analysis', {}).get('est_elo_white', 'N/A')} - "
-                f"{g.get('analysis', {}).get('est_elo_black', 'N/A')} | "
-                f"Précision : {g.get('analysis', {}).get('precision_white', 'N/A')}% - "
-                f"{g.get('analysis', {}).get('precision_black', 'N/A')}%",
+                f"ELO estimé : {g.get('analysis', {}).get('est_elo_white', 'N/A')} "
+                f"(Blancs) - {g.get('analysis', {}).get('est_elo_black', 'N/A')} (Noirs) | "
+                f"Précision : {g.get('analysis', {}).get('precision_white', 'N/A')}% "
+                f"(Blancs) - {g.get('analysis', {}).get('precision_black', 'N/A')}% (Noirs)",
                 normal_style
             ))
             elements.append(Paragraph(f"Partie : {g.get('white', {}).get('username', 'Blanc')} vs {g.get('black', {}).get('username', 'Noir')} ({g.get('result')})", bold_style))
@@ -781,18 +818,15 @@ def main():
             state = {"player": args.player, "games": {}}
         
         for game in state.get("games", {}).values():
-            if "analysis" in game and game["analysis"].get("details"):
-                game["analysis"]["est_elo_white"], game["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(game["analysis"]["details"])
-                precisions = ChessUtils.calculate_precision_from_details(game["analysis"]["details"])
-                game["analysis"]["precision_white"] = precisions["white"]
-                game["analysis"]["precision_black"] = precisions["black"]
+            update_estimates(game)
 
         existing_games = state.get("games", {})
         for cached_game in existing_games.values():
             white_name = cached_game.get("white", {}).get("username", "")
             black_name = cached_game.get("black", {}).get("username", "")
-            opponent_name = black_name if white_name.lower() == args.player.lower() else white_name
-            cached_game["opponent_type"] = ChessUtils.classify_opponent_type(opponent_name)
+            cached_game["opponent_type"] = ChessUtils.classify_opponent_type(
+                opponent_name(cached_game, args.player)
+            )
         
         # --- LOGIQUE DE FILTRAGE ET DE REPRISE ---
         games_to_process = []
@@ -803,10 +837,16 @@ def main():
             game_id = g.get("url")
             if not game_id: continue
 
-            # Ignorer la partie si le PGN est absent ou se termine par un résultat indéterminé '*'
+            bot_game = is_bot_game(g, args.player)
             pgn_text = g.get("pgn", "")
-            if not pgn_text or pgn_text.strip().endswith("*"):
+            if not pgn_text:
+                Logger.debug_log(f"Partie ignorée sans PGN: {game_id}", "WARNING")
                 continue
+            if pgn_text.strip().endswith("*") and not bot_game:
+                continue
+
+            if bot_game and not g.get("end_time"):
+                g["end_time"] = g.get("start_time") or int(time.time())
             
             if args.game_id and args.game_id not in game_id: continue
             if args.opponent and args.opponent.lower() not in (g.get("white", {}).get("username", "").lower(), g.get("black", {}).get("username", "").lower()): continue
@@ -835,7 +875,10 @@ def main():
                 games_to_process.append((g, game_id, existing_g, needs_full_analysis))
         
         if args.max_games > 0:
-            games_to_process = games_to_process[:args.max_games]
+            games_to_process = sorted(
+                games_to_process,
+                key=lambda item: not is_bot_game(item[0], args.player)
+            )[:args.max_games]
             
         # PASSE 2 : ENRICHISSEMENT TACTIQUE (MODE REPRISE)
         for g, game_id, existing_g, needs_full_analysis in games_to_process:

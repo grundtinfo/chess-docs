@@ -8,6 +8,9 @@ Outil Python qui produit des guides PDF d'échecs et des rapports d'analyse à p
 - Analyse des positions et des meilleurs coups avec Stockfish quand le moteur est disponible.
 - Identification des ouvertures via `Openix`, avec traduction locale des noms.
 - Génération de rapports joueurs Chess.com, avec cache par partie et reprise des analyses incomplètes.
+- Les rapports distinguent les parties contre les robots Chess.com, les analysent en priorité dans la limite de `--max-games`, et les regroupent dans le chapitre 4.4.
+- Chaque partie du chapitre 4 possède un sous-chapitre daté au format `JJ/MM/AAAA`, avec ELO estimés et précision des Blancs et des Noirs.
+- Le sommaire est construit à partir de tous les titres réellement générés, après assemblage du rapport.
 - Rendu des échiquiers, flèches, FEN et notation française via ReportLab et `python-chess`.
 - Le parcours des pièges est présent dans `scripts/traps.py`, mais il est actuellement bloqué par l'import de `OllamaManager`, absent de `classes/engines.py`.
 
@@ -57,6 +60,10 @@ python scripts/chesscom_report.py <joueur> --months 3 --max-games 10 --verbose
 python scripts/chesscom_report.py <joueur> --opponent <adversaire> --incomplete-only
 python scripts/chesscom_report.py <joueur> --game-id 123456789
 ```
+
+Les parties robots sont récupérées depuis les archives et la liste des parties courantes Chess.com. Une partie robot est conservée pour l'analyse si son PGN est disponible, même si son résultat PGN est encore `*`; les parties robots candidates sont prioritaires lorsque `--max-games` limite le traitement.
+
+L'ELO estimé combine l'estimation Stockfish existante avec une calibration sigmoïde fondée sur la précision moyenne des coups. Le poids de cette calibration augmente avec le nombre de demi-coups analysés et les valeurs de précision sont conservées dans le cache de chaque partie.
 
 Le rapport est enregistré sous `<joueur>_report_avance.pdf` (ou `<joueur>_vs_<adversaire>_report_avance.pdf`). Les parties sont conservées dans `json/player_<joueur>/game_<id>.json`. Les parties terminées disposant d'un PGN sont téléchargées depuis l'API publique Chess.com; `--max-games 0` signifie toutes les parties candidates.
 
