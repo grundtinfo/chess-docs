@@ -5,6 +5,7 @@ import unittest
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from classes.chess_utils import ChessUtils
+from scripts.chesscom_report import is_bot_game
 
 
 class PlayerReportTests(unittest.TestCase):
@@ -25,6 +26,11 @@ class PlayerReportTests(unittest.TestCase):
         self.assertEqual(ChessUtils.infer_move_suffix(delta=-400), '??')
         self.assertEqual(ChessUtils.infer_move_suffix(delta=-120), '?!')
         self.assertEqual(ChessUtils.infer_move_suffix(delta=300), '!')
+
+    def test_is_bot_game_detects_cached_and_opponent_names(self):
+        self.assertTrue(is_bot_game({"opponent_type": "robot"}, "Alice"))
+        self.assertTrue(is_bot_game({"white": {"username": "Alice"}, "black": {"username": "ChessBot"}}, "Alice"))
+        self.assertFalse(is_bot_game({"white": {"username": "Alice"}, "black": {"username": "Bob"}}, "Alice"))
 
 
 if __name__ == '__main__':

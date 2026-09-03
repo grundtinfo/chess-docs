@@ -76,13 +76,111 @@ class ChessboardFlowable(Flowable):
 
 class PDFUtils:
     @staticmethod
-    def ajouter_pied_page(canvas, doc, title):
+    def header_footer_callback(canvas, doc, title=""):
         canvas.saveState()
+        
+        # Récupération des chapitres dessinés sur la page courante
+        chapters = getattr(canvas, 'chapters_on_page', [])
+        
+        # Initialisation du dictionnaire d'état des chapitres si inexistant
+        if not hasattr(canvas, 'current_chapters_state'):
+            canvas.current_chapters_state = {}
+            
+        # Mise à jour de l'état des chapitres selon le niveau
+        for lvl, chap_title in chapters:
+            canvas.current_chapters_state[lvl] = chap_title
+            # Efface les sous-niveaux orphelins si on remonte dans la hiérarchie
+            for k in list(canvas.current_chapters_state.keys()):
+                if k > lvl:
+                    del canvas.current_chapters_state[k]
+
         canvas.setFont('Helvetica', 9)
-        canvas.setFillColor(Config.COLOR_TEXT)
-        canvas.drawString(36, 20, title)
+        try:
+            from classes.config import Config
+            canvas.setFillColor(Config.COLOR_TEXT)
+        except Exception:
+            canvas.setFillColorRGB(0.2, 0.2, 0.2)
+        
+        # Entête : 1er niveau de chapitrage du document (Niveau 1)
+        first_level_title = canvas.current_chapters_state.get(1, "")
+        if doc.page > 0 and first_level_title:
+            canvas.drawString(36, doc.pagesize[1] - 25, f"{first_level_title}")
+        
+        # Pied de page : Dernier niveau de chapitrage de la page (le plus profond)
+        footer_text = f"{title} | " if title else ""
+        if canvas.current_chapters_state:
+            max_level = max(canvas.current_chapters_state.keys())
+            last_level_title = canvas.current_chapters_state.get(max_level, "")
+            
+            if last_level_title:
+                footer_text += f"{last_level_title}"
+                
+        if footer_text:
+            canvas.drawString(36, 20, footer_text)
+            
         canvas.drawRightString(doc.pagesize[0] - 36, 20, f"Page {doc.page}")
+        
+        # Réinitialisation stricte pour la page suivante
+        canvas.chapters_on_page = []
         canvas.restoreState()
+
+class ChapterMarker(Flowable):
+    """
+    Marqueur invisible permettant de remonter à header_footer_callback
+    le chapitre courant et son niveau d'importance (1 = Titre principal, 2 = Sous-titre, etc.).
+    """
+    def __init__(self, title, level=1):
+        Flowable.__init__(self)
+        self.title = title
+        self.level = level
+
+    def wrap(self, availWidth, availHeight):
+        return 0, 0
+
+    def draw(self):
+        if not hasattr(self.canv, 'chapters_on_page'):
+            self.canv.chapters_on_page = []
+        self.canv.chapters_on_page.append((self.level, self.title))
+
+class WinDrawLossBar(Flowable):
+    """Dessine une barre horizontale proportionnelle pour les Victoires/Nuls/Défaites."""
+    def __init__(self, wins, draws, losses, width=300, height=15):
+        Flowable.__init__(self)
+        self.wins = wins
+        self.draws = draws
+        self.losses = losses
+        self.width = width
+        self.height = height
+
+    def wrap(self, availWidth, availHeight):
+        return self.width, self.height
+
+    def draw(self):
+        total = self.wins + self.draws + self.losses
+        if total == 0: return
+        
+        w_w = self.width * (self.wins / total)
+        d_w = self.width * (self.draws / total)
+        l_w = self.width * (self.losses / total)
+        
+        current_x = 0
+        self.canv.setFont("Helvetica-Bold", 9)
+        
+        def draw_segment(w, val, color_hex):
+            nonlocal current_x
+            if w > 0:
+                self.canv.setFillColor(colors.HexColor(color_hex))
+                self.canv.rect(current_x, 0, w, self.height, stroke=0, fill=1)
+                # Affichage du nombre uniquement si la zone est assez large
+                if w > 20:
+                    self.canv.setFillColor(colors.white)
+                    # Centrage vertical ajusté
+                    self.canv.drawCentredString(current_x + w/2, self.height/2 - 3, str(val))
+                current_x += w
+
+        draw_segment(w_w, self.wins, "#22c55e")  # Vert (Victoires)
+        draw_segment(d_w, self.draws, "#94a3b8") # Gris (Nuls)
+        draw_segment(l_w, self.losses, "#ef4444") # Rouge (Défaites)
 
 class EloProgressionChart(Flowable):
     def __init__(self, data_source, target_username=None, width=460, height_per_chart=180):

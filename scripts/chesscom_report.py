@@ -13,6 +13,7 @@ import chess
 import chess.pgn
 import requests
 
+from functools import partial
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.styles import ParagraphStyle, getSampleStyleSheet
@@ -26,8 +27,48 @@ from classes.logger import Logger
 from classes.chess_utils import ChessUtils
 from classes.engines import StockfishAnalyzer
 from classes.ai_analyzer import AIAnalyzer
-from classes.pdf_components import ChessboardFlowable, EloProgressionChart, PDFUtils
+from classes.pdf_components import ChessboardFlowable, EloProgressionChart, PDFUtils, WinDrawLossBar, ChapterMarker
 from classes.json_cache import CacheManager
+
+def is_bot_game(game, player_name=None):
+    opponent_type = str(game.get("opponent_type", "")).lower()
+    if opponent_type in {"robot", "bot", "computer", "engine", "ai"}:
+        return True
+
+    players = [
+        str(game.get("white", {}).get("username", "")),
+        str(game.get("black", {}).get("username", ""))
+    ]
+    if player_name:
+        player_lower = player_name.lower()
+        players = [name for name in players if name.lower() != player_lower]
+
+    bot_pattern = re.compile(r"(?:bot|engine|stockfish|computer|chess\.com|^ai(?:$|[-_\d]))", re.I)
+    return any(bot_pattern.search(name) for name in players)
+
+def refresh_opening_blunder_data(game):
+    for blunder in game.get("analysis", {}).get("opening_blunders", []):
+        stockfish_pv = str(blunder.get("stockfish_pv", "")).strip().lower()
+        if stockfish_pv not in {"", "aucune", "none"} or not blunder.get("fen"):
+            continue
+
+        try:
+            board = chess.Board(blunder["fen"])
+            pv_line, arrows = AIAnalyzer.force_stockfish_line(
+                board, blunder.get("played_uci", "")
+            )
+            blunder["stockfish_pv"] = pv_line
+            blunder["fleches_pv"] = arrows
+        except (ValueError, KeyError):
+            continue
+
+        if not blunder.get("best_move_san") and blunder.get("best_uci"):
+            try:
+                blunder["best_move_san"] = ChessUtils.convert_english_to_french_notation(
+                    board.san(chess.Move.from_uci(blunder["best_uci"]))
+                )
+            except (ValueError, chess.IllegalMoveError):
+                pass
 
 def parse_game_record(game, username, deep_analysis=False, progress_callback=None, existing_game=None):
     Logger.debug_log(f"Étape Parsing : Début du traitement de la partie (ID/URL: {game.get('url', 'Inconnu')})", "DEBUG")
@@ -182,104 +223,109 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
         return result_data
 
     # --- 3) ENRICHISSEMENT & REPRISE (Coup par Coup) ---
-    Logger.debug_log("Étape Analyse Profonde : Démarrage de l'évaluation coup par coup...", "DEBUG")
-    board_before = game_obj.board()
+    Logger.debug_log("Étape Analyse Profonde : Démarrage de l'évaluation coup par coup...", "INFO")
+
     analyzer = StockfishAnalyzer()
-    engine = analyzer.get_engine(depth=Config.DEFAULT_STOCKFISH_DEPTH)
+    board_before = game_obj.board()
     
     for idx, move in enumerate(moves, start=1):
-        move_raw_en = san_moves[idx - 1]
-        ply_data = details[idx - 1]
-        Logger.debug_log(f"Étape Analyse Profonde : Évaluation du pli {idx}/{len(moves)} (Coup : {move_raw_en})", "DEBUG")
+        detail_node = details[idx - 1]
         
-        # Mode Reprise : On vérifie un à un les coups déjà calculés
-        is_analyzed = (ply_data.get("precision", -9999) != -9999) or (ply_data.get("comment", "") != "")
-        
-        if is_analyzed:
+        # Si le coup est déjà analysé (reprise sur crash ou interruption)
+        if detail_node.get("precision", -9999) != -9999:
             board_before.push(move)
             continue
 
-        swing, precision = 0, -9999
-        eval_before, eval_after, move_obj = None, None, None
-        best_move_fr, best_eval, best_uci = "", None, None
+        san_eng = san_moves[idx - 1]
+        move_raw_en = ChessUtils.remove_special_chars(san_eng)
         
-        if engine:
-            try:
-                eval_before, eval_after, move_obj = analyzer.analyze_move(board_before, move_raw_en)
-                best_move_fr, best_eval, best_uci = analyzer.get_best_move_with_eval(board_before.copy())
-                
-                if eval_before and eval_after and move_obj:
-                    board_after = board_before.copy()
-                    board_after.push(move_obj)
-                    
-                    val_before = ChessUtils.get_eval_value(eval_before, board_before)
-                    val_after = ChessUtils.get_eval_value(eval_after, board_after)
-                    
-                    board_best = board_before.copy()
-                    if best_uci:
-                        try: board_best.push(chess.Move.from_uci(best_uci))
-                        except Exception: pass
-                    val_best = ChessUtils.get_eval_value(best_eval, board_best) if best_eval else val_before
-                    
-                    player_color = board_before.turn
-                    multiplier = 1 if player_color == chess.WHITE else -1
-                    
-                    eval_player_before = val_before * multiplier
-                    eval_player_after = val_after * multiplier
-                    eval_player_best = val_best * multiplier
-                    
-                    swing = eval_player_after - eval_player_before
-                    precision = min(eval_player_after - eval_player_best, swing)
-                    if best_uci and move_obj.uci() == best_uci and swing > -50: 
-                        precision = 0
-            except Exception as e: 
-                Logger.debug_log(f"Erreur d'analyse (ply {idx}) pour le coup {move_raw_en} : {str(e)}", "ERROR")
-
-        precomputed_data = {
-            'eval_before': eval_before, 'eval_after': eval_after,
-            'move_obj': move_obj, 'best_eval': best_eval, 'best_uci': best_uci
-        } if engine else None
-
-        # 4) Injection systématique de san_moves[idx:] pour la détection tactique
-        llm_comment, move_label, tactics_detected, alt_recom = AIAnalyzer.generate_move_comment(
-            move_raw_en, move_raw_en, board_before, is_trap=False, 
-            played_continuation=san_moves[idx:], 
-            best_alternative=None,
-            precomputed_data=precomputed_data
+        # 1. Analyse pré-calculée via Stockfish pour mutualiser les appels
+        eval_before, eval_after, move_obj = analyzer.analyze_move(board_before, san_eng)
+        _, best_eval, best_uci = analyzer.get_best_move_with_eval(board_before.copy())
+        
+        precomputed = {
+            'eval_before': eval_before,
+            'eval_after': eval_after,
+            'move_obj': move_obj,
+            'best_eval': best_eval,
+            'best_uci': best_uci
+        }
+        
+        # 2. Génération du commentaire avec IA
+        comment, pdf_move_str, tactics, alt_recom = AIAnalyzer.generate_move_comment(
+            move_raw_en, san_eng, board_before, is_trap=False, precomputed_data=precomputed
         )
         
-        llm_comment = re.sub(r'(?i)^\s*(je suis d[é|e]sol[é|e]|d[é|e]sol[é|e]|en tant qu\').*?(\. |\n|$)', '', llm_comment).strip()
-        llm_comment = llm_comment.replace('$', '')
+        # 3. Calculs des métriques (delta/swing)
+        val_before = ChessUtils.get_eval_value(eval_before, board_before)
+        
+        temp_board_after = board_before.copy()
+        temp_board_after.push(move)
+        val_after = ChessUtils.get_eval_value(eval_after, temp_board_after)
+        
+        board_best = board_before.copy()
+        if best_uci:
+            try:
+                board_best.push(chess.Move.from_uci(best_uci))
+            except ValueError:
+                pass
+        val_best = ChessUtils.get_eval_value(best_eval, board_best) if best_eval else val_before
 
+        multiplier = 1 if board_before.turn == chess.WHITE else -1
+        delta = (val_after * multiplier) - (val_best * multiplier)
+        swing = (val_after * multiplier) - (val_before * multiplier)
+        
+        if temp_board_after.is_checkmate() or (best_uci and move.uci() == best_uci):
+            delta = 0
+        
+        # 4. Identification des erreurs critiques d'ouverture (Pour le Chapitre 2)
         if idx <= 24 and swing <= -300 and best_uci:
-            san_fr = ChessUtils.convert_english_to_french_notation(move_raw_en)
+            pv_line = alt_recom
+            fleches_pv = []
+            
+            if not pv_line or pv_line == "Aucune":
+                pv_line, fleches_pv = AIAnalyzer.force_stockfish_line(board_before, move.uci())
+            else:
+                _, fleches_pv = AIAnalyzer.force_stockfish_line(board_before, move.uci())
+                
             opening_blunders_data.append({
-                "move_number": (idx + 1) // 2, "color": "white" if idx % 2 != 0 else "black",
-                "played_move": move_label, # <-- MODIFICATION : Conserve les annotations comme ??
-                "played_uci": move.uci(), "best_uci": best_uci,
-                "best_move_san": best_move_fr, # <-- NOUVEAU : C'est ce qui ira dans la colonne "Bleue"
-                "stockfish_pv": alt_recom, # <-- NOUVEAU : Sauvegarde de la ligne calculée complète
-                "fen": board_before.fen(), "tactics": tactics_detected
+                "move_number": (idx + 1) // 2,
+                "color": "white" if board_before.turn == chess.WHITE else "black",
+                "played_move": ChessUtils.convert_english_to_french_notation(san_eng),
+                "played_uci": move.uci(),
+                "best_uci": best_uci,
+                "best_move_san": ChessUtils.convert_english_to_french_notation(
+                    board_before.san(chess.Move.from_uci(best_uci))
+                ) if best_uci else "N/A",
+                "tactics": tactics,
+                "stockfish_pv": pv_line,
+                "fleches_pv": fleches_pv,
+                "fen": board_before.fen()
             })
 
+        # 5. Enrichissement des détails (Pour le Chapitre 3)
+        detail_node["comment"] = comment
+        detail_node["move"] = pdf_move_str
+        detail_node["tactics"] = tactics
+        detail_node["delta"] = swing 
+        detail_node["precision"] = delta 
+        
         board_before.push(move)
         
-        # Mise à jour du nœud sans le dédoubler
-        ply_data["move"] = move_label
-        ply_data["comment"] = llm_comment
-        ply_data["delta"] = round(swing, 2)
-        ply_data["precision"] = round(precision, 2)
-        ply_data["tactics"] = tactics_detected
+        # Sauvegarde progressive
+        if progress_callback and idx % 5 == 0:
+            result_data["analysis"]["summary"] = summarize_details(details)
+            progress_callback(result_data)
 
-        result_data["analysis"]["summary"] = summarize_details(details)
-        result_data["analysis"]["blunders"] = sum(p.get("blunders", 0) for p in result_data["analysis"]["summary"].values())
-        result_data["analysis"]["good_moves"] = sum(p.get("good_moves", 0) for p in result_data["analysis"]["summary"].values())
-        result_data["analysis"]["est_elo_white"], result_data["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(details)
-
-        if progress_callback: progress_callback(result_data)
-
+    # 6. Clôture de l'analyse (Calcul ELO et Résumé final)
+    est_elo_w, est_elo_b = ChessUtils.calculate_elo_from_details(details)
+    result_data["analysis"]["est_elo_white"] = est_elo_w
+    result_data["analysis"]["est_elo_black"] = est_elo_b
+    result_data["analysis"]["summary"] = summarize_details(details)
     result_data["is_complete"] = True
-    if progress_callback: progress_callback(result_data)
+
+    if progress_callback:
+        progress_callback(result_data)
 
     return result_data
 
@@ -289,8 +335,6 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
 
 def render_game_analysis_table(game, normal_style, bold_style):
     elements = []
-    w_est, b_est = game["analysis"].get("est_elo_white", "N/A"), game["analysis"].get("est_elo_black", "N/A")
-    elements.extend([Paragraph(f"<i>Performance estimée : Blanc {w_est} | Noir {b_est}</i>", normal_style), Spacer(1, 5)])
     
     table_data = [[
         Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>N°</b>", normal_style),
@@ -382,6 +426,55 @@ def render_game_analysis_table(game, normal_style, bold_style):
     elements.append(t)
     return elements
 
+def render_opening_focus(game, normal_style, bold_style, section_style):
+    """Génère les diagrammes PDF pour les erreurs critiques en ouverture."""
+    elements = []
+    blunders_data = game.get("analysis", {}).get("opening_blunders", [])
+    
+    if not blunders_data:
+        return elements
+        
+    elements.append(Paragraph("Focus sur l'Ouverture (Erreurs Critiques)", section_style))
+    elements.append(Spacer(1, 10))
+    
+    # Définit l'orientation de l'échiquier selon la couleur du joueur focus
+    orientation = chess.WHITE if game["white"]["username"].lower() == game.get("player_focus", "").lower() else chess.BLACK
+    
+    for blunder in blunders_data:
+        fen = blunder.get("fen")
+        played_uci = blunder.get("played_uci")
+        best_uci = blunder.get("best_uci")
+        fleches_pv = blunder.get("fleches_pv", [])
+        
+        # Flèche rouge pour l'erreur jouée, flèches bleues pour la séquence de correction Stockfish
+        fleches_rouges = [played_uci] if played_uci else []
+        fleches_bleues = fleches_pv if fleches_pv else ([best_uci] if best_uci else [])
+        
+        diag = ChessboardFlowable(
+            fen, size=180, 
+            fleches_rouges=fleches_rouges, 
+            fleches_bleues=fleches_bleues,
+            orientation=orientation
+        )
+        
+        move_num = blunder.get("move_number")
+        color = "Blancs" if blunder.get("color") == "white" else "Noirs"
+        
+        desc = f"<b>Coup {move_num} ({color}) :</b> {blunder.get('played_move')}<br/><br/>"
+        desc += f"<b>Problème détecté :</b> {blunder.get('tactics', 'Erreur stratégique')}<br/><br/>"
+        desc += f"<b>Ligne Stockfish :</b> {blunder.get('stockfish_pv')}"
+        
+        # Utilisation de KeepTogether pour éviter de couper le diagramme de son explication
+        t = Table([[diag, Paragraph(desc, normal_style)]], colWidths=[200, 320])
+        t.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+            ('ALIGN', (0, 0), (0, -1), 'CENTER'),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 20)
+        ]))
+        elements.append(KeepTogether(t))
+        
+    return elements
+
 def build_pdf(output_path, state, player_name, opponent_name=None):
     Logger.debug_log(f"Génération du PDF : {output_path}", "INFO")
     doc = SimpleDocTemplate(output_path, pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
@@ -409,63 +502,98 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
 
     if not games:
         elements.append(Paragraph("Aucune partie complétée trouvée pour ces critères.", normal_style))
-        doc.build(elements)
+        callback = lambda c, d: PDFUtils.header_footer_callback(c, d, "Rapport Analytique Complet - Chess Docs")
+        doc.build(elements, onFirstPage=callback, onLaterPages=callback)
         return
 
     player_lower = player_name.lower()
     wins = sum(1 for g in games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_lower) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_lower))
     losses = sum(1 for g in games if (g["result"] == "0-1" and g["white"]["username"].lower() == player_lower) or (g["result"] == "1-0" and g["black"]["username"].lower() == player_lower))
     
+    games_bots = [g for g in games if g.get("opponent_type", "").lower() == "robot"]
+    games_daily = [g for g in games if g.get("time_class", "").lower() == "daily" and g not in games_bots]
+    games_rapid = [g for g in games if g.get("time_class", "").lower() == "rapid" and g not in games_bots]
+    games_blitz = [g for g in games if g.get("time_class", "").lower() in ["blitz", "bullet"] and g not in games_bots]
+
+    def get_wdl(cat_games):
+        w = sum(1 for g in cat_games if (g["result"] == "1-0" and g["white"]["username"].lower() == player_lower) or (g["result"] == "0-1" and g["black"]["username"].lower() == player_lower))
+        l = sum(1 for g in cat_games if (g["result"] == "0-1" and g["white"]["username"].lower() == player_lower) or (g["result"] == "1-0" and g["black"]["username"].lower() == player_lower))
+        d = len(cat_games) - w - l
+        return w, d, l
+
+    categories = [
+        ("Parties différées", games_daily),
+        ("Parties rapides", games_rapid),
+        ("Parties Blitz", games_blitz),
+        ("Parties contre les bots", games_bots)
+    ]
+
+    table_of_contents = [
+        Spacer(1, 15),
+        Paragraph("Sommaire", section_style),
+        Paragraph("1. Vue d'ensemble", normal_style),
+        Paragraph("2. Forces et Faiblesses & Progression ELO (Par type de jeu)", normal_style),
+        Paragraph("3. Focus Théorique des Ouvertures", normal_style),
+        Paragraph("4. Analyses des parties", normal_style),
+        Paragraph("    4.1 Parties différées", normal_style),
+        Paragraph("    4.2 Parties rapides", normal_style),
+        Paragraph("    4.3 Parties Blitz", normal_style),
+        Paragraph("    4.4 Parties contre les bots", normal_style),
+        PageBreak()
+    ]
+    elements[2:2] = table_of_contents
+
     elements.extend([
+        ChapterMarker("1. Vue d'ensemble"),
         Paragraph("1. Vue d'ensemble", section_style),
-        Paragraph(f"Analyse basée sur <b>{len(games)} parties</b>. Bilan pour {player_name} : <font color='green'>{wins} V</font> / <font color='gray'>{len(games) - wins - losses} N</font> / <font color='red'>{losses} D</font>.", normal_style),
-        Spacer(1, 15)
+        Paragraph(f"Analyse basée sur <b>{len(games)} parties</b>.", normal_style),
+        Spacer(1, 10),
+        Paragraph("<b>Bilan global :</b>", normal_style),
+        WinDrawLossBar(wins, len(games) - wins - losses, losses, width=350, height=20),
+        Spacer(1, 15),
+        Paragraph("<b>Résumé par sous-catégories :</b>", normal_style),
+        Spacer(1, 5)
     ])
 
-    # CORRECTIF B : Déplacement du graphique global -> On crée des graphiques par catégorie en section 2
-    elements.append(Paragraph("2. Forces et Faiblesses & Progression ELO (Par type de jeu)", section_style))
-    
-    categorized_games = defaultdict(list)
-    for g in games: categorized_games[f"{g['time_class'].capitalize()} ({g['opponent_type'].capitalize()})"].append(g)
-
-    for cat in sorted(categorized_games.keys(), key=lambda x: (1 if "Robot" in x else 0, x)):
-        cat_games = categorized_games[cat]
-        good = sum(g["analysis"]["summary"]["opening"].get("good_moves", 0) for g in cat_games)
-        blunders = sum(g["analysis"]["summary"]["opening"].get("blunders", 0) for g in cat_games)
-        
-        # CORRECTIF A : Utilisation exclusive du nom brut openix sans appel LLM
-        advice_text = ""
-        try:
-            op_names = [g.get("opening") for g in cat_games if g.get("opening") and g.get("opening") != "Ouverture Inconnue"]
-            if op_names:
-                main_op = max(set(op_names), key=op_names.count)
-                advice_text = f"<br/><b>Ouverture principale :</b> {main_op}"
-        except Exception:
-            pass
-
-        elements.extend([
-            Paragraph(f"Format : {cat} ({len(cat_games)} parties)", subsection_style),
-            Paragraph(f"Bons coups théoriques : <b>{good}</b> | Gaffes d'ouverture : <b>{blunders}</b>{advice_text}", normal_style),
-            Spacer(1, 10)
-        ])
-
-        # CORRECTIF B : Injection du graphique segmenté par type de partie 
-        player_elos, opponent_elos = [], []
-        for g in cat_games:
-            is_white = g["white"]["username"].lower() == player_lower
-            player_elos.append(g["analysis"].get("est_elo_white" if is_white else "est_elo_black", 1200))
-            opponent_elos.append(g["analysis"].get("est_elo_black" if is_white else "est_elo_white", 1200))
+    cat_table_data = []
+    for cat_name, cat_games in categories:
+        if len(cat_games) > 0:
+            w, d, l = get_wdl(cat_games)
+            cat_table_data.append([
+                Paragraph(f"- {cat_name} : {len(cat_games)}", normal_style),
+                WinDrawLossBar(w, d, l, width=200, height=15)
+            ])
             
-        if len(cat_games) > 0: 
+    if cat_table_data:
+        cat_table = Table(cat_table_data, colWidths=[150, 210])
+        cat_table.setStyle(TableStyle([
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('LEFTPADDING', (0, 0), (-1, -1), 0),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 8)
+        ]))
+        elements.append(cat_table)
+
+    elements.extend([
+        ChapterMarker("2. Forces et Faiblesses & Progression ELO (Par type de jeu)"),
+        Paragraph("2. Forces et Faiblesses & Progression ELO (Par type de jeu)", section_style),
+        Paragraph("Progression estimée du niveau de performance par catégorie.", normal_style),
+        Spacer(1, 10)
+    ])
+    for cat_name, cat_games in categories:
+        if cat_games:
             elements.extend([
+                Paragraph(cat_name, subsection_style),
                 EloProgressionChart(cat_games, player_name),
-                Spacer(1, 5),
-                Paragraph("<i><font color='#0284c7'>Bleu : Niveau de performance (Joueur)</font> | <font color='#f97316'>Orange : Niveau de performance (Adversaire)</font></i>", normal_style),
-                Spacer(1, 15)
+                Spacer(1, 10)
             ])
 
-    elements.extend([PageBreak(), Paragraph("3. Focus Théorique des Ouvertures (via Stockfish)", section_style)])
-    
+    elements.extend([
+        PageBreak(),
+        ChapterMarker("3. Focus Théorique des Ouvertures"),
+        Paragraph("3. Focus Théorique des Ouvertures (via Stockfish)", section_style),
+        Spacer(1, 5)
+    ])
+
     openings_blunders = defaultdict(list)
     for g in games:
         for blunder in g.get("analysis", {}).get("opening_blunders", []):
@@ -477,9 +605,32 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     if not valid_top_weak:
         elements.append(Paragraph("Aucune erreur critique d'ouverture n'a été détectée dans cet échantillon.", normal_style))
     else:
+        # --- Tableau de résumé des ouvertures ---
+        summary_table_data = [[
+            Paragraph("<b>Ouverture</b>", normal_style),
+            Paragraph("<b>Nombre d'erreurs</b>", normal_style)
+        ]]
         for op_name, blunders_list in valid_top_weak:
+            summary_table_data.append([
+                Paragraph(op_name, normal_style),
+                Paragraph(str(len(blunders_list)), normal_style)
+            ])
             
-            opening_header_parts = [Paragraph(f"Ouverture : {op_name} ({len(blunders_list)} erreurs récentes)", subsection_style)]
+        t_summary = Table(summary_table_data, colWidths=[350, 150])
+        t_summary.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), Config.COLOR_PRIMARY), 
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('INNERGRID', (0, 0), (-1, -1), 0.5, Config.COLOR_BORDER), 
+            ('BOX', (0, 0), (-1, -1), 0.5, Config.COLOR_BORDER),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, Config.COLOR_BG_LIGHT]),
+        ]))
+        elements.extend([t_summary, Spacer(1, 15)])
+
+        for idx, (op_name, blunders_list) in enumerate(valid_top_weak, 1):
+            
+            opening_header_parts = [Paragraph(f"3.{idx}, {len(blunders_list)} erreurs récentes ({op_name})", subsection_style)]
             
             # CORRECTIF A : Le bloc `AIAnalyzer.translate_opening_name` a été supprimé ici
             elements.extend(opening_header_parts)
@@ -541,18 +692,79 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
             
             elements.extend([t_blunder, Spacer(1, 15)])
 
-    for idx, g in enumerate([g for g in games if g.get("deep_analysis")]):
-        if idx > 0: elements.append(Spacer(1, 20))
-        g["player_focus"] = player_name
-        title = f"Partie {idx+1} : {g['white']['username']} ({g['analysis'].get('est_elo_white', 'N/A')} ELO) vs {g['black']['username']} ({g['analysis'].get('est_elo_black', 'N/A')} ELO)"
-        
-        elements.append(KeepTogether([
-            Paragraph(title, subsection_style),
-            Paragraph(f"Ouverture : {g.get('opening')} | Résultat : {g['result']} ({g['date']})", normal_style),
-            Spacer(1, 10)
-        ] + render_game_analysis_table(g, normal_style, bold_style)))
+    elements.extend([
+        PageBreak(),
+        ChapterMarker("4. Analyses des parties"),
+        Paragraph("4. Analyses des parties", section_style)
+    ])
 
-    footer = lambda c, d: PDFUtils.ajouter_pied_page(c, d, "Rapport Analytique Complet - Chess Docs")
+    cat_mapping = [
+        ("4.1 Parties différées", games_daily),
+        ("4.2 Parties rapides", games_rapid),
+        ("4.3 Parties Blitz", games_blitz),
+        ("4.4 Parties contre les bots", games_bots)
+    ]
+
+    for cat_title, cat_games in cat_mapping:
+        if not cat_games:
+            continue
+
+        elements.extend([
+            ChapterMarker(cat_title),
+            Paragraph(cat_title, subsection_style),
+            Spacer(1, 10)
+        ])
+
+        for g in cat_games:
+            elements.append(Paragraph(f"Partie : {g.get('white', {}).get('username', 'Blanc')} vs {g.get('black', {}).get('username', 'Noir')} ({g.get('result')})", bold_style))
+            elements.extend(render_game_analysis_table(g, normal_style, bold_style))
+            elements.append(Spacer(1, 15))
+
+    deep_games = [g for g in games if g.get("deep_analysis")]
+    
+    # Séparation par catégorie
+    deep_bots = [g for g in deep_games if is_bot_game(g, player_name)]
+    deep_daily = [g for g in deep_games if g.get("time_class", "").lower() == "daily" and not is_bot_game(g, player_name)]
+    deep_rapid = [g for g in deep_games if g.get("time_class", "").lower() == "rapid" and not is_bot_game(g, player_name)]
+    deep_blitz = [g for g in deep_games if g.get("time_class", "").lower() in ["blitz", "bullet"] and not is_bot_game(g, player_name)]
+
+    categories = [
+        ("4.1 Parties différées", deep_daily, "4.1"),
+        ("4.2 Parties rapides", deep_rapid, "4.2"),
+        ("4.3 Parties blitz", deep_blitz, "4.3"),
+        ("4.4 Parties contre les bots", deep_bots, "4.4")
+    ]
+    
+    doc_game_idx = 1
+    
+    for cat_title, cat_games, cat_prefix in categories:
+        if not cat_games:
+            continue
+            
+        elements.extend([Paragraph(cat_title, subsection_style), Spacer(1, 10)])
+        
+        for idx, g in enumerate(cat_games, 1):
+            if idx > 1 or doc_game_idx > 1: elements.append(Spacer(1, 20))
+            g["player_focus"] = player_name
+            
+            w_pseudo = g['white']['username']
+            b_pseudo = g['black']['username']
+            w_est = g['analysis'].get('est_elo_white', 'N/A')
+            b_est = g['analysis'].get('est_elo_black', 'N/A')
+            
+            title = f"{cat_prefix}.{idx} Partie {doc_game_idx} : {w_pseudo} vs {b_pseudo}"
+            
+            elements.append(KeepTogether([
+                Paragraph(title, subsection_style),
+                Paragraph(f"Ouverture : {g.get('opening', 'Inconnue')} | Résultat {g.get('result', '*')}", normal_style),
+                Paragraph(f"<i>Performance estimée Blanc {w_est} | Noir {b_est}</i>", normal_style),
+                Spacer(1, 10)
+            ]))
+            
+            elements.extend(render_game_analysis_table(g, normal_style, bold_style))
+            doc_game_idx += 1
+
+    footer = lambda c, d: PDFUtils.header_footer_callback(c, d, "Rapport Analytique Complet - Chess Docs")
     doc.build(elements, onFirstPage=footer, onLaterPages=footer)
     Logger.debug_log(f"PDF généré avec succès : {output_path}", "ESSENTIAL")
 
@@ -591,6 +803,11 @@ def main():
                 game["analysis"]["est_elo_white"], game["analysis"]["est_elo_black"] = ChessUtils.calculate_elo_from_details(game["analysis"]["details"])
 
         existing_games = state.get("games", {})
+        for cached_game in existing_games.values():
+            white_name = cached_game.get("white", {}).get("username", "")
+            black_name = cached_game.get("black", {}).get("username", "")
+            opponent_name = black_name if white_name.lower() == args.player.lower() else white_name
+            cached_game["opponent_type"] = ChessUtils.classify_opponent_type(opponent_name)
         
         # --- LOGIQUE DE FILTRAGE ET DE REPRISE ---
         games_to_process = []
@@ -645,6 +862,13 @@ def main():
             
             Logger.debug_log(f"Enrichissement tactique de la partie : {game_id}", "INFO")
             parse_game_record(g, args.player, deep_analysis=needs_full_analysis, progress_callback=save_progress_buffered, existing_game=existing_g)
+
+        for game_id, cached_game in existing_games.items():
+            before = json.dumps(cached_game.get("analysis", {}).get("opening_blunders", []), sort_keys=True)
+            refresh_opening_blunder_data(cached_game)
+            after = json.dumps(cached_game.get("analysis", {}).get("opening_blunders", []), sort_keys=True)
+            if before != after:
+                CacheManager.save_game(str(state_path), game_id, cached_game)
         # -------------------------------------------------
         
         state.update({"player": args.player, "last_updated": datetime.now().strftime("%Y-%m-%d %H:%M:%S")})

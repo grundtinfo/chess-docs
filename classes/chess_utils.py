@@ -247,46 +247,49 @@ class ChessUtils:
         def request_with_retry(url, retries=5, base_delay=1):
             for attempt in range(retries):
                 try:
-                    # Réutilisation de la session HTTP globale
-                    response = _HTTP_SESSION.get(url, timeout=20, headers=headers)
-                    
-                    if response.status_code in {403, 404, 429, 500, 502, 503, 504} and attempt < retries - 1:
-                        attente = base_delay * (2 ** attempt) # 1s, 2s, 4s, 8s...
-                        Logger.debug_log(f"HTTP {response.status_code} sur l'API. Nouvelle tentative {attempt + 1}/{retries} dans {attente}s...", "WARNING")
-                        time.sleep(attente)
-                        continue
-                        
-                    response.raise_for_status()
-                    return response
-                except requests.RequestException as exc:
-                    if attempt < retries - 1: 
-                        attente = base_delay * (2 ** attempt)
-                        Logger.debug_log(f"Exception réseau ({exc}). Nouvelle tentative {attempt + 1}/{retries} dans {attente}s...", "WARNING")
-                        time.sleep(attente)
-                    else: 
-                        raise exc
+                    response = _HTTP_SESSION.get(url, headers=headers, timeout=10)
+                    if response.status_code == 200:
+                        return response.json()
+                except Exception as e:
+                    Logger.debug_log(f"Erreur requête {url}: {e}", "WARNING")
+                time.sleep(base_delay * (attempt + 1))
+            return None
 
-        archives_url = f"https://api.chess.com/pub/player/{username}/games/archives"
+        games_list = []
+        
+        # 1. Récupération des archives mensuelles classiques
         try:
-            archives = request_with_retry(archives_url).json().get("archives", [])
+            archives_data = request_with_retry(f"https://api.chess.com/pub/player/{username}/games/archives")
+            if archives_data and "archives" in archives_data:
+                archives = archives_data["archives"][-months:] if months > 0 else archives_data["archives"]
+                for archive_url in archives:
+                    month_data = request_with_retry(archive_url)
+                    if month_data and "games" in month_data:
+                        games_list.extend(month_data["games"])
         except Exception as e:
-            Logger.debug_log(f"Erreur API archives: {e}", "ERROR")
-            return []
-            
-        recent_archives = archives[-months:] if months and months > 0 else archives
-        games = []
-        for archive_url in recent_archives:
-            try:
-                archive_games = request_with_retry(archive_url).json().get("games", [])
-                # Conserver uniquement les parties disposant d'un PGN avec un résultat final
-                finished_games = [
-                    g for g in archive_games 
-                    if g.get("pgn") and not g.get("pgn").strip().endswith("*")
-                ]
-                games.extend(finished_games)
-            except Exception: 
-                pass
-        return games
+            Logger.debug_log(f"Erreur lors de la récupération des archives: {e}", "ERROR")
+
+        # 2. Récupération spécifique des parties courantes et parties contre les bots (unrated)
+        try:
+            current_games_data = request_with_retry(f"https://api.chess.com/pub/player/{username}/games")
+            if current_games_data and "games" in current_games_data:
+                # S'assure que les instances de bots (souvent tagguées sans date de fin stricte dans l'API unrated) sont capturées
+                for game_bot in current_games_data["games"]:
+                    if "bot" in game_bot.get("url", "").lower() or "engine" in game_bot.get("url", "").lower():
+                        # Force l'horodatage si l'API omet le end_time sur les sessions d'entraînement
+                        if not game_bot.get("end_time"):
+                            game_bot["end_time"] = int(time.time())
+                games_list.extend(current_games_data["games"])
+        except Exception as e:
+            Logger.debug_log(f"Erreur lors de la récupération des parties bots: {e}", "ERROR")
+
+        # Dédoublonnage basé sur l'URL de la partie (identifiant unique)
+        unique_games = {}
+        for g in games_list:
+            if "url" in g:
+                unique_games[g["url"]] = g
+                
+        return list(unique_games.values())
 
     @staticmethod
     def parse_stockfish_pv(pv_str, is_white_turn=True, start_move_number=1):

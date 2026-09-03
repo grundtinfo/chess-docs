@@ -551,3 +551,37 @@ class AIAnalyzer:
         Logger.debug_log(f"[Génération Fallback] {san_fr_fb} -> {fallback_comment}", "DEBUG")
 
         return fallback_comment, san_fr_fb, tactics, "Aucune"
+
+    @staticmethod
+    def force_stockfish_line(board, played_move_uci):
+        """Force Stockfish à trouver la meilleure ligne si aucune n'a été trouvée naturellement pour le focus"""
+        from classes.engines import StockfishAnalyzer
+        analyzer = StockfishAnalyzer()
+        engine = analyzer.get_engine()
+        if not engine:
+            return "Aucune", []
+            
+        try:
+            Logger.debug_log(f"[Focus Ouverture] Forçage de la ligne Stockfish pour {played_move_uci}", "INFO")
+            _, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
+            seq_eng = analyzer.get_fast_pv_sequence(board, max_moves=4)
+            
+            if seq_eng:
+                pv_san = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board.turn == chess.WHITE), start_move_number=board.fullmove_number)
+                
+                # Récupération des suites de coups au format UCI pour dessiner les flèches du diagramme
+                fleches = []
+                temp_board = board.copy()
+                for san_move in seq_eng:
+                    try:
+                        move = temp_board.parse_san(san_move)
+                        fleches.append(move.uci())
+                        temp_board.push(move)
+                    except Exception:
+                        break
+                return pv_san, fleches
+            else:
+                return "Aucune", [best_uci] if best_uci else []
+        except Exception as e:
+            Logger.debug_log(f"Erreur lors du forçage de la ligne Stockfish : {e}", "WARNING")
+            return "Aucune", []
