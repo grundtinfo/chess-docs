@@ -224,8 +224,9 @@
     "coups": "1. e4 c5 2. b4 cxb4 3. d4 Cc6 4. d5 Ce5 5. Fb2 d6 6. Cf3 Fg4 7. Cxe5 Fxd1 8. Fb5 Dd7 9. Fxd7 Rd8 10. Cxf7 Rxd7 11. Rxd1",
     "explications": {
       "2": "Le coup 2. b4 est une réponse agressive des Blancs qui vise à proposer un gambit en sacrifiant un pion pour obtenir une meilleure activité de leurs pièces et un contrôle accru du centre de l'échiquier.",
-      "4": "Les blancs menacent le cavalier et maintiennent la pression. L'échange des cavaliers n'est pas le meilleur choix car il active la dame blanche.",
-      "7": "Une combinaison des blans est déclenchée ce qui va ruiner la défense des noirs."
+      "4": "Les blancs poussent le pion pour menacer le cavalier c6, le forçant à se déplacer en e5 tout en gagnant de l'espace.",
+      "6": "Un coup ambitieux pour les noirs est de jouer Fg4 pour clouer le cavalier f3. Cependant, cela ouvre la porte à une ressource tactique redoutable pour les blancs.",
+      "7": "Le sacrifice spectaculaire Cxe5 ! Ce coup ouvre complètement la position noire. Si les noirs acceptent le sacrifice de la dame avec Fxd1, la suite est forcée et mène à un désavantage matériel décisif."
     },
     "Orientation": "Blancs"
   },
@@ -264,6 +265,24 @@
       "7": "Les blancs chassent le cavalier et gagnent un tempo.",
       "8": "Les noirs évitent 8..Cc6 car c4 chasse immédiatment les cavalier dans leur propre camp.",
       "12": "Les blancs mettent la pression et préparent le mat."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Gambit de l'aile, alternative 6. f4",
+    "coups": "1. e4 c5 2. b4 cxb4 3. d4 Cc6 4. d5 Ce5 5. Fb2 d6 6. f4",
+    "explications": {
+      "4": "Les blancs gagnent de l'espace et forcent le cavalier noir à se placer en e5.",
+      "6": "Plutôt que de développer le cavalier en f3, les blancs jouent f4. Ce coup repousse immédiatement le cavalier noir et renforce considérablement le contrôle central des blancs."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Gambit de l'aile, alternative 6... Cxf3+",
+    "coups": "1. e4 c5 2. b4 cxb4 3. d4 Cc6 4. d5 Ce5 5. Fb2 d6 6. Cf3 Cxf3+ 7. Dxf3",
+    "explications": {
+      "6": "Les blancs développent leur cavalier tout en renouvelant la pression sur e5. Face à cela, les noirs peuvent décider d'échanger les cavaliers pour éviter les complications tactiques (comme le piège avec Fg4).",
+      "7": "L'échange en f3 sur échec ne dérange pas les blancs. La dame vient se placer sur une case forte, maintenant une activité supérieure et un excellent contrôle de l'échiquier."
     },
     "Orientation": "Blancs"
   }
