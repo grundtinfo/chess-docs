@@ -6,6 +6,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from classes.chess_utils import ChessUtils
 from classes.ai_analyzer import AIAnalyzer
+from classes.pdf_components import EloProgressionChart
 from scripts.chesscom_report import is_bot_game, opponent_name, side_name
 
 
@@ -69,6 +70,28 @@ class PlayerReportTests(unittest.TestCase):
             AIAnalyzer.translate_opening_name("English Opening"),
             "Ouverture Anglaise"
         )
+
+    def test_elo_chart_keeps_real_time_scale_aligned_with_ratings(self):
+        games = [
+            {
+                "time_class": "rapid", "opponent_type": "humain", "end_time": 1100,
+                "date": "1970-01-01 00:18", "white": {"username": "Alice"},
+                "black": {"username": "Bob"},
+                "analysis": {"est_elo_white": 1300, "est_elo_black": 1250},
+            },
+            {
+                "time_class": "rapid", "opponent_type": "humain", "end_time": 100,
+                "date": "1970-01-01 00:01", "white": {"username": "Alice"},
+                "black": {"username": "Bob"},
+                "analysis": {"est_elo_white": 1200, "est_elo_black": 1220},
+            },
+        ]
+
+        chart_data = EloProgressionChart(games, "Alice").charts_data["Rapid (Humain)"]
+
+        self.assertEqual(chart_data["timestamps"], [100, 1100])
+        self.assertEqual(chart_data["vp"], [1200, 1300])
+        self.assertEqual(chart_data["vo"], [1220, 1250])
 
 
 if __name__ == '__main__':

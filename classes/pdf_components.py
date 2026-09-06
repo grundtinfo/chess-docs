@@ -220,17 +220,19 @@ class EloProgressionChart(Flowable):
             cat = f"{time_class} ({opp_type})" # ex: "Daily (Humain)"
             
             if cat not in groups:
-                groups[cat] = {"vp": [], "vo": [], "labels": []}
+                groups[cat] = {"vp": [], "vo": [], "labels": [], "timestamps": []}
             
             is_white = str(g.get("white", {}).get("username", "")).lower() == target_username.lower()
             elo_p = g.get("analysis", {}).get("est_elo_white" if is_white else "est_elo_black", 1200)
             elo_o = g.get("analysis", {}).get("est_elo_black" if is_white else "est_elo_white", 1200)
             
             date_str = g.get("date", "").split(" ")[0] if g.get("date") else ""
+            timestamp = g.get("end_time") or g.get("start_time")
             
             groups[cat]["vp"].append(elo_p)
             groups[cat]["vo"].append(elo_o)
             groups[cat]["labels"].append(date_str)
+            groups[cat]["timestamps"].append(timestamp)
             
         return groups
 
@@ -244,13 +246,25 @@ class EloProgressionChart(Flowable):
         
         for cat, data in self.charts_data.items():
             vp, vo, labels = data.get("vp", []), data.get("vo", []), data.get("labels", [])
+            timestamps = data.get("timestamps", [])
             
             current_y -= 20
             self.canv.setFont("Helvetica-Bold", 10)
             self.canv.setFillColor(Config.COLOR_PRIMARY)
             self.canv.drawString(40, current_y, f"Progression ELO : {cat}")
+
+            legend_y = current_y - 13
+            self.canv.setFont("Helvetica", 8)
+            self.canv.setFillColor(colors.HexColor("#0284c7"))
+            self.canv.circle(43, legend_y + 2, 2.5, stroke=0, fill=1)
+            self.canv.setFillColor(Config.COLOR_TEXT)
+            self.canv.drawString(50, legend_y - 1, "Joueur")
+            self.canv.setFillColor(colors.HexColor("#f97316"))
+            self.canv.circle(102, legend_y + 2, 2.5, stroke=0, fill=1)
+            self.canv.setFillColor(Config.COLOR_TEXT)
+            self.canv.drawString(109, legend_y - 1, "Adversaire")
             
-            chart_y = current_y - self.height_per_chart
+            chart_y = current_y - self.height_per_chart - 10
             x0, y0, x1, y1 = 40, chart_y + 25, self.width - 20, current_y - 10
             
             self.canv.setStrokeColor(Config.COLOR_BORDER)
@@ -270,6 +284,11 @@ class EloProgressionChart(Flowable):
                 
             span = max_value - min_value or 1
 
+            valid_timestamps = [timestamp for timestamp in timestamps if isinstance(timestamp, (int, float))]
+            use_time_scale = len(valid_timestamps) == len(vp) and len(set(valid_timestamps)) > 1
+            min_timestamp = min(valid_timestamps) if use_time_scale else 0
+            timestamp_span = (max(valid_timestamps) - min_timestamp) if use_time_scale else 1
+
             self.canv.setFont("Helvetica", 8)
             self.canv.setFillColor(Config.COLOR_TEXT)
             num_steps = 5
@@ -286,15 +305,41 @@ class EloProgressionChart(Flowable):
 
             def draw_line(values, color_hex):
                 if not values: return
-                points = [(x0 + (idx / max(len(values) - 1, 1)) * (x1 - x0), 
-                           y0 + ((value - min_value) / span) * (y1 - y0)) 
-                          for idx, value in enumerate(values)]
+                points = []
+                for idx, value in enumerate(values):
+                    if use_time_scale:
+                        x_ratio = (timestamps[idx] - min_timestamp) / timestamp_span
+                    else:
+                        x_ratio = idx / max(len(values) - 1, 1)
+                    points.append((x0 + x_ratio * (x1 - x0),
+                                   y0 + ((value - min_value) / span) * (y1 - y0)))
                 
                 if len(points) > 1:
-                    segments = [(points[i][0], points[i][1], points[i+1][0], points[i+1][1]) for i in range(len(points) - 1)]
                     self.canv.setStrokeColor(colors.HexColor(color_hex))
                     self.canv.setLineWidth(1.8)
-                    self.canv.lines(segments)
+                    if len(points) == 2:
+                        self.canv.line(points[0][0], points[0][1], points[1][0], points[1][1])
+                    else:
+                        # Courbe Catmull-Rom convertie en Bezier pour suivre les points sans angles brusques.
+                        for idx in range(len(points) - 1):
+                            previous_point = points[max(0, idx - 1)]
+                            start_point = points[idx]
+                            end_point = points[idx + 1]
+                            next_point = points[min(len(points) - 1, idx + 2)]
+                            control_start = (
+                                start_point[0] + (end_point[0] - previous_point[0]) / 6,
+                                start_point[1] + (end_point[1] - previous_point[1]) / 6,
+                            )
+                            control_end = (
+                                end_point[0] - (next_point[0] - start_point[0]) / 6,
+                                end_point[1] - (next_point[1] - start_point[1]) / 6,
+                            )
+                            self.canv.bezier(
+                                start_point[0], start_point[1],
+                                control_start[0], control_start[1],
+                                control_end[0], control_end[1],
+                                end_point[0], end_point[1],
+                            )
                 
                 self.canv.setFillColor(colors.HexColor(color_hex))
                 for x, y in points: self.canv.circle(x, y, 2.5, stroke=0, fill=1)
@@ -308,7 +353,11 @@ class EloProgressionChart(Flowable):
                 step = max(1, len(labels) // 6)
                 for idx, label in enumerate(labels):
                     if idx % step != 0 and idx != len(labels) - 1: continue
-                    x_pos = x0 + (idx / max(len(vp) - 1, 1)) * (x1 - x0)
+                    if use_time_scale:
+                        x_ratio = (timestamps[idx] - min_timestamp) / timestamp_span
+                    else:
+                        x_ratio = idx / max(len(vp) - 1, 1)
+                    x_pos = x0 + x_ratio * (x1 - x0)
                     lbl_str = str(label)
                     # On allège l'axe X en affichant uniquement MM-DD si possible
                     if len(lbl_str) >= 10 and "-" in lbl_str:
