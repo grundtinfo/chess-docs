@@ -447,7 +447,7 @@ def render_game_analysis_table(game, normal_style, bold_style):
             else: fleches_noires.append(row["black_uci"])
 
         diag = ChessboardFlowable(
-            fen, size=110, 
+            fen, size=120,
             fleches_blanches=fleches_blanches, 
             fleches_noires=fleches_noires, 
             fleches_bordeaux=fleches_bordeaux, 
@@ -469,7 +469,7 @@ def render_game_analysis_table(game, normal_style, bold_style):
         Paragraph(f"<i>{termination_reason}</i>", normal_style), "", ""
     ])
 
-    t = Table(table_data, colWidths=[110, 35, 55, 55, 255], repeatRows=1)
+    t = Table(table_data, colWidths=[120, 35, 55, 55, 245], repeatRows=1)
     t.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, 0), Config.COLOR_PRIMARY), 
         ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -477,7 +477,7 @@ def render_game_analysis_table(game, normal_style, bold_style):
         ('ALIGN', (1, 0), (3, -1), 'CENTER'),                    # N°, Blanc, Noir centrés
         ('ALIGN', (4, 0), (4, -1), 'LEFT'),                      # Analyse justifiée
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),                  # Centrage vertical
-        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, Config.COLOR_BG_LIGHT]),
+        ('ROWBACKGROUNDS', (0, 1), (-1, -1), [Config.COLOR_BG_LIGHT, Config.COLOR_BG_ALT]),
         ('INNERGRID', (0, 0), (-1, -2), 0.5, Config.COLOR_BORDER), # Sépare les colonnes
         ('BOX', (0, 0), (-1, -2), 0.5, Config.COLOR_BORDER),       # Encadrement
         ('LINEBELOW', (0, -1), (-1, -1), 0.5, Config.COLOR_BORDER),# Ligne finale (Fin)
@@ -512,7 +512,7 @@ def render_opening_focus(game, normal_style, bold_style, section_style):
         fleches_bleues = fleches_pv if fleches_pv else ([best_uci] if best_uci else [])
         
         diag = ChessboardFlowable(
-            fen, size=180, 
+            fen, size=190,
             fleches_rouges=fleches_rouges, 
             fleches_bleues=fleches_bleues,
             orientation=orientation
@@ -637,11 +637,11 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
     chapter_entries.append((1, "2. Forces et Faiblesses & Progression ELO (Par type de jeu)"))
     for cat_name, cat_games in categories:
         if cat_games:
-            elements.extend([
+            elements.append(KeepTogether([
                 Paragraph(cat_name, subsection_style),
                 EloProgressionChart(cat_games, player_name),
                 Spacer(1, 10)
-            ])
+            ]))
 
     elements.extend([
         PageBreak(),
@@ -681,7 +681,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
             ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
             ('INNERGRID', (0, 0), (-1, -1), 0.5, Config.COLOR_BORDER), 
             ('BOX', (0, 0), (-1, -1), 0.5, Config.COLOR_BORDER),
-            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, Config.COLOR_BG_LIGHT]),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [Config.COLOR_BG_LIGHT, Config.COLOR_BG_ALT]),
         ]))
         elements.extend([t_summary, Spacer(1, 15)])
 
@@ -713,7 +713,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                 orient = chess.WHITE if sample.get("color") == "white" else chess.BLACK
                 
                 diag = ChessboardFlowable(
-                    fen, size=110,
+                    fen, size=120,
                     fleches_oranges=fleches_oranges, 
                     fleches_bleues=fleches_bleues, 
                     orientation=orient
@@ -733,7 +733,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                     Paragraph(summary_pdf, normal_style)
                 ])
                 
-            t_blunder = Table(blunder_data, colWidths=[110, 35, 65, 65, 235], repeatRows=1)
+            t_blunder = Table(blunder_data, colWidths=[120, 35, 65, 65, 225], repeatRows=1)
             t_blunder.setStyle(TableStyle([
                 ('BACKGROUND', (0, 0), (-1, 0), Config.COLOR_PRIMARY), 
                 ('TEXTCOLOR', (0, 0), (-1, 0), colors.white),
@@ -741,7 +741,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
                 ('ALIGN', (1, 0), (3, -1), 'CENTER'),
                 ('ALIGN', (4, 0), (4, -1), 'LEFT'),
                 ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, Config.COLOR_BG_LIGHT]),
+                ('ROWBACKGROUNDS', (0, 1), (-1, -1), [Config.COLOR_BG_LIGHT, Config.COLOR_BG_ALT]),
                 ('INNERGRID', (0, 0), (-1, -1), 0.5, Config.COLOR_BORDER), 
                 ('BOX', (0, 0), (-1, -1), 0.5, Config.COLOR_BORDER),
                 ('PADDING', (0, 0), (-1, -1), 6)

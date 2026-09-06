@@ -154,7 +154,7 @@ def build_pdf(output_path, source_name, data, stockfish_depth=18):
                         fleches_noires.append(arrow_notation)
 
             
-            diag = ChessboardFlowable(fen_row, size=120, fleches_blanches=fleches_blanches, fleches_noires=fleches_noires, fleches_bordeaux=fleches_bordeaux, orientation=orientation) if fen_row else ""
+            diag = ChessboardFlowable(fen_row, size=130, fleches_blanches=fleches_blanches, fleches_noires=fleches_noires, fleches_bordeaux=fleches_bordeaux, orientation=orientation) if fen_row else ""
             
             explication = explications.get(str(row.get('move_number', '')))
             parts = []
@@ -171,10 +171,10 @@ def build_pdf(output_path, source_name, data, stockfish_depth=18):
 
             table_data.append([diag, Paragraph(str(row.get('move_number', '')), bold_style), Paragraph(row.get('white', ''), bold_style), Paragraph(row.get('black', ''), bold_style), Paragraph(comment_text, normal_style)])
             
-        table = Table(table_data, colWidths=[130, 25, 50, 50, 285], repeatRows=1)
+        table = Table(table_data, colWidths=[140, 25, 50, 50, 275], repeatRows=1)
         table.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, Config.COLOR_BG_LIGHT]),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'), ('ROWBACKGROUNDS', (0,1), (-1,-1), [Config.COLOR_BG_LIGHT, Config.COLOR_BG_ALT]),
             ('LINEBELOW', (0,0), (-1,-1), 0.5, Config.COLOR_BORDER), ('PADDING', (0,0), (-1,-1), 6)
         ]))
         elements.extend([table, Spacer(1, 12)])

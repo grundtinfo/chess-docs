@@ -76,7 +76,15 @@ class ChessboardFlowable(Flowable):
 
 class PDFUtils:
     @staticmethod
+    def draw_page_background(canvas, doc):
+        canvas.saveState()
+        canvas.setFillColor(Config.COLOR_PAGE_BG)
+        canvas.rect(0, 0, doc.pagesize[0], doc.pagesize[1], stroke=0, fill=1)
+        canvas.restoreState()
+
+    @staticmethod
     def ajouter_pied_page(canvas, doc, title=""):
+        PDFUtils.draw_page_background(canvas, doc)
         canvas.saveState()
         canvas.setFont("Helvetica", 9)
         canvas.setFillColor(Config.COLOR_TEXT)
@@ -87,6 +95,7 @@ class PDFUtils:
 
     @staticmethod
     def header_footer_callback(canvas, doc, title=""):
+        PDFUtils.draw_page_background(canvas, doc)
         canvas.saveState()
         
         # Récupération des chapitres dessinés sur la page courante
@@ -284,11 +293,6 @@ class EloProgressionChart(Flowable):
                 
             span = max_value - min_value or 1
 
-            valid_timestamps = [timestamp for timestamp in timestamps if isinstance(timestamp, (int, float))]
-            use_time_scale = len(valid_timestamps) == len(vp) and len(set(valid_timestamps)) > 1
-            min_timestamp = min(valid_timestamps) if use_time_scale else 0
-            timestamp_span = (max(valid_timestamps) - min_timestamp) if use_time_scale else 1
-
             self.canv.setFont("Helvetica", 8)
             self.canv.setFillColor(Config.COLOR_TEXT)
             num_steps = 5
@@ -307,10 +311,7 @@ class EloProgressionChart(Flowable):
                 if not values: return
                 points = []
                 for idx, value in enumerate(values):
-                    if use_time_scale:
-                        x_ratio = (timestamps[idx] - min_timestamp) / timestamp_span
-                    else:
-                        x_ratio = idx / max(len(values) - 1, 1)
+                    x_ratio = idx / max(len(values) - 1, 1)
                     points.append((x0 + x_ratio * (x1 - x0),
                                    y0 + ((value - min_value) / span) * (y1 - y0)))
                 
@@ -369,17 +370,14 @@ class EloProgressionChart(Flowable):
                 self.canv.setFillColor(Config.COLOR_TEXT)
                 step = max(1, len(labels) // 6)
                 for idx, label in enumerate(labels):
-                    if idx % step != 0 and idx != len(labels) - 1: continue
-                    if use_time_scale:
-                        x_ratio = (timestamps[idx] - min_timestamp) / timestamp_span
-                    else:
-                        x_ratio = idx / max(len(vp) - 1, 1)
+                    if idx % step != 0 and idx != len(labels) - 1:
+                        continue
+                    x_ratio = idx / max(len(vp) - 1, 1)
                     x_pos = x0 + x_ratio * (x1 - x0)
                     lbl_str = str(label)
-                    # On allège l'axe X en affichant uniquement MM-DD si possible
                     if len(lbl_str) >= 10 and "-" in lbl_str:
                         lbl_str = lbl_str[5:10]
-                    self.canv.drawString(x_pos - 10, y0 - 12, lbl_str)
-            
+                    self.canv.drawCentredString(x_pos, y0 - 12, lbl_str)
+
             # Espacement pour le prochain graphique
             current_y = chart_y - 20

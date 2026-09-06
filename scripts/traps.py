@@ -306,7 +306,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
             [Paragraph("Diagrammes", bold_style), Paragraph("Position finale, intermédiaire de détection, et défense.", normal_style)],
             [Paragraph("Table des coups", bold_style), Paragraph("Coups avec commentaires analytiques.", normal_style)]
         ], colWidths=[120, 420])
-        legend_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), Config.COLOR_BG_LIGHT), ('LINEBELOW', (0,0), (-1,0), 1, Config.COLOR_PRIMARY), ('PADDING', (0,0), (-1,-1), 6)]))
+        legend_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), Config.COLOR_BG_LIGHT), ('ROWBACKGROUNDS', (0,1), (-1,-1), [Config.COLOR_BG_LIGHT, Config.COLOR_BG_ALT]), ('LINEBELOW', (0,0), (-1,0), 1, Config.COLOR_PRIMARY), ('PADDING', (0,0), (-1,-1), 6)]))
         elements.extend([legend_table, PageBreak()])
 
         for idx, piege in enumerate(trappes_data):
@@ -349,7 +349,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
 
                 diag = ChessboardFlowable(
                     fen, 
-                    size=105, 
+                    size=115,
                     orientation=orient,
                     fleches_blanches=fleches_blanches,
                     fleches_noires=fleches_noires,
@@ -358,15 +358,15 @@ def generer_pdf(stockfish_depth=18, verbose=1):
                 
                 table_data.append([diag, Paragraph(row.get("white",""), bold_style), Paragraph(row.get("white_comment",""), normal_style), Paragraph(row.get("black",""), bold_style), Paragraph(row.get("black_comment",""), normal_style)])
 
-            t_coups = Table(table_data, colWidths=[120, 50, 140, 50, 140], repeatRows=1)
-            t_coups.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, Config.COLOR_BG_LIGHT]), ('PADDING', (0,0), (-1,-1), 6), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
+            t_coups = Table(table_data, colWidths=[130, 50, 135, 50, 135], repeatRows=1)
+            t_coups.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), Config.COLOR_PRIMARY), ('TEXTCOLOR', (0,0), (-1,0), colors.white), ('ROWBACKGROUNDS', (0,1), (-1,-1), [Config.COLOR_BG_LIGHT, Config.COLOR_BG_ALT]), ('PADDING', (0,0), (-1,-1), 6), ('VALIGN', (0,0), (-1,-1), 'MIDDLE')]))
             bloc.append(t_coups)
             elements.extend([KeepTogether(bloc), Spacer(1, 15)])
 
             t_diags = Table([[Paragraph("<b>1) Piège</b>", normal_style), Paragraph("<b>2) Détection</b>", normal_style), Paragraph("<b>3) Défense</b>", normal_style)],
-                             [ChessboardFlowable(fen_final, 130, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
-                              ChessboardFlowable(fen_inter, 130, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
-                              ChessboardFlowable(fen_def, 130, fleches_defense=piege.get("fleches_defense",[]), orientation=orient)]], colWidths=[180, 180, 180])
+                             [ChessboardFlowable(fen_final, 140, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
+                              ChessboardFlowable(fen_inter, 140, fleches_menace=piege.get("fleches_menace",[]), orientation=orient),
+                              ChessboardFlowable(fen_def, 140, fleches_defense=piege.get("fleches_defense",[]), orientation=orient)]], colWidths=[180, 180, 180])
             t_diags.setStyle(TableStyle([('ALIGN', (0,0), (-1,-1), 'CENTER'), ('BACKGROUND', (0,0), (-1,0), Config.COLOR_BG_LIGHT), ('BOX', (0,0), (-1,-1), 1, Config.COLOR_BORDER)]))
             elements.extend([KeepTogether([t_diags, Spacer(1, 15)]), Paragraph(f"<b>Idée :</b> {piege.get('conseil_defense', '')}", normal_style), Paragraph(f"<b>Défense :</b> {piege.get('coup_defense', '')} - {piege.get('explication_defense', '')}", normal_style)])
 
