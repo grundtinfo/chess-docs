@@ -1,0 +1,41 @@
+[
+  {
+    "nom": "Gambit Dame (Défense Marshall) - Piège de la Dame centralisée",
+    "coups": "1. d4 d5 2. c4 Cf6 3. cxd5 Cxd5 4. e4 Cf6 5. Cc3 e6 6. Fd3 Dxd4 7. Fb5+",
+    "explications": {
+      "3": "Les Blancs prennent en d5. Si les Noirs reprennent avec le cavalier, cela permet de lancer la construction d'un centre fort.",
+      "4": "Les Blancs jouent e4 pour chasser le cavalier et obtenir une prise totale du centre de l'échiquier.",
+      "5": "Le cavalier c3 vient défendre le pion central attaqué par le cavalier noir qui s'est replié en f6.",
+      "6": "Les Blancs développent le fou en d3. Cela semble être une erreur flagrante laissant le pion d4 en prise, mais c'est un appât.",
+      "7": "Si les Noirs sont gourmands et prennent en d4 avec la Dame (6... Dxd4??), Fb5+ lance une attaque à la découverte. Les Noirs sont forcés de parer l'échec (ex: c6 ou Fd7), laissant leur Dame sans défense face à la Dame blanche."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Gambit Dame - Piège du Don Grec (Refus du sacrifice)",
+    "coups": "1. d4 d5 2. c4 Cf6 3. cxd5 Cxd5 4. e4 Cf6 5. Cc3 e6 6. Fd3 c6 7. Cf3 Fb4 8. O-O O-O 9. e5 Cd5 10. Fxh7+ Rh8 11. Cg5 f6 12. Dh5 fxg5 13. Fg6+ Rg8 14. Dh7#",
+    "explications": {
+      "6": "Au lieu de prendre le pion empoisonné, les Noirs décident de jouer c6 pour consolider leur structure.",
+      "7": "Les Blancs poursuivent leur développement avec Cf3. Les Noirs répondent par Fb4, développant leur Fou tout en clouant le cavalier c3 pour préparer le roque.",
+      "8": "Les Blancs mettent leur roi à l'abri. Par mimétisme, les Noirs décident de faire le petit roque également, ce qui déclenche la possibilité du deuxième piège.",
+      "9": "Les Blancs poussent e5 pour chasser le cavalier f6, un défenseur essentiel du roque noir. Le cavalier fuit en d5.",
+      "10": "Le coup brillant Fxh7+ ! C'est le célèbre sacrifice du Don Grec pour détruire la protection du roi noir.",
+      "11": "Le roi noir refuse le sacrifice en fuyant en h8. Les Blancs amènent leur cavalier en g5 pour accentuer l'attaque meurtrière.",
+      "14": "Après une tentative désespérée de défense des Noirs (ex: f6 pour faire de la place), la Dame blanche et le Fou s'associent pour un échec à la découverte menant à un mat imparable."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Gambit Dame - Piège du Don Grec (Acceptation et Mat)",
+    "coups": "1. d4 d5 2. c4 Cf6 3. cxd5 Cxd5 4. e4 Cf6 5. Cc3 e6 6. Fd3 c6 7. Cf3 Fb4 8. O-O O-O 9. e5 Cd5 10. Fxh7+ Rxh7 11. Cg5+ Rg8 12. Dh5 Te8 13. Dxf7+ Rh8 14. Dh5+ Rg8 15. Dh7+ Rf8 16. Dh8+ Re7 17. Dxg7#",
+    "explications": {
+      "10": "Le coup brillant Fxh7+ ! Le sacrifice du présent grec pour forcer l'ouverture du roi.",
+      "11": "Les Noirs acceptent le sacrifice. Les Blancs enchaînent immédiatement avec Cg5+ pour forcer le roi à reculer.",
+      "12": "La dame blanche rejoint l'assaut en h5, menaçant un mat éclair. Les Noirs jouent Te8 pour laisser une case de fuite à leur roi via f8.",
+      "13": "Il ne faut surtout pas se précipiter en h7 ! Le pion f7 empêche le mat et doit être éliminé. Dxf7+ force le roi à retourner en h8.",
+      "15": "Le roi noir, à court de ressources, est forcé de fuir vers le centre via f8.",
+      "17": "Dxg7# conclut la traque. Le roi noir est bloqué en e7 et n'a plus aucune case d'échappatoire. Échec et mat."
+    },
+    "Orientation": "Blancs"
+  }
+]

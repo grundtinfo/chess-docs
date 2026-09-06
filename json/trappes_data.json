@@ -452,5 +452,38 @@
     ],
     "defenseur": "Noirs",
     "explication_defense": "Développer le cavalier en a6 (7... Na6) permet de parer la menace de fourchette et d'échec et mat en c7, évitant ainsi le piège fatal si les Noirs s'obstinent à capturer le cavalier en f3 (8... Bxf3?? 9. Nxc7#)."
+  },
+  {
+    "nom": "Piège de la Dame (Gambit Dame - Défense Marshall)",
+    "coups": "1. d4 d5 2. c4 Cf6 3. cxd5 Cxd5 4. e4 Cf6 5. Cc3 e6 6. Fd3 Dxd4 7. Fb5+",
+    "conseil_defense": "Dans la défense Marshall, soyez extrêmement vigilant avant de capturer le pion central (d4) avec votre Dame si le Fou adverse n'est pas bloqué. Vérifiez toujours les échecs à la découverte.",
+    "coup_defense": "6... c6 ou 6... Fe7",
+    "fleches_defense": [
+      "c7c6",
+      "f8e7"
+    ],
+    "fleches_menace": [
+      "d3b5",
+      "d1d4"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Au lieu de prendre le pion empoisonné en d4, consolider le centre avec c6 ou développer le fou permet de continuer la partie de façon solide sans perdre la Dame par une découverte."
+  },
+  {
+    "nom": "Le Don Grec (Gambit Dame Accepté / Refusé)",
+    "coups": "1. d4 d5 2. c4 Cf6 3. cxd5 Cxd5 4. e4 Cf6 5. Cc3 e6 6. Fd3 c6 7. Cf3 Fb4 8. O-O O-O 9. e5 Cd5 10. Fxh7+",
+    "conseil_defense": "Méfiez-vous du sacrifice classique du Fou en h7 (le don grec) lorsque votre Cavalier f6 peut être chassé par l'avancée du pion e5. Assurez-vous d'avoir des défenseurs suffisants sur l'aile roi.",
+    "coup_defense": "8... h6 ou 8... Fxc3",
+    "fleches_defense": [
+      "h7h6",
+      "b4c3"
+    ],
+    "fleches_menace": [
+      "d3h7",
+      "f3g5",
+      "d1h5"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Jouer h6 prévient le sacrifice en contrôlant la case g5, interdisant l'arrivée du Cavalier blanc. Échanger le Fou contre le Cavalier en c3 soulage également la pression centrale avant de s'engager dans le roque."
   }
 ]
