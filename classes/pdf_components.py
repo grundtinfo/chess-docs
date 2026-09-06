@@ -320,19 +320,36 @@ class EloProgressionChart(Flowable):
                     if len(points) == 2:
                         self.canv.line(points[0][0], points[0][1], points[1][0], points[1][1])
                     else:
-                        # Courbe Catmull-Rom convertie en Bezier pour suivre les points sans angles brusques.
+                        # Tangentes monotones : elles lissent les jonctions sans depasser les points.
+                        slopes = [
+                            (points[idx + 1][1] - points[idx][1])
+                            / max(points[idx + 1][0] - points[idx][0], 1e-9)
+                            for idx in range(len(points) - 1)
+                        ]
+                        tangents = [slopes[0]]
+                        for idx in range(1, len(points) - 1):
+                            left_slope = slopes[idx - 1]
+                            right_slope = slopes[idx]
+                            if left_slope * right_slope <= 0:
+                                tangents.append(0)
+                            else:
+                                tangents.append(
+                                    (2 * left_slope * right_slope)
+                                    / (left_slope + right_slope)
+                                )
+                        tangents.append(slopes[-1])
+
                         for idx in range(len(points) - 1):
-                            previous_point = points[max(0, idx - 1)]
                             start_point = points[idx]
                             end_point = points[idx + 1]
-                            next_point = points[min(len(points) - 1, idx + 2)]
+                            segment_width = end_point[0] - start_point[0]
                             control_start = (
-                                start_point[0] + (end_point[0] - previous_point[0]) / 6,
-                                start_point[1] + (end_point[1] - previous_point[1]) / 6,
+                                start_point[0] + segment_width / 3,
+                                start_point[1] + tangents[idx] * segment_width / 3,
                             )
                             control_end = (
-                                end_point[0] - (next_point[0] - start_point[0]) / 6,
-                                end_point[1] - (next_point[1] - start_point[1]) / 6,
+                                end_point[0] - segment_width / 3,
+                                end_point[1] - tangents[idx + 1] * segment_width / 3,
                             )
                             self.canv.bezier(
                                 start_point[0], start_point[1],
