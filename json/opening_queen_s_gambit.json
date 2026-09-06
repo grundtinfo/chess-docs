@@ -1,5 +1,41 @@
 [
   {
+    "nom": "Gambit Dame Accepté (Ligne principale e4)",
+    "coups": "1. d4 d5 2. c4 dxc4 3. e4",
+    "explications": {
+      "3": "Les Blancs prennent immédiatement un contrôle fort du centre avec leurs deux pions (d4 et e4), tout en préparant la récupération du pion c4 avec leur Fou de cases claires."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Gambit Dame Refusé (Ligne classique)",
+    "coups": "1. d4 d5 2. c4 e6 3. Cc3 Cf6 4. Cf3 Fe7 5. Fg5 O-O",
+    "explications": {
+      "2": "Les Noirs refusent de prendre le pion et solidifient le centre avec e6, protégeant ainsi d5.",
+      "4": "Les Noirs développent sereinement leurs pièces mineures en préparant le roque, sans créer de faiblesses.",
+      "5": "Les Blancs développent le Fou en g5 pour clouer le cavalier. Les Noirs répondent en mettant immédiatement leur roi en sécurité avec le petit roque."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Défense Slave (Variante d'attaque avec Db3)",
+    "coups": "1. d4 d5 2. c4 c6 3. Cc3 Cf6 4. Cf3 Ff5 5. Db3",
+    "explications": {
+      "2": "Dans la Défense Slave, les Noirs utilisent le pion c pour soutenir d5. Cela présente l'avantage de laisser la diagonale ouverte pour le Fou de cases claires, contrairement à e6.",
+      "4": "Les Noirs développent activement leur Fou en f5.",
+      "5": "Les Blancs profitent immédiatement de l'absence du Fou noir sur l'aile Dame pour attaquer la faiblesse laissée en b7 à l'aide de leur Dame."
+    },
+    "Orientation": "Blancs"
+  },{
+    "nom": "Gambit Dame Refusé - Système Catalan",
+    "coups": "1. d4 d5 2. c4 e6 3. g3 Cf6 4. Fg2",
+    "explications": {
+      "3": "Les Blancs optent pour le système Catalan, caractérisé par la préparation du fianchetto du Fou sur l'aile Roi.",
+      "4": "Le Fou placé en g2 exercera une pression subtile mais très forte à long terme sur la grande diagonale, le centre et l'aile Dame des Noirs."
+    },
+    "Orientation": "Blancs"
+  },
+  {
     "nom": "Gambit Dame (Défense Marshall) - Piège de la Dame centralisée",
     "coups": "1. d4 d5 2. c4 Cf6 3. cxd5 Cxd5 4. e4 Cf6 5. Cc3 e6 6. Fd3 Dxd4 7. Fb5+",
     "explications": {
@@ -37,5 +73,56 @@
       "17": "Dxg7# conclut la traque. Le roi noir est bloqué en e7 et n'a plus aucune case d'échappatoire. Échec et mat."
     },
     "Orientation": "Blancs"
+  },
+  {
+    "nom": "Gambit Dame - Défense Baltique",
+    "coups": "1. d4 d5 2. c4 Ff5",
+    "explications": {
+      "2": "Une approche agressive et inhabituelle où les Noirs sortent immédiatement leur Fou de cases claires en f5, attaquant directement le contrôle central des Blancs."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Gambit Dame - Contre-Gambit Albin",
+    "coups": "1. d4 d5 2. c4 e5 3. dxe5 d4",
+    "explications": {
+      "2": "Les Noirs ripostent avec un contre-gambit explosif au centre, sacrifiant temporairement le pion e5.",
+      "3": "Au lieu de reprendre, les Noirs poussent leur pion en d4. Ce pion agit comme une épine dans la position blanche, empêchant le développement naturel du cavalier en c3."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Gambit Dame - Défense Tchigorine",
+    "coups": "1. d4 d5 2. c4 Cc6",
+    "explications": {
+      "2": "La Défense Tchigorine se caractérise par le développement immédiat du Cavalier en c6. Les Noirs privilégient un jeu de pièces très actif et la pression sur d4 plutôt qu'une structure de pions classique."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Gambit Dame Refusé - Défense Tartakower (Ligne d'échange principale)",
+    "coups": "1. d4 d5 2. c4 e6 3. Cc3 Fe7 4. Cf3 Cf6 5. Fg5 O-O 6. e3 h6 7. Fh4 b6 8. cxd5 Cxd5 9. Fxe7 Dxe7 10. Cxd5 exd5",
+    "explications": {
+      "2": "Les Noirs refusent le gambit avec e6. Cela soutient le centre et libère le fou noir, mais a pour inconvénient de bloquer le fou de cases claires.",
+      "3": "Comme mentionné dans la vidéo avec Bobby Fischer, développer le fou en e7 en premier permet d'éviter certaines variantes d'échange précoces. L'ordre des coups reste flexible.",
+      "5": "Les Blancs sortent le fou en g5 avant de jouer e3, afin de ne pas bloquer leur propre pièce et de mettre immédiatement la pression sur la position noire.",
+      "6": "L'insertion de h6 est un coup préventif crucial. Il force le fou blanc à prendre une décision et donne une case de fuite future au roi noir.",
+      "7": "Puisque le pion e6 bloque le fou, les Noirs préparent un fianchetto avec b6 pour le placer sur la grande diagonale.",
+      "8": "Les Blancs capturent prématurément en d5 pour éviter que les Noirs ne construisent une position parfaite. Les Noirs reprennent avec le cavalier (Cxd5) pour réduire la congestion et attaquer directement le fou blanc.",
+      "9": "L'échange des fous est forcé pour éviter une perte matérielle côté blanc.",
+      "10": "Les Blancs échangent les cavaliers en d5. C'est leur seule véritable chance d'endommager la structure de pions noirs (qui reprennent exd5), créant ainsi une cible stratégique à long terme."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Gambit Dame Refusé - Défense Tartakower (Variante lente des Blancs)",
+    "coups": "1. d4 d5 2. c4 e6 3. Cc3 Fe7 4. Cf3 Cf6 5. Fg5 O-O 6. e3 h6 7. Fh4 b6 8. Fd3 Fb7 9. O-O Nbd7 10. Tc1 c5",
+    "explications": {
+      "7": "Les Noirs lancent leur plan de fianchetto avec b6 pour résoudre le problème du fou de cases claires.",
+      "8": "Les Blancs jouent un coup de développement tranquille (Fd3) au lieu de la rupture immédiate cxd5. Les Noirs poursuivent logiquement par Fb7.",
+      "9": "Un point clé : le cavalier doit absolument aller en d7 (Cbd7) et non en c6. S'il va en c6, il bloque le fou b7, empêche la poussée c5 et paralyse le jeu à l'aile dame.",
+      "10": "Les Noirs poussent c5 et libèrent leurs pièces. Si les Blancs n'ont pas forcé l'échange en d5 plus tôt, les Noirs obtiennent une structure classique, symétrique et sans aucune faiblesse, neutralisant totalement l'ouverture."
+    },
+    "Orientation": "Noirs"
   }
 ]

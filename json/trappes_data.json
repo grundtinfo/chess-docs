@@ -485,5 +485,20 @@
     ],
     "defenseur": "Noirs",
     "explication_defense": "Jouer h6 prévient le sacrifice en contrôlant la case g5, interdisant l'arrivée du Cavalier blanc. Échanger le Fou contre le Cavalier en c3 soulage également la pression centrale avant de s'engager dans le roque."
+  },
+  {
+    "nom": "Erreur de défense par a6 (Gambit Dame Accepté)",
+    "coups": "1. d4 d5 2. c4 dxc4 3. e4 b5 4. a4 a6 5. axb5 axb5 6. Txa8",
+    "conseil_defense": "Ne tentez pas de vous accrocher au pion c4 dans le Gambit Dame Accepté. La tentative de défense par b5 puis a6 est une erreur fatale car la Tour a8 n'est pas défendue, créant un clouage absolu du pion a6.",
+    "coup_defense": "4... c6",
+    "fleches_defense": [
+      "c7c6"
+    ],
+    "fleches_menace": [
+      "a1a8",
+      "a4b5"
+    ],
+    "defenseur": "Noirs",
+    "explication_defense": "Jouer c6 maintient la chaîne de pions (bien qu'il faille rester vigilant face à un éventuel Df3 des Blancs). L'idéal est cependant d'abandonner l'idée de protéger c4 et de développer ses pièces, par exemple en frappant le centre avec 3... e5 ou en jouant 3... Cf6."
   }
 ]
