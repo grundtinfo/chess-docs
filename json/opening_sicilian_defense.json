@@ -43,6 +43,14 @@
     "Orientation": "Noirs"
   },
   {
+    "nom": "Variante Najdorf - Ligne avec Fe2",
+    "coups": "1. e4 c5 2. Cf3 d6 3. d4 cxd4 4. Cxd4 Cf6 5. Cc3 a6 6. Fe2 e5",
+    "explications": {
+      "6": "Les Blancs jouent souvent Fe2, ce qui permet aux Noirs d'attaquer directement le centre avec e5 pour repousser le cavalier."
+    },
+    "Orientation": "Noirs"
+  },
+  {
     "nom": "Ouverture Sicilienne piège de la dame",
     "coups": "1. e4 c5 2. Cf3 d6 3. d4 cxd4 4. Cxd4 Cf6 5. Cc3 Cc6 6. Fe3 Cg4 7. Fg5 Db6 8. Cxc6 Dxf2",
     "explications": {
