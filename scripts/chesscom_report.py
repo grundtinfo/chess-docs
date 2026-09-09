@@ -1,6 +1,5 @@
 import argparse
 import json
-import math
 import os
 import re
 import sys
@@ -93,7 +92,7 @@ def adjusted_estimated_elo(base_elo, precision, move_count):
     if precision is None:
         return base_elo
 
-    precision_elo = 400 + 2800 / (1 + math.exp(-(precision - 70) / 10))
+    precision_elo = max(400, min(3200, int((precision * 35) - 1000)))
     sample_weight = min(0.5, max(0.15, (move_count - 10) / 100))
     return round((base_elo * (1 - sample_weight)) + (precision_elo * sample_weight))
 
@@ -133,6 +132,15 @@ def refresh_opening_blunder_data(game):
                 )
             except (ValueError, chess.IllegalMoveError):
                 pass
+
+def remove_false_opening_blunders(game):
+    """Retire les entrées historiques où le coup joué était le meilleur coup."""
+    analysis = game.get("analysis", {})
+    blunders = analysis.get("opening_blunders", [])
+    analysis["opening_blunders"] = [
+        blunder for blunder in blunders
+        if blunder.get("played_uci") != blunder.get("best_uci")
+    ]
 
 def parse_game_record(game, username, deep_analysis=False, progress_callback=None, existing_game=None):
     Logger.debug_log(f"Étape Parsing : Début du traitement de la partie (ID/URL: {game.get('url', 'Inconnu')})", "DEBUG")
@@ -342,7 +350,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
             delta = 0
         
         # 4. Identification des erreurs critiques d'ouverture (Pour le Chapitre 2)
-        if idx <= 24 and swing <= -300 and best_uci:
+        if idx <= 24 and swing <= -300 and best_uci and move.uci() != best_uci:
             pv_line = alt_recom
             fleches_pv = []
             
@@ -910,6 +918,7 @@ def main():
 
         for game_id, cached_game in existing_games.items():
             before = json.dumps(cached_game.get("analysis", {}).get("opening_blunders", []), sort_keys=True)
+            remove_false_opening_blunders(cached_game)
             refresh_opening_blunder_data(cached_game)
             after = json.dumps(cached_game.get("analysis", {}).get("opening_blunders", []), sort_keys=True)
             if before != after:

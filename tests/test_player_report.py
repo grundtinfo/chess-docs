@@ -7,7 +7,13 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from classes.chess_utils import ChessUtils
 from classes.ai_analyzer import AIAnalyzer
 from classes.pdf_components import EloProgressionChart
-from scripts.chesscom_report import is_bot_game, opponent_name, side_name
+from scripts.chesscom_report import (
+    adjusted_estimated_elo,
+    is_bot_game,
+    opponent_name,
+    remove_false_opening_blunders,
+    side_name,
+)
 
 
 class PlayerReportTests(unittest.TestCase):
@@ -60,6 +66,25 @@ class PlayerReportTests(unittest.TestCase):
         ])
         self.assertEqual(precision["white"], 100.0)
         self.assertIsNotNone(precision["black"])
+
+    def test_adjusted_elo_does_not_exceed_documented_accuracy_mapping(self):
+        self.assertEqual(adjusted_estimated_elo(2500, 100.0, 80), 2500)
+
+    def test_remove_false_opening_blunders_keeps_only_non_best_moves(self):
+        game = {
+            "analysis": {
+                "opening_blunders": [
+                    {"played_uci": "e2e4", "best_uci": "e2e4"},
+                    {"played_uci": "d2d4", "best_uci": "g1f3"},
+                ]
+            }
+        }
+
+        remove_false_opening_blunders(game)
+
+        self.assertEqual(game["analysis"]["opening_blunders"], [
+            {"played_uci": "d2d4", "best_uci": "g1f3"}
+        ])
 
     def test_translate_compound_opening_names_before_generic_terms(self):
         self.assertEqual(
