@@ -1,11 +1,15 @@
 import os
 import sys
 import unittest
+from unittest.mock import patch
+
+import chess
 
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 
 from classes.chess_utils import ChessUtils
 from classes.ai_analyzer import AIAnalyzer
+from classes.engines import StockfishAnalyzer
 from classes.pdf_components import EloProgressionChart
 from scripts.chesscom_report import (
     adjusted_estimated_elo,
@@ -85,6 +89,18 @@ class PlayerReportTests(unittest.TestCase):
         self.assertEqual(game["analysis"]["opening_blunders"], [
             {"played_uci": "d2d4", "best_uci": "g1f3"}
         ])
+
+    def test_detect_tactics_identifies_queen_lost_by_the_moving_side(self):
+        board = chess.Board("rn2k1nr/pppb4/3b2pp/3q1p2/4pN2/1P2P1PN/P2P1PBP/R1BQ1RK1 b kq - 5 15")
+        move = board.parse_san("Qd3")
+
+        with patch.object(StockfishAnalyzer, "get_engine", return_value=object()), \
+                patch.object(StockfishAnalyzer, "get_fast_pv_sequence", return_value=["Nxd3"]):
+            tactics = AIAnalyzer.detect_tactics(
+                board, move, {"type": "cp", "value": -400}, delta=-796
+            )
+
+        self.assertIn("Dame en d3", tactics)
 
     def test_translate_compound_opening_names_before_generic_terms(self):
         self.assertEqual(

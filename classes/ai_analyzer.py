@@ -225,7 +225,9 @@ class AIAnalyzer:
                         sim_board = board_after.copy()
                         analyzer = StockfishAnalyzer()
                         sf = analyzer.get_engine()
-                        original_color = board_after.turn 
+                        # Track the side that played the analyzed move. After the
+                        # move, board_after.turn belongs to the opponent.
+                        original_color = not board_after.turn
                         
                         def get_material_score(b, c):
                             return len(b.pieces(chess.PAWN, c)) + 3 * len(b.pieces(chess.KNIGHT, c)) + 3 * len(b.pieces(chess.BISHOP, c)) + 5 * len(b.pieces(chess.ROOK, c)) + 9 * len(b.pieces(chess.QUEEN, c))
@@ -295,7 +297,7 @@ class AIAnalyzer:
                         
                         blunderer_loss = mat_opp_before - mat_opp_after
                         opponent_loss = mat_before - mat_after
-                        net_loss_for_blunderer = blunderer_loss - opponent_loss
+                        net_loss_for_blunderer = opponent_loss - blunderer_loss
 
                         formatted_seq = ChessUtils.parse_stockfish_pv(" ".join(seq_eng), is_white_turn=(board_after.turn == chess.WHITE), start_move_number=board_after.fullmove_number) if seq_eng else ""
                         formatted_seq_3 = ChessUtils.parse_stockfish_pv(" ".join(seq_eng[:3]), is_white_turn=(board_after.turn == chess.WHITE), start_move_number=board_after.fullmove_number) if seq_eng else ""
