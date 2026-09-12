@@ -133,6 +133,33 @@ class PlayerReportTests(unittest.TestCase):
         first_executor.submit.assert_called_once()
         second_executor.submit.assert_called_once()
 
+    def test_fast_pv_is_reused_for_same_position_depth_and_length(self):
+        analyzer = StockfishAnalyzer()
+        analyzer._pv_cache.clear()
+        engine = unittest.mock.Mock()
+        engine.get_engine_parameters.return_value = {'Depth': 18}
+        engine.get_best_move.return_value = 'e2e4'
+        analyzer.engine = engine
+
+        board = chess.Board()
+        first = analyzer.get_fast_pv_sequence(board, max_moves=1)
+        second = analyzer.get_fast_pv_sequence(board, max_moves=1)
+
+        self.assertEqual(first, ['e4'])
+        self.assertEqual(second, ['e4'])
+        engine.get_best_move.assert_called_once()
+        self.assertIn((board.fen(), 2, 1), analyzer._pv_cache)
+
+    def test_get_engine_applies_requested_depth_to_existing_engine(self):
+        analyzer = StockfishAnalyzer()
+        engine = unittest.mock.Mock()
+        engine.get_engine_parameters.return_value = {'Depth': 18}
+        analyzer.engine = engine
+
+        self.assertIs(analyzer.get_engine(depth=12), engine)
+
+        engine.set_depth.assert_called_once_with(12)
+
     def test_remove_false_opening_blunders_keeps_only_non_best_moves(self):
         game = {
             "analysis": {

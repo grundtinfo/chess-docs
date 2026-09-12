@@ -130,7 +130,7 @@ class AIAnalyzer:
         return result.strip()
 
     @staticmethod
-    def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None, delta=None, best_eval=None, best_pv_san=None):
+    def detect_tactics(board_before, move_obj, eval_after=None, future_moves=None, delta=None, best_eval=None, best_pv_san=None, precomputed_pv=None):
         Logger.debug_log(f"Détection des tactiques pour le coup {move_obj.uci()}...", "INFO")
         tactics = []
         moving_piece = board_before.piece_at(move_obj.from_square)
@@ -216,7 +216,7 @@ class AIAnalyzer:
                     sf = analyzer.get_engine()
                     if sf:
                         try:
-                            seq_eng = analyzer.get_fast_pv_sequence(board_after, max_moves=abs(val) * 2)
+                            seq_eng = precomputed_pv if precomputed_pv is not None else analyzer.get_fast_pv_sequence(board_after, max_moves=abs(val) * 2)
 
                             is_in_trap = False
                             if future_moves:
@@ -260,7 +260,7 @@ class AIAnalyzer:
                         mat_opp_before = get_material_score(sim_board, not original_color)
                         
                         if sf:
-                            seq_eng = analyzer.get_fast_pv_sequence(board_after, max_moves=6)
+                            seq_eng = precomputed_pv if precomputed_pv is not None else analyzer.get_fast_pv_sequence(board_after, max_moves=6)
                             
                             # MODIFICATION : Traçage des pièces d'origine pour éviter les hallucinations
                             orig_pieces = {sq: p for sq, p in board_after.piece_map().items() if p.color == original_color}
@@ -468,6 +468,11 @@ class AIAnalyzer:
                     t_after = eval_after.get('type', 'cp') if isinstance(eval_after, dict) else getattr(eval_after, 'type', 'cp')
                     val_after_raw = eval_after.get('value', 0) if isinstance(eval_after, dict) else (eval_after.value if hasattr(eval_after, 'value') and eval_after.value is not None else 0)
 
+                    pv_after = precomputed_data.get('pv_after') if precomputed_data else None
+                    if pv_after is None and ((t_after == 'mate' and val_after_raw != 0) or (t_after == 'cp' and delta <= -30)):
+                        pv_length = abs(val_after_raw) * 2 if t_after == 'mate' else 6
+                        pv_after = analyzer.get_fast_pv_sequence(board_after, max_moves=pv_length)
+
                     mate_status = ""
                     is_blunder_into_mate = False
                     is_mate_for_player = False
@@ -527,7 +532,16 @@ class AIAnalyzer:
 
                     pdf_move_str = f"{san_fr}{eval_symbol}"
 
-                    tactics = AIAnalyzer.detect_tactics(board, move_obj, eval_after, continuation, delta=delta, best_eval=best_eval, best_pv_san=best_pv_san)
+                    tactics = AIAnalyzer.detect_tactics(
+                        board,
+                        move_obj,
+                        eval_after,
+                        continuation,
+                        delta=delta,
+                        best_eval=best_eval,
+                        best_pv_san=best_pv_san,
+                        precomputed_pv=pv_after,
+                    )
 
                     if board_after.is_checkmate():
                         tactics = ""

@@ -22,12 +22,18 @@ class StockfishAnalyzer:
             cls._instance._init_attempted = False
             cls._instance._eval_cache = OrderedDict()
             cls._instance._best_move_cache = OrderedDict()
+            cls._instance._pv_cache = OrderedDict()
             # File d'attente d'exécution avec 1 worker pour gérer le timeout
             cls._instance._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         return cls._instance
     
     def get_engine(self, depth=None):
+        resolved_depth = ChessUtils.resolve_stockfish_depth(explicit_depth=depth)
         if self.engine is not None:
+            if depth is not None:
+                current_depth = self.engine.get_engine_parameters().get("Depth")
+                if current_depth != resolved_depth:
+                    self.engine.set_depth(resolved_depth)
             return self.engine
         if not STOCKFISH_AVAILABLE:
             return None
@@ -45,7 +51,6 @@ class StockfishAnalyzer:
                 stockfish_path = shutil.which("stockfish")
             
             # NOUVEAU BLOC
-            resolved_depth = ChessUtils.resolve_stockfish_depth(explicit_depth=depth)
             params = {
                 "Threads": Config.STOCKFISH_THREADS,
                 "Hash": Config.STOCKFISH_HASH
@@ -66,7 +71,7 @@ class StockfishAnalyzer:
         """Purge LRU : on garde les positions récemment consultées et on évacue les moins récentes."""
         MAX_CACHE = 3000
 
-        for cache in (self._eval_cache, self._best_move_cache):
+        for cache in (self._eval_cache, self._best_move_cache, self._pv_cache):
             while len(cache) > MAX_CACHE:
                 cache.popitem(last=False)
 
@@ -88,7 +93,7 @@ class StockfishAnalyzer:
         # 2. Le thread précédent étant définitivement bloqué, on recrée l'executor
         try:
             # cancel_futures=True nettoie la file d'attente (disponible Python 3.9+)
-            self._executor.shutdown(wait=False, cancel_futures=True) 
+            self._executor.shutdown(wait=True, cancel_futures=True)
         except Exception:
             pass
         
@@ -137,10 +142,10 @@ class StockfishAnalyzer:
         # Si on sort de la boucle, le moteur est figé
         Logger.debug_log(f"[{task_name}] Stockfish a figé (Timeout de {timeout}s dépassé). Reprise de l'application...", "ERROR")
         self._reset_engine()
-        if _retry_count >= 3 or not self.engine:
+        if _retry_count >= 1 or not self.engine:
             return None
 
-        Logger.debug_log(f"[{task_name}] Relance unique du calcul après réinitialisation de Stockfish.", "WARNING")
+        Logger.debug_log(f"[{task_name}] Relance du calcul après réinitialisation de Stockfish.", "WARNING")
         return self._run_with_watchdog(
             task_name,
             func,
@@ -160,9 +165,11 @@ class StockfishAnalyzer:
 
         Logger.debug_log("Étape Stockfish : Calcul de l'évaluation pour la position...", "DEBUG")
         self._check_cache_limits()
-        self.engine.set_fen_position(fen)
+        def calculate_evaluation():
+            self.engine.set_fen_position(fen)
+            return self.engine.get_evaluation()
 
-        evaluation = self._run_with_watchdog("Évaluation", lambda: self.engine.get_evaluation())
+        evaluation = self._run_with_watchdog("Évaluation", calculate_evaluation)
         if not evaluation:
             return {"type": "cp", "value": 0}
 
@@ -178,9 +185,11 @@ class StockfishAnalyzer:
             Logger.debug_log("Étape Stockfish : Meilleur coup trouvé dans le cache mémoire.", "DEBUG")
             return self._best_move_cache[fen]
         self._check_cache_limits()
-        self.engine.set_fen_position(fen)
+        def calculate_best_move():
+            self.engine.set_fen_position(fen)
+            return self.engine.get_best_move()
 
-        best_move = self._run_with_watchdog("Meilleur Coup", lambda: self.engine.get_best_move())
+        best_move = self._run_with_watchdog("Meilleur Coup", calculate_best_move)
         if not best_move:
             return None
 
@@ -193,6 +202,7 @@ class StockfishAnalyzer:
         """Purge les dictionnaires de cache pour libérer la RAM."""
         self._eval_cache.clear()
         self._best_move_cache.clear()
+        self._pv_cache.clear()
         Logger.debug_log("Cache de Stockfish vidé avec succès.", "INFO")
 
     def analyze_move(self, board, move_san):
@@ -232,6 +242,13 @@ class StockfishAnalyzer:
 
     def get_fast_pv_sequence(self, board, max_moves=6):
         """Extrait la ligne principale quasi-instantanément en exploitant la Transposition Table."""
+        pv_depth = 2
+        cache_key = (board.fen(), pv_depth, max_moves)
+        if cache_key in self._pv_cache:
+            self._touch_cache(self._pv_cache, cache_key)
+            Logger.debug_log("Étape Stockfish : PV trouvée dans le cache mémoire.", "DEBUG")
+            return list(self._pv_cache[cache_key])
+
         if not self.engine: return []
         
         seq_eng = []
@@ -239,15 +256,20 @@ class StockfishAnalyzer:
         
         try:
             # Profondeur minimale : le calcul tape directement dans le cache interne de Stockfish
-            self.engine.set_depth(2)
+            self.engine.set_depth(pv_depth)
             sim_board = board.copy()
             
             for _ in range(max_moves):
                 if sim_board.is_game_over(): break
                 
-                self.engine.set_fen_position(sim_board.fen())
-                
-                best_uci = self._run_with_watchdog("Séquence Rapide", lambda: self.engine.get_best_move())
+                current_fen = sim_board.fen()
+
+                def calculate_pv_move():
+                    self.engine.set_depth(pv_depth)
+                    self.engine.set_fen_position(current_fen)
+                    return self.engine.get_best_move()
+
+                best_uci = self._run_with_watchdog("Séquence Rapide", calculate_pv_move)
                 
                 if not best_uci: break
                 
@@ -256,6 +278,12 @@ class StockfishAnalyzer:
                 sim_board.push(move_obj_sim)
         finally:
             # Restauration immédiate de la profondeur de calcul
-            self.engine.set_depth(original_depth)
+            if self.engine:
+                self.engine.set_depth(original_depth)
+
+        if seq_eng:
+            self._pv_cache[cache_key] = list(seq_eng)
+            self._touch_cache(self._pv_cache, cache_key)
+            self._check_cache_limits()
             
         return seq_eng
