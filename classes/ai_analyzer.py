@@ -56,6 +56,30 @@ _OPENING_PHRASES = [
 class AIAnalyzer:
 
     @staticmethod
+    def classify_move_quality(delta, *, is_mate=False, is_blunder_into_mate=False, is_sacrifice=False, is_mate_for_player=False):
+        if is_mate:
+            return "Meilleur coup"
+        if is_blunder_into_mate:
+            return "Gaffe majeure"
+        if is_sacrifice and is_mate_for_player:
+            return "Coup brillant"
+        if delta is None:
+            return "Coup solide"
+        if delta <= -300:
+            return "Gaffe majeure"
+        if delta <= -150:
+            return "Erreur sérieuse"
+        if delta <= -80:
+            return "Imprécision"
+        if delta <= -30:
+            return "Coup douteux"
+        if delta >= 300:
+            return "Excellent coup"
+        if delta >= 150:
+            return "Meilleur coup"
+        return "Meilleur coup"
+
+    @staticmethod
     def get_stockfish_theory_summary(opening_name, bad_move, stockfish_line, tactics=""):
         tactics_clean = tactics.replace("- Meilleure ligne calculée :", "").strip() if tactics else ""
         
@@ -473,35 +497,33 @@ class AIAnalyzer:
                             is_sacrifice = True
 
                     eval_symbol = ""
-                    qualif_math = "Coup solide"
+                    qualif_math = AIAnalyzer.classify_move_quality(
+                        delta,
+                        is_mate=board_after.is_checkmate(),
+                        is_blunder_into_mate=is_blunder_into_mate,
+                        is_sacrifice=is_sacrifice and is_mate_for_player and 0 < abs(val_after_raw) <= 3,
+                        is_mate_for_player=is_mate_for_player,
+                    )
 
                     if board_after.is_checkmate():
-                        qualif_math = "Meilleur coup"
                         eval_symbol = ""
                         alt_recom_value = "Aucune"
                     elif is_blunder_into_mate:
                         eval_symbol = "??"
-                        qualif_math = "Gaffe majeure"
                     elif is_sacrifice and is_mate_for_player and 0 < abs(val_after_raw) <= 3:
                         eval_symbol = "!!"
-                        qualif_math = "Coup brillant"
-                    elif delta <= -300:
+                    elif delta is not None and delta <= -300:
                         eval_symbol = "??"
-                        qualif_math = "Gaffe majeure"
-                    elif delta <= -150:
+                    elif delta is not None and delta <= -150:
                         eval_symbol = "?"
-                        qualif_math = "Erreur sérieuse"
-                    elif delta <= -80:
+                    elif delta is not None and delta <= -80:
                         eval_symbol = "?!"
-                        qualif_math = "Imprécision"
-                    elif delta <= -30:
+                    elif delta is not None and delta <= -30:
                         eval_symbol = "!?"
-                        qualif_math = "Coup douteux"
-                    elif delta == 0 and swing >= 300:
+                    elif delta is not None and delta >= 300:
                         eval_symbol = "!"
-                        qualif_math = "Excellent coup"
-                    elif delta > -10:
-                        qualif_math = "Meilleur coup"
+                    elif delta is not None and delta >= 150:
+                        eval_symbol = "!"
 
                     pdf_move_str = f"{san_fr}{eval_symbol}"
 

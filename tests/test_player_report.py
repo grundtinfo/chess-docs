@@ -74,6 +74,12 @@ class PlayerReportTests(unittest.TestCase):
     def test_adjusted_elo_does_not_exceed_documented_accuracy_mapping(self):
         self.assertEqual(adjusted_estimated_elo(2500, 100.0, 80), 2500)
 
+    def test_move_quality_classification_is_color_agnostic(self):
+        self.assertEqual(AIAnalyzer.classify_move_quality(-5), "Meilleur coup")
+        self.assertEqual(AIAnalyzer.classify_move_quality(-40), "Coup douteux")
+        self.assertEqual(AIAnalyzer.classify_move_quality(-200), "Erreur sérieuse")
+        self.assertEqual(AIAnalyzer.classify_move_quality(300), "Excellent coup")
+
     def test_remove_false_opening_blunders_keeps_only_non_best_moves(self):
         game = {
             "analysis": {
