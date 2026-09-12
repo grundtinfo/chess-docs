@@ -63,7 +63,9 @@ def split_move_options(moves_text):
 
 def generate_moves_table(piege, stockfish_depth=18):
     Logger.debug_log(f"Génération table des coups pour le piège {piege.get('nom', 'sans nom')}", "INFO")
-    StockfishAnalyzer().get_engine(depth=stockfish_depth)
+    analyzer = StockfishAnalyzer()
+    analyzer.clear_cache()
+    analyzer.get_engine(depth=stockfish_depth)
     moves = ChessUtils.parse_moves(piege.get("coups", ""))
     rows, board, current_row = [], chess.Board(), None
 
@@ -196,6 +198,7 @@ def generate_fen_positions(piege):
     return fen_final, fen_intermediaire, fen_defense
 
 def estimate_trap_elo(piege, stockfish_depth):
+    StockfishAnalyzer().clear_cache()
     cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
     
     coups_str = piege.get("coups", "")

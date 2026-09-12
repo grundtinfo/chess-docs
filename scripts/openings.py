@@ -25,7 +25,9 @@ def get_orientation(item):
     return chess.BLACK if orientation.lower().startswith("n") else chess.WHITE
 
 def generate_moves_table(item, stockfish_depth=18):
-    StockfishAnalyzer().get_engine(depth=stockfish_depth)
+    analyzer = StockfishAnalyzer()
+    analyzer.clear_cache()
+    analyzer.get_engine(depth=stockfish_depth)
     coups_str = item.get("coups", "")
     moves = ChessUtils.parse_moves(coups_str)
     rows = []

@@ -203,6 +203,11 @@ class StockfishAnalyzer:
         self._eval_cache.clear()
         self._best_move_cache.clear()
         self._pv_cache.clear()
+        if self.engine and hasattr(self.engine, "send_ucinewgame_command"):
+            try:
+                self.engine.send_ucinewgame_command()
+            except Exception as exc:
+                Logger.debug_log(f"Impossible de vider la table Hash Stockfish : {exc}", "WARNING")
         Logger.debug_log("Cache de Stockfish vidé avec succès.", "INFO")
 
     def analyze_move(self, board, move_san):

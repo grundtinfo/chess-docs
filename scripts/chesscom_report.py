@@ -299,6 +299,7 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
     Logger.debug_log("Étape Analyse Profonde : Démarrage de l'évaluation coup par coup...", "INFO")
 
     analyzer = StockfishAnalyzer()
+    analyzer.clear_cache()
     board_before = game_obj.board()
     
     for idx, move in enumerate(moves, start=1):
