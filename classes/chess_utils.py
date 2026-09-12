@@ -22,7 +22,52 @@ _FR_TO_EN_MAP = {'D': 'Q', 'C': 'N', 'F': 'B', 'T': 'R', 'R': 'K'}
 _EN_TO_FR_MAP = {'Q': 'D', 'N': 'C', 'B': 'F', 'R': 'T', 'K': 'R'}
 _HTTP_SESSION = requests.Session()
 
+_FALLBACK_OPENING_PATTERNS = [
+    (("e4", "e5", "Nf3", "Nc6", "Bb5"), "Ruy Lopez"),
+    (("e4", "e5", "Nf3", "Nc6", "Bc4"), "Italian Game"),
+    (("e4", "e5", "Nf3", "Nc6", "Nf3"), "Spanish Game"),
+    (("e4", "e5", "Nf3", "d6"), "Philidor Defense"),
+    (("e4", "c5", "Nf3", "d6"), "Sicilian Defense"),
+    (("e4", "c5", "Nf3", "e6"), "Sicilian Defense"),
+    (("e4", "e6", "d4", "d5"), "French Defense"),
+    (("e4", "c6", "d4", "d5"), "Caro-Kann Defense"),
+    (("d4", "d5", "c4", "e6"), "Queen's Gambit Declined"),
+    (("d4", "d5", "c4", "c6"), "Queen's Gambit Declined"),
+    (("d4", "Nf6", "c4", "e6"), "Queen's Indian Defense"),
+    (("d4", "Nf6", "c4", "g6"), "King's Indian Defense"),
+    (("c4", "e5", "Nc3", "Nf6"), "English Opening"),
+    (("Nf3", "d5", "c4", "e6"), "Indian Defense"),
+    (("d4", "d5", "Nc3", "Nf6"), "Queen's Gambit"),
+    (("c4", "c5", "Nc3", "Nc6"), "English Symmetrical"),
+    (("c4", "e5", "Nf3", "d6"), "Sicilian Defense"),
+]
+
 class ChessUtils:
+
+    @staticmethod
+    def _fallback_opening_name(move_stack):
+        if not move_stack:
+            return "Ouverture Inconnue"
+
+        sequence = []
+        temp_board = chess.Board()
+        for move in move_stack:
+            san = temp_board.san(move)
+            sequence.append(san)
+            temp_board.push(move)
+
+        best_match = "Ouverture Inconnue"
+        best_len = 0
+
+        for pattern, opening_name in _FALLBACK_OPENING_PATTERNS:
+            if len(pattern) > len(sequence):
+                continue
+            if tuple(sequence[:len(pattern)]) == pattern:
+                if len(pattern) > best_len:
+                    best_match = opening_name
+                    best_len = len(pattern)
+
+        return best_match
 
     @staticmethod
     def calculate_elo_from_details(details):
@@ -83,29 +128,36 @@ class ChessUtils:
     def get_opening_name(board):
         Logger.debug_log("Étape Analyse : Recherche du nom de l'ouverture en cours...", "DEBUG")
         opening_name = "Ouverture Inconnue"
-        
+        move_stack = list(board.move_stack)
+
         if OPENIX_AVAILABLE:
             try:
                 temp_board = chess.Board()
-                move_stack = []
-                for move in board.move_stack:
-                    move_stack.append(temp_board.san(move))
+                san_stack = []
+                for move in move_stack:
+                    san_stack.append(temp_board.san(move))
                     temp_board.push(move)
-                
-                matches = _op_lib.find_openings_after_moves(move_stack)
+
+                matches = _op_lib.find_openings_after_moves(san_stack)
                 if matches:
                     opening_name = matches[0].name
                     Logger.debug_log(f"Étape Analyse : Ouverture identifiée par Openix -> {opening_name}", "DEBUG")
             except Exception as e:
                 Logger.debug_log(f"Erreur lookup Openix: {e}", "ERROR")
 
+        if opening_name == "Ouverture Inconnue":
+            fallback_name = ChessUtils._fallback_opening_name(move_stack)
+            if fallback_name != "Ouverture Inconnue":
+                opening_name = fallback_name
+                Logger.debug_log(f"Étape Analyse : Récupération via fallback -> {opening_name}", "DEBUG")
+
         if opening_name != "Ouverture Inconnue":
             from classes.ai_analyzer import AIAnalyzer
             from classes.json_cache import CacheManager
-            
+
             cache_global = CacheManager.load_cache()
             cache_key = f"opening_fr_v2_{opening_name}"
-            
+
             if cache_key not in cache_global:
                 Logger.debug_log(f"Étape Analyse : Traduction de l'ouverture '{opening_name}' (non mise en cache).", "DEBUG")
                 traduit = AIAnalyzer.translate_opening_name(opening_name)
@@ -113,7 +165,7 @@ class ChessUtils:
                 CacheManager.save_cache(cache_global)
             else:
                 Logger.debug_log("Étape Analyse : Nom d'ouverture traduit récupéré depuis le cache.", "DEBUG")
-                
+
             return cache_global[cache_key]
 
         Logger.debug_log("Étape Analyse : Aucune ouverture formelle reconnue.", "DEBUG")

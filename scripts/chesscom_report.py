@@ -222,25 +222,27 @@ def parse_game_record(game, username, deep_analysis=False, progress_callback=Non
     if needs_recalc:
         board_for_opening = game_obj.board()
         found_name = "Ouverture Inconnue"
-        moves_to_check = moves[:20]
-        
+        max_opening_moves = min(len(moves), 40)
+        moves_to_check = moves[:max_opening_moves]
+
         # 1. On pousse d'abord tous les coups ciblés
         for m in moves_to_check:
             board_for_opening.push(m)
-            
-        # 2. Recherche inversée : la première trouvée est la plus spécifique
+
+        # 2. Recherche inversée : la première trouvée est la plus spécifique.
+        #    On élargit la fenêtre jusqu'à 40 coups pour mieux couvrir les lignes standard.
         for _ in range(len(moves_to_check)):
             op_name = ChessUtils.get_opening_name(board_for_opening)
-            
+
             if op_name != "Ouverture Inconnue" and not ChessUtils.is_raw_opening(op_name):
                 found_name = op_name
-                break # Interruption immédiate de la boucle
-                
+                break
+
             try:
                 board_for_opening.pop()
             except IndexError:
                 break
-                
+
         best_opening_name = found_name if found_name != "Ouverture Inconnue" else cached_opening
 
     result_data = {
