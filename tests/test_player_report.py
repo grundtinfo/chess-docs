@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+from collections import OrderedDict
 from unittest.mock import patch
 
 import chess
@@ -79,6 +80,23 @@ class PlayerReportTests(unittest.TestCase):
         self.assertEqual(AIAnalyzer.classify_move_quality(-40), "Coup douteux")
         self.assertEqual(AIAnalyzer.classify_move_quality(-200), "Erreur sérieuse")
         self.assertEqual(AIAnalyzer.classify_move_quality(300), "Excellent coup")
+
+    def test_best_move_is_reused_when_position_is_already_cached(self):
+        board = chess.Board()
+        analyzer = StockfishAnalyzer()
+        analyzer.engine = object()
+        analyzer._init_attempted = True
+        analyzer._best_move_cache = OrderedDict([(board.fen(), 'e2e4')])
+        board_after = board.copy()
+        board_after.push(board.parse_uci('e2e4'))
+        analyzer._eval_cache = OrderedDict([(board_after.fen(), {'type': 'cp', 'value': 50})])
+
+        with patch.object(analyzer, '_run_with_watchdog') as watch:
+            result = analyzer.get_best_move_with_eval(board)
+
+        self.assertEqual(result[0], 'e4')
+        self.assertEqual(result[2], 'e2e4')
+        watch.assert_not_called()
 
     def test_remove_false_opening_blunders_keeps_only_non_best_moves(self):
         game = {

@@ -1,5 +1,6 @@
 import os
 import concurrent.futures
+from collections import OrderedDict
 from classes.logger import Logger
 from classes.config import Config
 from classes.chess_utils import ChessUtils
@@ -19,15 +20,19 @@ class StockfishAnalyzer:
             cls._instance = super().__new__(cls)
             cls._instance.engine = None
             cls._instance._init_attempted = False
-            cls._instance._eval_cache = {}
-            cls._instance._best_move_cache = {}
+            cls._instance._eval_cache = OrderedDict()
+            cls._instance._best_move_cache = OrderedDict()
             # File d'attente d'exécution avec 1 worker pour gérer le timeout
             cls._instance._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         return cls._instance
     
     def get_engine(self, depth=None):
-        if not STOCKFISH_AVAILABLE: return None
-        if self._init_attempted: return self.engine
+        if self.engine is not None:
+            return self.engine
+        if not STOCKFISH_AVAILABLE:
+            return None
+        if self._init_attempted:
+            return self.engine
         
         self._init_attempted = True
         try:
@@ -53,21 +58,17 @@ class StockfishAnalyzer:
             self.engine = None
         return self.engine
 
+    def _touch_cache(self, cache, key):
+        if key in cache and hasattr(cache, 'move_to_end'):
+            cache.move_to_end(key)
+
     def _check_cache_limits(self):
-        # Maintient le cache avec une purge dynamique plus agressive (50%)
-        # pour éviter la saturation mémoire sur les parties de plus de 100 coups.
+        """Purge LRU : on garde les positions récemment consultées et on évacue les moins récentes."""
         MAX_CACHE = 3000
-        PURGE_AMOUNT = 1500
-        
-        if len(self._eval_cache) > MAX_CACHE:
-            keys_to_delete = list(self._eval_cache.keys())[:PURGE_AMOUNT]
-            for k in keys_to_delete:
-                del self._eval_cache[k]
-                
-        if len(self._best_move_cache) > MAX_CACHE:
-            keys_to_delete = list(self._best_move_cache.keys())[:PURGE_AMOUNT]
-            for k in keys_to_delete:
-                del self._best_move_cache[k]
+
+        for cache in (self._eval_cache, self._best_move_cache):
+            while len(cache) > MAX_CACHE:
+                cache.popitem(last=False)
 
     def _reset_engine(self):
         """Réinitialise l'instance Stockfish et le pool de threads en cas de blocage (Watchdog)."""
@@ -139,36 +140,43 @@ class StockfishAnalyzer:
         return None
 
     def _get_cached_eval(self, fen):
-        if not self.engine: return {"type": "cp", "value": 0}
         if fen in self._eval_cache:
+            self._touch_cache(self._eval_cache, fen)
             Logger.debug_log("Étape Stockfish : Évaluation trouvée dans le cache mémoire.", "DEBUG")
             return self._eval_cache[fen]
-        
+
+        if not self.engine:
+            return {"type": "cp", "value": 0}
+
         Logger.debug_log("Étape Stockfish : Calcul de l'évaluation pour la position...", "DEBUG")
         self._check_cache_limits()
         self.engine.set_fen_position(fen)
-        
-        # Modification : Appel sécurisé
+
         evaluation = self._run_with_watchdog("Évaluation", self.engine.get_evaluation)
         if not evaluation:
-            return {"type": "cp", "value": 0} # Sécurité pour que le programme continue
-            
+            return {"type": "cp", "value": 0}
+
         self._eval_cache[fen] = evaluation
+        self._touch_cache(self._eval_cache, fen)
+        self._check_cache_limits()
         return evaluation
 
     def _get_cached_best_move(self, fen):
         if not self.engine: return None
         if fen in self._best_move_cache:
+            self._touch_cache(self._best_move_cache, fen)
+            Logger.debug_log("Étape Stockfish : Meilleur coup trouvé dans le cache mémoire.", "DEBUG")
             return self._best_move_cache[fen]
         self._check_cache_limits()
         self.engine.set_fen_position(fen)
-        
-        # Modification : Appel sécurisé
+
         best_move = self._run_with_watchdog("Meilleur Coup", self.engine.get_best_move)
         if not best_move:
-            return None # Sécurité pour que le programme continue
-            
+            return None
+
         self._best_move_cache[fen] = best_move
+        self._touch_cache(self._best_move_cache, fen)
+        self._check_cache_limits()
         return best_move
 
     def clear_cache(self):
@@ -176,7 +184,7 @@ class StockfishAnalyzer:
         self._eval_cache.clear()
         self._best_move_cache.clear()
         Logger.debug_log("Cache de Stockfish vidé avec succès.", "INFO")
-    
+
     def analyze_move(self, board, move_san):
         engine = self.get_engine()
         if not engine: return None, None, None
@@ -191,17 +199,20 @@ class StockfishAnalyzer:
             return eval_before, eval_after, move_obj
         except Exception:
             return None, None, None
-    
+
     def get_best_move_with_eval(self, board):
         engine = self.get_engine()
         if not engine: return None, None, None
         try:
             fen = board.fen()
-            best_move_uci = self._get_cached_best_move(fen) 
-            if not best_move_uci: return None, None, None
+            best_move_uci = self._get_cached_best_move(fen)
+            if not best_move_uci:
+                return None, None, None
+
             move_obj = board.parse_uci(best_move_uci)
-            best_move_san_en = board.san(move_obj) 
-            best_move_french = ChessUtils.convert_english_to_french_notation(best_move_san_en) 
+            best_move_san_en = board.san(move_obj)
+            best_move_french = ChessUtils.convert_english_to_french_notation(best_move_san_en)
+
             board_copy = board.copy()
             board_copy.push(move_obj)
             best_eval = self._get_cached_eval(board_copy.fen())
