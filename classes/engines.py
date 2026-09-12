@@ -23,6 +23,7 @@ class StockfishAnalyzer:
             cls._instance._init_attempted = False
             cls._instance._eval_cache = OrderedDict()
             cls._instance._best_move_cache = OrderedDict()
+            cls._instance._analysis_cache = OrderedDict()
             cls._instance._pv_cache = OrderedDict()
             # File d'attente d'exécution avec 1 worker pour gérer le timeout
             cls._instance._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -72,7 +73,7 @@ class StockfishAnalyzer:
         """Purge LRU : on garde les positions récemment consultées et on évacue les moins récentes."""
         MAX_CACHE = 3000
 
-        for cache in (self._eval_cache, self._best_move_cache, self._pv_cache):
+        for cache in (self._eval_cache, self._best_move_cache, self._analysis_cache, self._pv_cache):
             while len(cache) > MAX_CACHE:
                 cache.popitem(last=False)
 
@@ -191,44 +192,75 @@ class StockfishAnalyzer:
             return {"type": "cp", "value": 0}
 
         Logger.debug_log("Étape Stockfish : Calcul de l'évaluation pour la position...", "DEBUG")
-        self._check_cache_limits()
-        def calculate_evaluation():
-            self.engine.set_fen_position(fen)
-            return self.engine.get_evaluation()
-
-        evaluation = self._run_with_watchdog("Évaluation", calculate_evaluation)
-        if not evaluation:
-            return {"type": "cp", "value": 0}
-
-        self._eval_cache[fen] = evaluation
-        self._touch_cache(self._eval_cache, fen)
-        self._check_cache_limits()
-        return evaluation
+        evaluation, _ = self._get_cached_analysis(fen)
+        return evaluation or {"type": "cp", "value": 0}
 
     def _get_cached_best_move(self, fen):
-        if not self.engine: return None
         if fen in self._best_move_cache:
             self._touch_cache(self._best_move_cache, fen)
             Logger.debug_log("Étape Stockfish : Meilleur coup trouvé dans le cache mémoire.", "DEBUG")
             return self._best_move_cache[fen]
-        self._check_cache_limits()
-        def calculate_best_move():
-            self.engine.set_fen_position(fen)
-            return self.engine.get_best_move()
-
-        best_move = self._run_with_watchdog("Meilleur Coup", calculate_best_move)
-        if not best_move:
+        if not self.engine:
             return None
 
-        self._best_move_cache[fen] = best_move
-        self._touch_cache(self._best_move_cache, fen)
-        self._check_cache_limits()
+        _, best_move = self._get_cached_analysis(fen)
         return best_move
+
+    def _get_cached_analysis(self, fen):
+        """Récupère l'évaluation et le meilleur coup avec une seule recherche."""
+        depth = self.engine.get_engine_parameters().get("Depth", Config.DEFAULT_STOCKFISH_DEPTH)
+        cache_key = (fen, depth)
+        if cache_key in self._analysis_cache:
+            self._touch_cache(self._analysis_cache, cache_key)
+            cached = self._analysis_cache[cache_key]
+            return cached["evaluation"], cached["best_move"]
+
+        self._check_cache_limits()
+
+        def calculate_analysis():
+            self.engine.set_fen_position(fen)
+            if hasattr(self.engine, "get_top_moves"):
+                top_moves = self.engine.get_top_moves(num_top_moves=1)
+                if not top_moves:
+                    return None, None
+                top_move = top_moves[0]
+                best_move = top_move.get("Move")
+                if best_move:
+                    best_move = best_move.split()[0]
+                if top_move.get("Mate") is not None:
+                    evaluation = {"type": "mate", "value": top_move["Mate"]}
+                else:
+                    evaluation = {"type": "cp", "value": top_move.get("Centipawn", 0)}
+                return evaluation, best_move
+
+            evaluation = self.engine.get_evaluation()
+            best_move = self.engine.get_best_move()
+            return evaluation, best_move
+
+        analysis = self._run_with_watchdog("Analyse combinée", calculate_analysis)
+        if not analysis:
+            return None, None
+
+        evaluation, best_move = analysis
+        self._analysis_cache[cache_key] = {
+            "evaluation": evaluation,
+            "best_move": best_move,
+        }
+        if evaluation:
+            self._eval_cache[fen] = evaluation
+            self._touch_cache(self._eval_cache, fen)
+        if best_move:
+            self._best_move_cache[fen] = best_move
+            self._touch_cache(self._best_move_cache, fen)
+        self._touch_cache(self._analysis_cache, cache_key)
+        self._check_cache_limits()
+        return evaluation, best_move
 
     def clear_cache(self):
         """Purge les dictionnaires de cache pour libérer la RAM."""
         self._eval_cache.clear()
         self._best_move_cache.clear()
+        self._analysis_cache.clear()
         self._pv_cache.clear()
         if self.engine and hasattr(self.engine, "send_ucinewgame_command"):
             try:

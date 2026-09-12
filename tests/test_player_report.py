@@ -100,6 +100,25 @@ class PlayerReportTests(unittest.TestCase):
         self.assertEqual(result[2], 'e2e4')
         watch.assert_not_called()
 
+    def test_combined_analysis_caches_evaluation_and_best_move_together(self):
+        analyzer = StockfishAnalyzer()
+        analyzer._analysis_cache.clear()
+        analyzer._eval_cache.clear()
+        analyzer._best_move_cache.clear()
+        engine = unittest.mock.Mock()
+        engine.get_engine_parameters.return_value = {'Depth': 18}
+        analyzer.engine = engine
+
+        combined_result = ({'type': 'cp', 'value': 35}, 'e2e4')
+        with patch.object(analyzer, '_run_with_watchdog', return_value=combined_result) as run:
+            evaluation = analyzer._get_cached_eval(chess.Board().fen())
+            best_move = analyzer._get_cached_best_move(chess.Board().fen())
+
+        self.assertEqual(evaluation, {'type': 'cp', 'value': 35})
+        self.assertEqual(best_move, 'e2e4')
+        run.assert_called_once()
+        self.assertEqual(len(analyzer._analysis_cache), 1)
+
     def test_watchdog_retries_calculation_once_after_reset(self):
         analyzer = StockfishAnalyzer()
         first_engine = unittest.mock.Mock()
