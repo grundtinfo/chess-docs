@@ -98,7 +98,7 @@ class StockfishAnalyzer:
         
         self.get_engine()
 
-    def _run_with_watchdog(self, task_name, func, *args, **kwargs):
+    def _run_with_watchdog(self, task_name, func, *args, _retry_count=1, **kwargs):
         """
         Exécute une fonction Stockfish. Ajuste le timeout dynamiquement 
         selon la profondeur ET le nombre de coups de façon exponentielle.
@@ -137,7 +137,17 @@ class StockfishAnalyzer:
         # Si on sort de la boucle, le moteur est figé
         Logger.debug_log(f"[{task_name}] Stockfish a figé (Timeout de {timeout}s dépassé). Reprise de l'application...", "ERROR")
         self._reset_engine()
-        return None
+        if _retry_count >= 1 or not self.engine:
+            return None
+
+        Logger.debug_log(f"[{task_name}] Relance unique du calcul après réinitialisation de Stockfish.", "WARNING")
+        return self._run_with_watchdog(
+            task_name,
+            func,
+            *args,
+            _retry_count=_retry_count + 1,
+            **kwargs,
+        )
 
     def _get_cached_eval(self, fen):
         if fen in self._eval_cache:
@@ -152,7 +162,7 @@ class StockfishAnalyzer:
         self._check_cache_limits()
         self.engine.set_fen_position(fen)
 
-        evaluation = self._run_with_watchdog("Évaluation", self.engine.get_evaluation)
+        evaluation = self._run_with_watchdog("Évaluation", lambda: self.engine.get_evaluation())
         if not evaluation:
             return {"type": "cp", "value": 0}
 
@@ -170,7 +180,7 @@ class StockfishAnalyzer:
         self._check_cache_limits()
         self.engine.set_fen_position(fen)
 
-        best_move = self._run_with_watchdog("Meilleur Coup", self.engine.get_best_move)
+        best_move = self._run_with_watchdog("Meilleur Coup", lambda: self.engine.get_best_move())
         if not best_move:
             return None
 
@@ -237,7 +247,7 @@ class StockfishAnalyzer:
                 
                 self.engine.set_fen_position(sim_board.fen())
                 
-                best_uci = self._run_with_watchdog("Séquence Rapide", self.engine.get_best_move)
+                best_uci = self._run_with_watchdog("Séquence Rapide", lambda: self.engine.get_best_move())
                 
                 if not best_uci: break
                 

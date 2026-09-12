@@ -1,6 +1,7 @@
 import os
 import sys
 import unittest
+import concurrent.futures
 from collections import OrderedDict
 from unittest.mock import patch
 
@@ -97,6 +98,40 @@ class PlayerReportTests(unittest.TestCase):
         self.assertEqual(result[0], 'e4')
         self.assertEqual(result[2], 'e2e4')
         watch.assert_not_called()
+
+    def test_watchdog_retries_calculation_once_after_reset(self):
+        analyzer = StockfishAnalyzer()
+        first_engine = unittest.mock.Mock()
+        second_engine = unittest.mock.Mock()
+        first_engine.get_engine_parameters.return_value = {'Depth': 1}
+        first_engine.get_fen_position.return_value = '8/8/8/8/8/8/8/8 w - - 0 1'
+        second_engine.get_engine_parameters.return_value = {'Depth': 1}
+        second_engine.get_fen_position.return_value = '8/8/8/8/8/8/8/8 w - - 0 1'
+
+        first_future = unittest.mock.Mock()
+        first_future.result.side_effect = [concurrent.futures.TimeoutError()] * 6
+        first_executor = unittest.mock.Mock()
+        first_executor.submit.return_value = first_future
+
+        second_future = unittest.mock.Mock()
+        second_future.result.return_value = 'recovered'
+        second_executor = unittest.mock.Mock()
+        second_executor.submit.return_value = second_future
+
+        analyzer.engine = first_engine
+        analyzer._executor = first_executor
+
+        def reset_engine():
+            analyzer.engine = second_engine
+            analyzer._executor = second_executor
+
+        with patch.object(analyzer, '_reset_engine', side_effect=reset_engine) as reset:
+            result = analyzer._run_with_watchdog('Test', lambda: analyzer.engine.value)
+
+        self.assertEqual(result, 'recovered')
+        reset.assert_called_once()
+        first_executor.submit.assert_called_once()
+        second_executor.submit.assert_called_once()
 
     def test_remove_false_opening_blunders_keeps_only_non_best_moves(self):
         game = {
