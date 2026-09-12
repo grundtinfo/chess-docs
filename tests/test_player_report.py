@@ -2,6 +2,7 @@ import os
 import sys
 import unittest
 import concurrent.futures
+import subprocess
 from collections import OrderedDict
 from unittest.mock import patch
 
@@ -159,6 +160,35 @@ class PlayerReportTests(unittest.TestCase):
         self.assertIs(analyzer.get_engine(depth=12), engine)
 
         engine.set_depth.assert_called_once_with(12)
+
+    def test_reset_waits_for_stockfish_process_to_exit(self):
+        analyzer = StockfishAnalyzer()
+        process = unittest.mock.Mock()
+        process.poll.side_effect = [None, 0]
+        engine = unittest.mock.Mock()
+        engine._stockfish = process
+        analyzer.engine = engine
+
+        analyzer._stop_engine_process()
+
+        process.terminate.assert_called_once()
+        process.wait.assert_called_once_with(timeout=1.0)
+        process.kill.assert_not_called()
+
+    def test_reset_kills_stockfish_process_when_termination_times_out(self):
+        analyzer = StockfishAnalyzer()
+        process = unittest.mock.Mock()
+        process.poll.return_value = None
+        process.wait.side_effect = [subprocess.TimeoutExpired(cmd="stockfish", timeout=1.0), None]
+        engine = unittest.mock.Mock()
+        engine._stockfish = process
+        analyzer.engine = engine
+
+        analyzer._stop_engine_process()
+
+        process.terminate.assert_called_once()
+        process.kill.assert_called_once()
+        self.assertEqual(process.wait.call_count, 2)
 
     def test_remove_false_opening_blunders_keeps_only_non_best_moves(self):
         game = {

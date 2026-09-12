@@ -1,5 +1,6 @@
 import os
 import concurrent.futures
+import subprocess
 from collections import OrderedDict
 from classes.logger import Logger
 from classes.config import Config
@@ -78,14 +79,8 @@ class StockfishAnalyzer:
     def _reset_engine(self):
         """Réinitialise l'instance Stockfish et le pool de threads en cas de blocage (Watchdog)."""
         Logger.debug_log("Réinitialisation forcée du moteur Stockfish suite à un blocage...", "WARNING")
-        
-        if self.engine:
-            try:
-                # 1. Tuer brutalement le processus système (évite le blocage de __del__)
-                if hasattr(self.engine, '_process') and self.engine._process:
-                    self.engine._process.kill()
-            except Exception as e:
-                Logger.debug_log(f"Erreur lors du kill du processus : {e}", "ERROR")
+
+        self._stop_engine_process()
         
         self.engine = None
         self._init_attempted = False
@@ -102,6 +97,38 @@ class StockfishAnalyzer:
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         
         self.get_engine()
+
+    def _stop_engine_process(self):
+        """Arrête le processus Stockfish et attend sa disparition effective."""
+        if not self.engine:
+            return
+
+        process = getattr(self.engine, "_stockfish", None)
+        if process is None:
+            process = getattr(self.engine, "_process", None)
+        if process is None:
+            return
+
+        try:
+            if process.poll() is not None:
+                return
+
+            process.terminate()
+            try:
+                process.wait(timeout=1.0)
+            except subprocess.TimeoutExpired:
+                process.kill()
+                process.wait(timeout=1.0)
+        except Exception as exc:
+            Logger.debug_log(f"Erreur lors de l'arrêt du processus Stockfish : {exc}", "ERROR")
+        finally:
+            for stream_name in ("stdin", "stdout", "stderr"):
+                stream = getattr(process, stream_name, None)
+                if stream is not None:
+                    try:
+                        stream.close()
+                    except Exception:
+                        pass
 
     def _run_with_watchdog(self, task_name, func, *args, _retry_count=0, **kwargs):
         """
