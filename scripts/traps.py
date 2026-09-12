@@ -61,17 +61,34 @@ def normalize_defense_spec(defense_text):
 def split_move_options(moves_text):
     return [m.strip() for m in re.split(r'\s+ou\s+|\s*,\s*', moves_text) if m.strip()]
 
-def generate_moves_table(piege, stockfish_depth=18):
+def generate_moves_table(piege, stockfish_depth=18, return_analysis=False):
     Logger.debug_log(f"Génération table des coups pour le piège {piege.get('nom', 'sans nom')}", "INFO")
     analyzer = StockfishAnalyzer()
-    analyzer.clear_cache()
-    analyzer.get_engine(depth=stockfish_depth)
     moves = ChessUtils.parse_moves(piege.get("coups", ""))
-    rows, board, current_row = [], chess.Board(), None
+    rows, details, board, current_row = [], [], chess.Board(), None
 
     # Chargement du cache dédié aux pièges
     cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
     cache_updated = False
+
+    analysis_needed = False
+    cache_board = chess.Board()
+    for move in moves:
+        cache_key = f"trap_{cache_board.fen()}_{move.get('san', '')}"
+        cached_move = cache.get(cache_key, {})
+        if not (cached_move.get("commentaire") and cached_move.get("coup_annote") and
+                cached_move.get("precision") is not None and cached_move.get("color")):
+            analysis_needed = True
+            break
+        try:
+            cache_board.push(cache_board.parse_san(move.get("san", "")))
+        except Exception:
+            analysis_needed = True
+            break
+
+    if analysis_needed:
+        analyzer.clear_cache()
+        analyzer.get_engine(depth=stockfish_depth)
 
     for i, move in enumerate(moves):
         move_san = move.get("san", "")
@@ -81,15 +98,69 @@ def generate_moves_table(piege, stockfish_depth=18):
         fen_before = board.fen()
         cache_key = f"trap_{fen_before}_{move_san}"
         
-        # Vérification du cache : si vide ou absent, on regénère
-        if cache_key in cache and cache[cache_key].get("commentaire") and cache[cache_key].get("coup_annote"):
-            commentaire = cache[cache_key]["commentaire"]
-            coup_annote = cache[cache_key]["coup_annote"]
+        cached_move = cache.get(cache_key, {})
+        has_comment = bool(cached_move.get("commentaire") and cached_move.get("coup_annote"))
+        has_precision = cached_move.get("precision") is not None and cached_move.get("color")
+        precomputed = None
+
+        if has_comment and has_precision:
+            commentaire = cached_move["commentaire"]
+            coup_annote = cached_move["coup_annote"]
+            details.append({"color": cached_move["color"], "precision": cached_move["precision"]})
             Logger.debug_log(f"[Cache Hit] Coup {move_san}", "DEBUG")
         else:
-            commentaire, coup_annote, _, _ = AIAnalyzer.generate_move_comment(move.get("raw", ""), move_san, board, is_trap=True, future_moves=future_moves, trap_cache=cache)
-            Logger.debug_log(f"[Génération IA] {move_san} -> {commentaire.strip()}", "DEBUG")
-            cache[cache_key] = {"commentaire": commentaire, "coup_annote": coup_annote}
+            eval_before, eval_after, move_obj = analyzer.analyze_move(board, move_san)
+            _, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
+            precomputed = {
+                "eval_before": eval_before,
+                "eval_after": eval_after,
+                "move_obj": move_obj,
+                "best_eval": best_eval,
+                "best_uci": best_uci,
+            }
+
+            if has_comment:
+                commentaire = cached_move["commentaire"]
+                coup_annote = cached_move["coup_annote"]
+            else:
+                commentaire, coup_annote, _, _ = AIAnalyzer.generate_move_comment(
+                    move.get("raw", ""),
+                    move_san,
+                    board,
+                    is_trap=True,
+                    future_moves=future_moves,
+                    precomputed_data=precomputed,
+                    trap_cache=cache,
+                )
+                Logger.debug_log(f"[Génération IA] {move_san} -> {commentaire.strip()}", "DEBUG")
+
+            precision = None
+            if eval_after and best_eval and move_obj:
+                board_after = board.copy()
+                board_after.push(move_obj)
+                val_after = ChessUtils.get_eval_value(eval_after, board_after)
+
+                board_best = board.copy()
+                if best_uci:
+                    try:
+                        board_best.push(chess.Move.from_uci(best_uci))
+                    except ValueError:
+                        pass
+                val_best = ChessUtils.get_eval_value(best_eval, board_best)
+                multiplier = 1 if board.turn == chess.WHITE else -1
+                precision = (val_after * multiplier) - (val_best * multiplier)
+                if board_after.is_checkmate() or (best_uci and move_obj.uci() == best_uci):
+                    precision = 0
+
+            color = move.get("color")
+            if precision is not None:
+                details.append({"color": color, "precision": precision})
+            cache[cache_key] = {
+                "commentaire": commentaire,
+                "coup_annote": coup_annote,
+                "color": color,
+                "precision": precision,
+            }
             cache_updated = True
         
         try: 
@@ -154,6 +225,8 @@ def generate_moves_table(piege, stockfish_depth=18):
     if cache_updated:
         CacheManager.save_cache(cache, CacheManager.TRAP_CACHE_FILE)
         
+    if return_analysis:
+        return rows, details
     return rows
 
 def generate_fen_positions(piege):
@@ -198,7 +271,6 @@ def generate_fen_positions(piege):
     return fen_final, fen_intermediaire, fen_defense
 
 def estimate_trap_elo(piege, stockfish_depth):
-    StockfishAnalyzer().clear_cache()
     cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
     
     coups_str = piege.get("coups", "")
@@ -209,6 +281,7 @@ def estimate_trap_elo(piege, stockfish_depth):
         return cache[cache_key]
 
     analyzer = StockfishAnalyzer()
+    analyzer.clear_cache()
     engine = analyzer.get_engine(depth=stockfish_depth)
     if not engine: return 1200, 1200
     
@@ -281,12 +354,18 @@ def generer_pdf(stockfish_depth=18, verbose=1):
     try:
         with data_path.open('r', encoding='utf-8') as f: trappes_data = json.load(f)
         Logger.debug_log("Calcul et tri des pièges par niveau ELO...", "ESSENTIAL")
+        prepared_traps = []
         for piege in trappes_data:
-            elo_att, elo_def = estimate_trap_elo(piege, stockfish_depth)
+            rows, details = generate_moves_table(piege, stockfish_depth, return_analysis=True)
+            w_elo, b_elo = ChessUtils.calculate_elo_from_details(details)
+            attacker_color = piege.get("defenseur") == "Noirs"
+            elo_att = w_elo if attacker_color else b_elo
+            elo_def = b_elo if attacker_color else w_elo
             piege['elo_attaquant'] = elo_att
             piege['elo_defenseur'] = elo_def
+            prepared_traps.append((piege, rows))
             
-        trappes_data.sort(key=lambda p: (p['elo_attaquant'], p['elo_defenseur']))
+        prepared_traps.sort(key=lambda item: (item[0]['elo_attaquant'], item[0]['elo_defenseur']))
             
         doc = SimpleDocTemplate(str(output_path), pagesize=letter, leftMargin=36, rightMargin=36, topMargin=40, bottomMargin=40)
         styles = getSampleStyleSheet()
@@ -312,7 +391,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
         legend_table.setStyle(TableStyle([('BACKGROUND', (0,0), (-1,0), Config.COLOR_BG_LIGHT), ('ROWBACKGROUNDS', (0,1), (-1,-1), [Config.COLOR_BG_LIGHT, Config.COLOR_BG_ALT]), ('LINEBELOW', (0,0), (-1,0), 1, Config.COLOR_PRIMARY), ('PADDING', (0,0), (-1,-1), 6)]))
         elements.extend([legend_table, PageBreak()])
 
-        for idx, piege in enumerate(trappes_data):
+        for idx, (piege, rows) in enumerate(prepared_traps):
             if idx > 0: elements.append(PageBreak())
             
             Logger.debug_log(f"Analyse du piège {idx+1}/{len(trappes_data)} : {piege.get('nom', 'Sans nom')}", "ESSENTIAL")
@@ -328,7 +407,7 @@ def generer_pdf(stockfish_depth=18, verbose=1):
             table_data = [[Paragraph("<b>Diag</b>", normal_style), Paragraph("<b>Blanc</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style), Paragraph("<b>Noir</b>", normal_style), Paragraph("<b>Commentaire IA</b>", normal_style)]]
             orient = get_trap_orientation(piege)
             
-            for row in generate_moves_table(piege, stockfish_depth):
+            for row in rows:
                 # Le diagramme affiche la position finale du tour : après le noir s'il existe, sinon après le blanc
                 fen = row.get("black_fen") or row.get("white_fen")
 
