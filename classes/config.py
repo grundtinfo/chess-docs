@@ -6,7 +6,7 @@ class Config:
     # Allocation dynamique : laisse au moins 2 cœurs libres pour le système/WSL
     STOCKFISH_THREADS = max(1, (os.cpu_count() or 4) - 2)
     # Empreinte RAM optimisée (512 Mo au lieu de 6144 Mo)
-    STOCKFISH_HASH = 512
+    STOCKFISH_HASH = 1024
 
     COLOR_PAGE_BG = colors.HexColor("#0b1220")
     COLOR_PRIMARY = colors.HexColor("#38bdf8")
