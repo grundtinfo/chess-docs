@@ -98,7 +98,7 @@ class StockfishAnalyzer:
         
         self.get_engine()
 
-    def _run_with_watchdog(self, task_name, func, *args, _retry_count=1, **kwargs):
+    def _run_with_watchdog(self, task_name, func, *args, _retry_count=0, **kwargs):
         """
         Exécute une fonction Stockfish. Ajuste le timeout dynamiquement 
         selon la profondeur ET le nombre de coups de façon exponentielle.
@@ -137,7 +137,7 @@ class StockfishAnalyzer:
         # Si on sort de la boucle, le moteur est figé
         Logger.debug_log(f"[{task_name}] Stockfish a figé (Timeout de {timeout}s dépassé). Reprise de l'application...", "ERROR")
         self._reset_engine()
-        if _retry_count >= 1 or not self.engine:
+        if _retry_count >= 3 or not self.engine:
             return None
 
         Logger.debug_log(f"[{task_name}] Relance unique du calcul après réinitialisation de Stockfish.", "WARNING")
