@@ -6,6 +6,7 @@ from classes.logger import Logger
 class CacheManager:
     CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "json", "cache_analyses.json")
     TRAP_CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "json", "cache_traps.json")
+    OPENING_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "json", "opening")
 
     @classmethod
     def load_cache(cls, filepath=None):
@@ -90,11 +91,14 @@ class CacheManager:
     @staticmethod
     def load_opening_data(base_dir, opening_name):
         safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", opening_name).strip("_") or "inconnue"
-        filepath = os.path.join(base_dir, "json", f"cache_opening_{safe_name}.json")
+        filepath = os.path.join(base_dir, "json", "opening", f"cache_variante_{safe_name}.json")
+        legacy_filepath = os.path.join(base_dir, "json", f"cache_opening_{safe_name}.json")
         
-        if os.path.exists(filepath):
+        for candidate in (filepath, legacy_filepath):
+            if not os.path.exists(candidate):
+                continue
             try:
-                with open(filepath, "rb") as handle:
+                with open(candidate, "rb") as handle:
                     return orjson.loads(handle.read())
             except Exception as e:
                 from classes.logger import Logger
@@ -106,9 +110,9 @@ class CacheManager:
     @staticmethod
     def save_opening_data(base_dir, opening_name, data):
         safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", opening_name).strip("_") or "inconnue"
-        target_dir = os.path.join(base_dir, "json")
+        target_dir = os.path.join(base_dir, "json", "opening")
         os.makedirs(target_dir, exist_ok=True)
         
-        filepath = os.path.join(target_dir, f"cache_opening_{safe_name}.json")
+        filepath = os.path.join(target_dir, f"cache_variante_{safe_name}.json")
         with open(filepath, "wb") as handle:
             handle.write(orjson.dumps(data, option=orjson.OPT_INDENT_2))
