@@ -3,51 +3,137 @@
     "nom": "Partie Écossaise - Ligne Principale (Variante Classique)",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Cxd4 Fc5 5. Fe3 Df6 6. c3 Cge7 7. Fc4 O-O 8. O-O",
     "explications": {
-      "3": "Les Blancs ouvrent le centre immédiatement avec d4. Cela force la prise pour éviter de perdre un pion ou de subir un fort contrôle central.",
-      "4": "Les Noirs choisissent la variante classique en développant leur fou en c5 pour attaquer tout de suite le cavalier centralisé en d4.",
-      "5": "Les Blancs défendent le cavalier avec Fe3. Les Noirs accentuent immédiatement la pression sur d4 en sortant la Dame en f6.",
-      "6": "Le pion c3 vient solidifier la position du cavalier d4. Les Noirs développent leur cavalier en e7 (plutôt qu'en f6) pour ne pas bloquer leur Dame et préparer le roque."
+      "3": "Les Blancs ouvrent immédiatement le centre avec d4 pour forcer l'échange du pion e5.",
+      "5": "Les Blancs soutiennent le cavalier d4 avec Fe3, tandis que les Noirs mettent la pression sur d4 avec Df6.",
+      "7": "Développement harmonieux du fou de cases blanches et préparation du petit roque des deux côtés."
     },
     "Orientation": "Blancs"
   },
   {
-    "nom": "Partie Écossaise - Variante Schmidt",
+    "nom": "Partie Écossaise - Variante Classique (Piège de l'échange précoce en d4)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Cxd4 Fc5 5. Fe3 Fxd4 6. Fxd4 Cxd4 7. Dxd4 Df6 8. e5",
+    "explications": {
+      "5": "L'échange 5... Fxd4? est une faute positionnelle des Noirs qui cèdent la paire de fous et simplifient la position au profit des Blancs.",
+      "7": "La dame blanche s'installe au centre sans pouvoir être chassée facilement.",
+      "8": "La poussée e5 gagne un tempo précieux sur la dame noire et verrouille le centre à l'avantage des Blancs."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Partie Écossaise - Variante Schmidt (Clouage classique avec 8... Fa6)",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Cxd4 Cf6 5. Cxc6 bxc6 6. e5 De7 7. De2 Cd5 8. c4 Fa6",
     "explications": {
-      "4": "Le développement classique du cavalier en f6 attaque directement le pion e4 et évite les complications tactiques immédiates de la variante classique.",
-      "5": "Les Blancs échangent en c6 pour détériorer la structure de pions noirs sur l'aile dame, créant des pions doublés.",
-      "6": "La poussée e5 vise à chasser le cavalier f6. Les Noirs répondent brillamment avec De7, clouant le pion e5 sur le roi blanc (si les Blancs n'ont pas encore roqué).",
-      "8": "Les Blancs attaquent le cavalier avec c4, mais les Noirs utilisent le clouage indirect sur la diagonale avec Fa6 pour maintenir la pression."
+      "4": "Le développement du cavalier f6 attaque le pion e4 et force la réaction des Blancs.",
+      "6": "La poussée e5 chasse le cavalier, mais De7 cloue le pion e5 sur le roi blanc.",
+      "8": "Le coup 8... Fa6 exploite le clouage indirect le long de la diagonale a6-f1 contre le pion c4."
     },
     "Orientation": "Noirs"
   },
   {
-    "nom": "Partie Écossaise - Gambit Écossais",
+    "nom": "Partie Écossaise - Variante Schmidt (Grand roque et contre-attaque au centre)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Cxd4 Cf6 5. Cxc6 bxc6 6. e5 De7 7. De2 Cd5 8. c4 Fa6 9. b3 O-O-O 10. g3 Te8 11. Fb2 f6 12. Fg2 fxe5 13. O-O",
+    "explications": {
+      "9": "Les Blancs soutiennent le pion c4 avec b3 pour libérer leur dame du clouage.",
+      "10": "Les Noirs roquent du côté dame et accentuent la pression sur le pion e5 via la colonne e ouverte.",
+      "13": "Après l'ouverture du centre, les Blancs roquent et obtiennent une forte activité de pièces en échange du pion e5."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Partie Écossaise - Variante Schmidt (Punition du retrait passif 8... Cb6)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Cxd4 Cf6 5. Cxc6 bxc6 6. e5 De7 7. De2 Cd5 8. c4 Cb6 9. Cc3 De6 10. De4",
+    "explications": {
+      "8": "Le retrait du cavalier en b6 au lieu du clouage Fa6 est passif et cède l'initiative aux Blancs.",
+      "9": "Les Blancs développent leur cavalier c3 et centralisent la dame en e4 pour dominer l'échiquier."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Partie Écossaise - Gambit Écossais (Ligne classique avec Db3)",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Fc4 Fc5 5. O-O d6 6. c3 Fg4 7. Db3",
     "explications": {
-      "4": "Au lieu de reprendre le pion en d4, les Blancs jouent Fc4 (le Gambit Écossais). Ils visent un développement très rapide et ciblent immédiatement la case sensible f7.",
-      "6": "Le coup c3 pose la question au centre : les Blancs veulent reprendre avec le pion pour s'installer durablement au centre.",
-      "7": "En réponse au clouage Fg4 des Noirs, les Blancs placent leur Dame en b3, créant une puissante double menace sur les pions f7 et b7."
+      "4": "Au lieu de reprendre en d4, les Blancs jouent Fc4 pour accélérer le développement et cibler f7.",
+      "6": "Les Noirs clouent le cavalier f3 avec Fg4.",
+      "7": "Db3 crée une double menace simultanée sur f7 et b7."
     },
     "Orientation": "Blancs"
   },
   {
-    "nom": "Partie Écossaise - Gambit Göring",
+    "nom": "Partie Écossaise - Gambit Écossais (Tension et destruction de la structure par Fxf7+)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Fc4 Fc5 5. O-O d6 6. c3 Fg4 7. Db3 Fxf3 8. Fxf7+ Kf8 9. Fxg8 Txg8 10. gxf3",
+    "explications": {
+      "7": "Face à la double menace sur f7 et b7, les Noirs éliminent le cavalier f3.",
+      "8": "Les Blancs affaiblissent le roque noir par Fxf7+ et éliminent le fou g8.",
+      "10": "Les Blancs acceptent des pions doublés f3/f2 en échange de l'initiative et de la vulnérabilité du roi noir."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Partie Écossaise - Gambit Écossais (Piège du sacrifice Fxf7+ et récupération en c5)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Fc4 Fc5 5. c3 dxc3 6. Fxf7+ Kxf7 7. Dd5+ Re8 8. Dxc5",
+    "explications": {
+      "5": "Les Blancs proposent le sacrifice du pion c3 pour ouvrir l'attaque.",
+      "6": "Le sacrifice temporaire Fxf7+ déroque le roi noir.",
+      "7": "L'échec de dame en d5 récupère le fou c5 tout en laissant le roi noir vulnérable au centre."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Partie Écossaise - Gambit Écossais (Contre-attaque 4... Cf6 et poussée e5)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Fc4 Cf6 5. e5 d5 6. Fb5 Ce4 7. Cxd4 Fd7 8. Fxc6 bxc6 9. O-O Fc5",
+    "explications": {
+      "4": "4... Cf6 est la réponse dynamique pour attaquer le pion e4.",
+      "5": "Au lieu d'une défense passive, 5... d5 riposte immédiatement au centre.",
+      "8": "Les Noirs obtiennent une structure solide au centre et une excellente activité de pièces."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Partie Écossaise - Gambit Göring (Ligne avec 5... Fb4)",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. c3 dxc3 5. Cxc3 Fb4 6. Fc4 d6 7. O-O",
     "explications": {
-      "4": "C'est la marque du Gambit Göring. Les Blancs sacrifient délibérément le pion d4 et proposent un second pion en c3 pour ouvrir complètement les lignes.",
-      "5": "Les Blancs reprennent avec le cavalier. Ils ont un pion de moins, mais une énorme avance de développement et des pièces très actives.",
-      "6": "Le développement se poursuit de manière très agressive vers le roi noir. L'initiative compense largement le déficit matériel."
+      "4": "Le Gambit Göring sacrifie du matériel pour obtenir un développement ultra-rapide.",
+      "5": "5... Fb4 cloue le cavalier c3 pour freiner l'expansion blanche au centre.",
+      "7": "Les Blancs roquent rapidement et conservent l'initiative sur les colonnes ouvertes."
     },
     "Orientation": "Blancs"
   },
   {
-    "nom": "Partie Écossaise - Variante Steinitz",
+    "nom": "Partie Écossaise - Gambit Göring (Poussée centrale e5)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. c3 dxc3 5. Cxc3 Fb4 6. Fc4 d6 7. O-O Fxc3 8. bxc3 Cf6 9. e5",
+    "explications": {
+      "7": "Les Noirs s'empressent d'échanger en c3 pour supprimer le cavalier actif.",
+      "9": "La poussée e5 ouvre le centre pour attaquer le roi noir avant son roque."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Partie Écossaise - Gambit Göring (Variante 5... Fc5 avec pression sur f7)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. c3 dxc3 5. Cxc3 Fc5 6. Fc4 d6 7. Db3 Dd7 8. Cg5 Ce5",
+    "explications": {
+      "5": "5... Fc5 cible f2 mais laisse la diagonale a2-g8 accessible au fou blanc.",
+      "7": "Db3 menace directement f7, paré par Dd7.",
+      "8": "Les Noirs parant la menace f7 grâce à la centralisation du cavalier en e5."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Partie Écossaise - Variante Steinitz (Provocation 4... Dh4)",
     "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Cxd4 Dh4 5. Cc3 Fb4 6. Fe2 Dxe4 7. Cdb5",
     "explications": {
-      "4": "Un coup très agressif et provocateur (Dh4) qui attaque immédiatement le pion e4 et force les Blancs à trouver des défenses précises.",
-      "5": "Les Blancs défendent e4 tactiquement. Les Noirs clouent le cavalier c3 avec Fb4 pour renouveler la menace sur e4.",
-      "7": "Bien que les Noirs aient capturé le pion central (Dxe4), les Blancs ripostent avec Cdb5, menaçant une redoutable fourchette en c7 contre le roi et la tour noire."
+      "4": "4... Dh4 attaque agressivement le pion e4 dès l'ouverture.",
+      "6": "Les Blancs sacrifient e4 pour accélérer leur développement.",
+      "7": "Cdb5 menace une fourchette décisive en c7."
+    },
+    "Orientation": "Blancs"
+  },
+  {
+    "nom": "Partie Écossaise - Variante Steinitz (Perte du roque noir et réplique Cdb5)",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Cxd4 Dh4 5. Cc3 Fb4 6. Fe2 Dxe4 7. Cdb5 Fxc3+ 8. bxc3 Rd8 9. O-O",
+    "explications": {
+      "7": "La menace sur c7 force l'échange en c3 et déplace le roi noir en d8.",
+      "8": "Les Noirs perdent le roque et se retrouvent avec un roi coincé au centre.",
+      "9": "Les Blancs tirent un avantage de l'avance de développement et des colonnes ouvertes."
     },
     "Orientation": "Blancs"
   }

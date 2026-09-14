@@ -515,5 +515,34 @@
     ],
     "defenseur": "Noirs",
     "explication_defense": "Développer sereinement le cavalier permet de contrôler le centre, de préparer le petit roque et d'empêcher les Blancs d'exploiter les faiblesses sur l'aile Dame et sur f7."
+  },
+  {
+    "nom": "Gambit Écossais - Piège du sacrifice Fxf7+ et fourchette de dame en d5",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Fc4 Fc5 5. c3 dxc3 6. Fxf7+ Kxf7 7. Dd5+ Re8 8. Dxc5",
+    "explications": {
+      "5": "Les Noirs acceptent la prise c3 sans anticiper la réaction tactique des Blancs.",
+      "6": "Sacrifice temporaire de fou déroquant le roi noir.",
+      "7": "L'échec intermédiaire Dd5+ permet de récupérer le fou c5 tout en maintenant le roi noir au centre."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Partie Écossaise (Variante Steinitz) - Piège de la fourchette c7 sur gourmandise en e4",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Cxd4 Dh4 5. Cc3 Fb4 6. Fe2 Dxe4 7. Cdb5 Fxc3+ 8. bxc3 Rd8 9. O-O",
+    "explications": {
+      "4": "La sortie précoce de la dame noire en h4 vise la capture du pion e4.",
+      "6": "La capture de e4 permet aux Blancs d'installer leur cavalier en b5.",
+      "7": "Menace directe de fourchette en c7 (roi-tour), forçant le roi noir à fuir en d8 et à renoncer définitivement au roque."
+    },
+    "Orientation": "Noirs"
+  },
+  {
+    "nom": "Partie Écossaise (Variante Classique) - Piège de l'échange précoce Fxd4",
+    "coups": "1. e4 e5 2. Cf3 Cc6 3. d4 exd4 4. Cxd4 Fc5 5. Fe3 Fxd4 6. Fxd4 Cxd4 7. Dxd4 Df6 8. e5",
+    "explications": {
+      "5": "L'échange 5... Fxd4 laisse le contrôle absolu de la grande diagonale et du centre aux Blancs.",
+      "8": "La poussée e5 gagne un tempo décisif sur la dame noire et étouffe le développement des Noirs."
+    },
+    "Orientation": "Noirs"
   }
 ]
