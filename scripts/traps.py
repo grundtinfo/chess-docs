@@ -61,15 +61,35 @@ def normalize_defense_spec(defense_text):
 def split_move_options(moves_text):
     return [m.strip() for m in re.split(r'\s+ou\s+|\s*,\s*', moves_text) if m.strip()]
 
-def generate_moves_table(piege, stockfish_depth=18, return_analysis=False):
+def generate_moves_table(piege, stockfish_depth=18, return_analysis=False, legacy_cache=None):
     Logger.debug_log(f"Génération table des coups pour le piège {piege.get('nom', 'sans nom')}", "INFO")
     analyzer = StockfishAnalyzer()
     moves = ChessUtils.parse_moves(piege.get("coups", ""))
     rows, details, board, current_row = [], [], chess.Board(), None
 
-    # Chargement du cache dédié aux pièges
-    cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    trap_name = piege.get("nom", "inconnu")
+    cache = CacheManager.load_trap_data(base_dir, trap_name)
     cache_updated = False
+    if legacy_cache is None:
+        legacy_cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
+
+    # Migration ciblée : seules les entrées de ce piège sont copiées depuis
+    # l'ancien cache global vers son fichier dédié.
+    migration_board = chess.Board()
+    for move in moves:
+        move_san = move.get("san", "")
+        fen_before = migration_board.fen()
+        new_key = f"trap_{fen_before}_{move_san}"
+        old_key = f"{fen_before}_{ChessUtils.remove_special_chars(move.get('raw', '').strip())}"
+        for key in (new_key, old_key):
+            if key in legacy_cache and key not in cache:
+                cache[key] = legacy_cache[key]
+                cache_updated = True
+        try:
+            migration_board.push(migration_board.parse_san(move_san))
+        except Exception:
+            break
 
     analysis_needed = False
     cache_board = chess.Board()
@@ -223,7 +243,7 @@ def generate_moves_table(piege, stockfish_depth=18, return_analysis=False):
                 
     # Sauvegarde uniquement s'il y a eu des modifications
     if cache_updated:
-        CacheManager.save_cache(cache, CacheManager.TRAP_CACHE_FILE)
+        CacheManager.save_trap_data(base_dir, trap_name, cache)
         
     if return_analysis:
         return rows, details
@@ -271,59 +291,28 @@ def generate_fen_positions(piege):
     return fen_final, fen_intermediaire, fen_defense
 
 def estimate_trap_elo(piege, stockfish_depth):
-    cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
-    
+    base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    cache = CacheManager.load_trap_data(base_dir, piege.get("nom", "inconnu"))
+    legacy_cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
     coups_str = piege.get("coups", "")
     # Empreinte MD5 et version 2 pour forcer le recalcul (tuple au lieu d'int)
     cache_key = f"elo_trap_v2_{hashlib.md5(coups_str.encode()).hexdigest()}"
     
     if cache_key in cache:
         return cache[cache_key]
+    if cache_key in legacy_cache:
+        cache[cache_key] = legacy_cache[cache_key]
+        CacheManager.save_trap_data(base_dir, piege.get("nom", "inconnu"), cache)
+        return legacy_cache[cache_key]
 
-    analyzer = StockfishAnalyzer()
-    analyzer.clear_cache()
-    engine = analyzer.get_engine(depth=stockfish_depth)
-    if not engine: return 1200, 1200
-    
-    moves = ChessUtils.parse_moves(coups_str)
-    board = chess.Board()
+    _, details = generate_moves_table(
+        piege,
+        stockfish_depth,
+        return_analysis=True,
+        legacy_cache=legacy_cache,
+    )
     attacker_color_str = "white" if piege.get("defenseur") == "Noirs" else "black"
-    
-    details = []
-    for move in moves:
-        san = move.get("san")
-        color = move.get("color")
-        if not san: continue
-        
-        # On évalue tous les coups (attaquant et défenseur)
-        eval_before, eval_after, move_obj = analyzer.analyze_move(board, san)
-        _, best_eval, best_uci = analyzer.get_best_move_with_eval(board.copy())
-        
-        if eval_after and best_eval and move_obj:
-            board_after = board.copy()
-            board_after.push(move_obj)
-            
-            val_after = ChessUtils.get_eval_value(eval_after, board_after)
-            
-            board_best = board.copy()
-            if best_uci:
-                try: board_best.push(chess.Move.from_uci(best_uci))
-                except Exception: pass
-            val_best = ChessUtils.get_eval_value(best_eval, board_best)
-            
-            multiplier = 1 if board.turn == chess.WHITE else -1
-            eval_player_after = val_after * multiplier
-            eval_player_best = val_best * multiplier
-            
-            delta = eval_player_after - eval_player_best
-            if board_after.is_checkmate() or (best_uci and move_obj.uci() == best_uci):
-                delta = 0
-                
-            details.append({"color": color, "precision": delta})
-        
-        try: board.push(board.parse_san(san))
-        except Exception: break
-        
+
     w_elo, b_elo = ChessUtils.calculate_elo_from_details(details)
     
     if attacker_color_str == "white":
@@ -332,9 +321,8 @@ def estimate_trap_elo(piege, stockfish_depth):
         elo_attaquant, elo_defenseur = b_elo, w_elo
         
     result = (elo_attaquant, elo_defenseur)
-    
     cache[cache_key] = result
-    CacheManager.save_cache(cache, CacheManager.TRAP_CACHE_FILE)
+    CacheManager.save_trap_data(base_dir, piege.get("nom", "inconnu"), cache)
     
     return result
 
@@ -355,8 +343,14 @@ def generer_pdf(stockfish_depth=18, verbose=1):
         with data_path.open('r', encoding='utf-8') as f: trappes_data = json.load(f)
         Logger.debug_log("Calcul et tri des pièges par niveau ELO...", "ESSENTIAL")
         prepared_traps = []
+        legacy_cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
         for piege in trappes_data:
-            rows, details = generate_moves_table(piege, stockfish_depth, return_analysis=True)
+            rows, details = generate_moves_table(
+                piege,
+                stockfish_depth,
+                return_analysis=True,
+                legacy_cache=legacy_cache,
+            )
             w_elo, b_elo = ChessUtils.calculate_elo_from_details(details)
             attacker_color = piege.get("defenseur") == "Noirs"
             elo_att = w_elo if attacker_color else b_elo

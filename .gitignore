@@ -18,6 +18,7 @@ scripts/stockfish
 # ignore players data
 json/player_*
 json/opening/*
+json/traps/*
 json/cache_*.json
 .continue
 .venv

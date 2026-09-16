@@ -6,7 +6,12 @@ from classes.logger import Logger
 class CacheManager:
     CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "json", "cache_analyses.json")
     TRAP_CACHE_FILE = os.path.join(os.path.dirname(os.path.dirname(__file__)), "json", "cache_traps.json")
+    TRAP_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "json", "traps")
     OPENING_CACHE_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "json", "opening")
+
+    @staticmethod
+    def _safe_cache_name(name, fallback="inconnue"):
+        return re.sub(r"[^a-zA-Z0-9._-]+", "_", name).strip("_") or fallback
 
     @classmethod
     def load_cache(cls, filepath=None):
@@ -88,9 +93,31 @@ class CacheManager:
         with open(filepath, "wb") as handle:
             handle.write(orjson.dumps(game_data, option=orjson.OPT_INDENT_2))
 
+    @classmethod
+    def load_trap_data(cls, base_dir, trap_name):
+        safe_name = cls._safe_cache_name(trap_name, "inconnu")
+        filepath = os.path.join(base_dir, "json", "traps", f"cache_piege_{safe_name}.json")
+        if not os.path.exists(filepath):
+            return {}
+        try:
+            with open(filepath, "rb") as handle:
+                return orjson.loads(handle.read())
+        except Exception as exc:
+            Logger.debug_log(f"Erreur de lecture du cache du piège {trap_name}: {exc}", "ERROR")
+            return {}
+
+    @classmethod
+    def save_trap_data(cls, base_dir, trap_name, data):
+        safe_name = cls._safe_cache_name(trap_name, "inconnu")
+        target_dir = os.path.join(base_dir, "json", "traps")
+        os.makedirs(target_dir, exist_ok=True)
+        filepath = os.path.join(target_dir, f"cache_piege_{safe_name}.json")
+        with open(filepath, "wb") as handle:
+            handle.write(orjson.dumps(data, option=orjson.OPT_INDENT_2))
+
     @staticmethod
     def load_opening_data(base_dir, opening_name):
-        safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", opening_name).strip("_") or "inconnue"
+        safe_name = CacheManager._safe_cache_name(opening_name)
         filepath = os.path.join(base_dir, "json", "opening", f"cache_variante_{safe_name}.json")
         legacy_filepath = os.path.join(base_dir, "json", f"cache_opening_{safe_name}.json")
         
@@ -109,7 +136,7 @@ class CacheManager:
 
     @staticmethod
     def save_opening_data(base_dir, opening_name, data):
-        safe_name = re.sub(r"[^a-zA-Z0-9._-]+", "_", opening_name).strip("_") or "inconnue"
+        safe_name = CacheManager._safe_cache_name(opening_name)
         target_dir = os.path.join(base_dir, "json", "opening")
         os.makedirs(target_dir, exist_ok=True)
         
