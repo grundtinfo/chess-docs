@@ -87,14 +87,16 @@ def game_category(game, player_name):
         "blitz": "Parties Blitz"
     }.get(time_class, "Autres parties")
 
-def adjusted_estimated_elo(base_elo, precision, move_count):
-    """Calibre l'estimation existante avec précision et taille de l'échantillon."""
-    if precision is None:
-        return base_elo
+def adjusted_estimated_elo(base_elo, move_count):
+    """Calibre l'estimation avec la taille de l'échantillon (tend vers 1200 si trop peu de coups)."""
+    if base_elo is None:
+        return None
 
-    precision_elo = max(400, min(3200, int((precision * 35) - 1000)))
-    sample_weight = min(0.5, max(0.15, (move_count - 10) / 100))
-    return round((base_elo * (1 - sample_weight)) + (precision_elo * sample_weight))
+    # Poids de confiance basé sur le nombre de coups (confiance maximale atteinte à 40 coups)
+    sample_weight = min(1.0, max(0.15, move_count / 40.0))
+    
+    # Si la partie est très courte, l'estimation tend vers une valeur de base de 1200
+    return round((base_elo * sample_weight) + (1200 * (1.0 - sample_weight)))
 
 def update_estimates(game):
     analysis = game.setdefault("analysis", {})
@@ -106,8 +108,14 @@ def update_estimates(game):
     base_white, base_black = ChessUtils.calculate_elo_from_details(details)
     analysis["precision_white"] = precisions["white"]
     analysis["precision_black"] = precisions["black"]
-    analysis["est_elo_white"] = adjusted_estimated_elo(base_white, precisions["white"], len(details))
-    analysis["est_elo_black"] = adjusted_estimated_elo(base_black, precisions["black"], len(details))
+    
+    # On filtre pour ne compter QUE les coups réellement analysés par l'IA pour chaque couleur
+    w_moves = sum(1 for d in details if d.get("color") == "white" and d.get("precision", -9999) != -9999)
+    b_moves = sum(1 for d in details if d.get("color") == "black" and d.get("precision", -9999) != -9999)
+    
+    # On passe le compte réel de coups joués par la couleur concernée
+    analysis["est_elo_white"] = adjusted_estimated_elo(base_white, w_moves)
+    analysis["est_elo_black"] = adjusted_estimated_elo(base_black, b_moves)
 
 def refresh_opening_blunder_data(game):
     for blunder in game.get("analysis", {}).get("opening_blunders", []):
@@ -835,6 +843,7 @@ def main():
     parser.add_argument("--max-games", type=int, default=5, help="Nombre max de parties à analyser (0 pour toutes, 5 par défaut)")
     parser.add_argument("--incomplete-only", action="store_true", help="Reprend uniquement l'analyse des parties déjà enregistrées mais incomplètes")
     parser.add_argument("--game-id", type=str, default=None, help="ID ou URL spécifique de la partie à forcer dans l'analyse")
+    parser.add_argument("--force-elo", action="store_true", help="Force le recalcul complet par Stockfish des précisions et des estimations ELO")
     # --------------------------------------
     
     args = parser.parse_args()
@@ -886,7 +895,13 @@ def main():
                     games_to_process.append((g, game_id, existing_g, True))
                 continue
 
-            needs_full_analysis = ChessUtils.is_game_incomplete(existing_g, require_deep=True)
+            # Si on force le recalcul ELO, on réinitialise les précisions de l'historique
+            # pour obliger l'IA Analyzer et Stockfish à repasser sur tous les coups
+            if args.force_elo and existing_g:
+                for ply in existing_g.get("analysis", {}).get("details", []):
+                    ply["precision"] = -9999
+            
+            needs_full_analysis = ChessUtils.is_game_incomplete(existing_g, require_deep=True) or args.force_elo
             needs_opening_fix = existing_g and ChessUtils.is_raw_opening(existing_g.get("opening", ""))
             
             if needs_full_analysis or needs_opening_fix:

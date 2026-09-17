@@ -235,6 +235,12 @@ class ChessUtils:
         else:
             val = eval_dict.get('value', 0) if isinstance(eval_dict, dict) else 0
             t = eval_dict.get('type', 'cp') if isinstance(eval_dict, dict) else 'cp'
+            
+        # CORRECTION : On standardise l'évaluation en point de vue absolu (White-centric)
+        # Si le trait est aux Noirs, on inverse le signe pour que le score reste centré sur les Blancs
+        if current_board and current_board.turn == chess.BLACK:
+            val = -val
+            
         if t == 'mate':
             if val > 0: return 10000 - val
             elif val < 0: return -10000 - val
