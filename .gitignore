@@ -20,7 +20,6 @@ json/player_*
 json/opening/*
 json/traps/*
 json/cache_*.json
-.continue
 .venv
 .aider*
 generator.sh
