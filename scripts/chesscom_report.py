@@ -676,7 +676,7 @@ def build_pdf(output_path, state, player_name, opponent_name=None):
             openings_blunders[g.get("opening", "Inconnue")].append(blunder)
 
     # Nettoyage et tri direct des ouvertures (élimine la redondance et l'erreur de syntaxe)
-    valid_top_weak = [item for item in sorted(openings_blunders.items(), key=lambda x: len(x[1]), reverse=True) if item[0] != "Inconnue"][:3]
+    valid_top_weak = [item for item in sorted(openings_blunders.items(), key=lambda x: len(x[1]), reverse=True) if item[0] != "Inconnue"][:10]
     
     if not valid_top_weak:
         elements.append(Paragraph("Aucune erreur critique d'ouverture n'a été détectée dans cet échantillon.", normal_style))
