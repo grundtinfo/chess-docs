@@ -109,14 +109,16 @@ class PlayerReportTests(unittest.TestCase):
         engine.get_engine_parameters.return_value = {'Depth': 18}
         analyzer.engine = engine
 
+        analysis_board = chess.Board('rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 14')
         combined_result = ({'type': 'cp', 'value': 35}, 'e2e4')
         with patch.object(analyzer, '_run_with_watchdog', return_value=combined_result) as run:
-            evaluation = analyzer._get_cached_eval(chess.Board().fen())
-            best_move = analyzer._get_cached_best_move(chess.Board().fen())
+            evaluation = analyzer._get_cached_eval(analysis_board.fen())
+            best_move = analyzer._get_cached_best_move(analysis_board.fen())
 
         self.assertEqual(evaluation, {'type': 'cp', 'value': 35})
         self.assertEqual(best_move, 'e2e4')
         run.assert_called_once()
+        self.assertEqual(run.call_args.kwargs['_move_number'], 14)
         self.assertEqual(len(analyzer._analysis_cache), 1)
 
     def test_watchdog_retries_calculation_once_after_reset(self):
@@ -124,12 +126,12 @@ class PlayerReportTests(unittest.TestCase):
         first_engine = unittest.mock.Mock()
         second_engine = unittest.mock.Mock()
         first_engine.get_engine_parameters.return_value = {'Depth': 1}
-        first_engine.get_fen_position.return_value = '8/8/8/8/8/8/8/8 w - - 0 1'
+        first_engine.get_fen_position.return_value = '8/8/8/8/8/8/8/8 w - - 0 14'
         second_engine.get_engine_parameters.return_value = {'Depth': 1}
         second_engine.get_fen_position.return_value = '8/8/8/8/8/8/8/8 w - - 0 1'
 
         first_future = unittest.mock.Mock()
-        first_future.result.side_effect = [concurrent.futures.TimeoutError()] * 6
+        first_future.result.side_effect = [concurrent.futures.TimeoutError()] * 7
         first_executor = unittest.mock.Mock()
         first_executor.submit.return_value = first_future
 
@@ -145,13 +147,20 @@ class PlayerReportTests(unittest.TestCase):
             analyzer.engine = second_engine
             analyzer._executor = second_executor
 
-        with patch.object(analyzer, '_reset_engine', side_effect=reset_engine) as reset:
+        with patch.object(analyzer, '_reset_engine', side_effect=reset_engine) as reset, \
+                patch('classes.engines.Logger.debug_log') as debug_log:
             result = analyzer._run_with_watchdog('Test', lambda: analyzer.engine.value)
 
         self.assertEqual(result, 'recovered')
         reset.assert_called_once()
         first_executor.submit.assert_called_once()
         second_executor.submit.assert_called_once()
+        progress_logs = [
+            call.args[0] for call in debug_log.call_args_list
+            if 'Calcul en cours' in call.args[0]
+        ]
+        self.assertTrue(progress_logs)
+        self.assertTrue(all('Coup: 14' in message for message in progress_logs))
 
     def test_fast_pv_is_reused_for_same_position_depth_and_length(self):
         analyzer = StockfishAnalyzer()

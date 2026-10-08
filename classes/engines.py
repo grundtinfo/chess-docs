@@ -131,7 +131,7 @@ class StockfishAnalyzer:
                     except Exception:
                         pass
 
-    def _run_with_watchdog(self, task_name, func, *args, _retry_count=0, **kwargs):
+    def _run_with_watchdog(self, task_name, func, *args, _retry_count=0, _move_number=None, **kwargs):
         """
         Exécute une fonction Stockfish. Ajuste le timeout dynamiquement 
         selon la profondeur ET le nombre de coups de façon exponentielle.
@@ -143,13 +143,14 @@ class StockfishAnalyzer:
         depth = self.engine.get_engine_parameters().get("Depth", Config.DEFAULT_STOCKFISH_DEPTH)
         
         # Récupération du numéro de coup pour ajustement exponentiel
-        move_number = 1
-        try:
-            fen = self.engine.get_fen_position()
-            if fen:
-                move_number = int(fen.split()[-1])
-        except Exception:
-            pass
+        move_number = _move_number if _move_number is not None else 1
+        if _move_number is None:
+            try:
+                fen = self.engine.get_fen_position()
+                if fen:
+                    move_number = int(fen.split()[-1])
+            except Exception:
+                pass
         
         # Timeout exponentiel : (5 + depth * 1.5) * e^(move_number / 100)
         # Accorde plus de temps aux calculs profonds en fin de parties longues
@@ -179,6 +180,7 @@ class StockfishAnalyzer:
             func,
             *args,
             _retry_count=_retry_count + 1,
+            _move_number=move_number,
             **kwargs,
         )
 
@@ -237,7 +239,11 @@ class StockfishAnalyzer:
             best_move = self.engine.get_best_move()
             return evaluation, best_move
 
-        analysis = self._run_with_watchdog("Analyse combinée", calculate_analysis)
+        analysis = self._run_with_watchdog(
+            "Analyse combinée",
+            calculate_analysis,
+            _move_number=int(fen.split()[-1]),
+        )
         if not analysis:
             return None, None
 
@@ -333,7 +339,11 @@ class StockfishAnalyzer:
                     self.engine.set_fen_position(current_fen)
                     return self.engine.get_best_move()
 
-                best_uci = self._run_with_watchdog("Séquence Rapide", calculate_pv_move)
+                best_uci = self._run_with_watchdog(
+                    "Séquence Rapide",
+                    calculate_pv_move,
+                    _move_number=sim_board.fullmove_number,
+                )
                 
                 if not best_uci: break
                 
