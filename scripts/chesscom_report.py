@@ -935,10 +935,17 @@ def main():
             parse_game_record(g, args.player, deep_analysis=needs_full_analysis, progress_callback=save_progress_buffered, existing_game=existing_g)
 
         for game_id, cached_game in existing_games.items():
-            before = json.dumps(cached_game.get("analysis", {}).get("opening_blunders", []), sort_keys=True)
+            analysis = cached_game.get("analysis", {})
+            before = json.dumps(analysis, sort_keys=True)
+            for detail in analysis.get("details", []):
+                if isinstance(detail, dict):
+                    detail["comment"] = AIAnalyzer.normalize_comment(detail.get("comment", ""))
+            for blunder in analysis.get("opening_blunders", []):
+                if isinstance(blunder, dict):
+                    blunder["tactics"] = AIAnalyzer.normalize_comment(blunder.get("tactics", ""))
             remove_false_opening_blunders(cached_game)
             refresh_opening_blunder_data(cached_game)
-            after = json.dumps(cached_game.get("analysis", {}).get("opening_blunders", []), sort_keys=True)
+            after = json.dumps(cached_game.get("analysis", {}), sort_keys=True)
             if before != after:
                 CacheManager.save_game(str(state_path), game_id, cached_game)
         # -------------------------------------------------

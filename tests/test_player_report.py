@@ -75,7 +75,7 @@ class PlayerReportTests(unittest.TestCase):
         self.assertIsNotNone(precision["black"])
 
     def test_adjusted_elo_does_not_exceed_documented_accuracy_mapping(self):
-        self.assertEqual(adjusted_estimated_elo(2500, 100.0, 80), 2500)
+        self.assertEqual(adjusted_estimated_elo(2500, 80), 2500)
 
     def test_move_quality_classification_is_color_agnostic(self):
         self.assertEqual(AIAnalyzer.classify_move_quality(-5), "Meilleur coup")
@@ -254,6 +254,34 @@ class PlayerReportTests(unittest.TestCase):
         self.assertEqual(
             AIAnalyzer.translate_opening_name("English Opening"),
             "Ouverture Anglaise"
+        )
+        self.assertEqual(
+            AIAnalyzer.translate_opening_name("Queen's Gambit Declined"),
+            "Gambit Dame Refusé"
+        )
+        self.assertEqual(
+            AIAnalyzer.translate_opening_name("Bishop's Opening"),
+            "Ouverture du Fou"
+        )
+        self.assertEqual(
+            AIAnalyzer.translate_opening_name("O'Neill Gambit"),
+            "Gambit O'Neill"
+        )
+
+    def test_normalize_cached_analysis_comments(self):
+        self.assertEqual(
+            AIAnalyzer.normalize_comment(
+                "Coup douteux - Tactique : Coup douteux qui déséquilibre ou affaiblit la position."
+            ),
+            "Coup douteux."
+        )
+        self.assertEqual(
+            AIAnalyzer.normalize_comment("Mat forcé en 1 coups."),
+            "Mat forcé en 1 coup."
+        )
+        self.assertEqual(
+            AIAnalyzer.normalize_comment("Mat forcé en 2 coup(s)."),
+            "Mat forcé en 2 coups."
         )
 
     def test_elo_chart_keeps_real_time_scale_aligned_with_ratings(self):

@@ -124,8 +124,12 @@ def generate_moves_table(piege, stockfish_depth=18, return_analysis=False, legac
         precomputed = None
 
         if has_comment and has_precision:
-            commentaire = cached_move["commentaire"]
+            cached_comment = cached_move["commentaire"]
+            commentaire = AIAnalyzer.normalize_comment(cached_comment)
             coup_annote = cached_move["coup_annote"]
+            if commentaire != cached_comment:
+                cached_move["commentaire"] = commentaire
+                cache_updated = True
             details.append({"color": cached_move["color"], "precision": cached_move["precision"]})
             Logger.debug_log(f"[Cache Hit] Coup {move_san}", "DEBUG")
         else:
@@ -140,7 +144,11 @@ def generate_moves_table(piege, stockfish_depth=18, return_analysis=False, legac
             }
 
             if has_comment:
-                commentaire = cached_move["commentaire"]
+                cached_comment = cached_move["commentaire"]
+                commentaire = AIAnalyzer.normalize_comment(cached_comment)
+                if commentaire != cached_comment:
+                    cached_move["commentaire"] = commentaire
+                    cache_updated = True
                 coup_annote = cached_move["coup_annote"]
             else:
                 commentaire, coup_annote, _, _ = AIAnalyzer.generate_move_comment(

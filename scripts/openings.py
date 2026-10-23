@@ -54,8 +54,12 @@ def generate_moves_table(item, stockfish_depth=18):
         
         # Vérification du cache : si vide ou absent, on regénère
         if cache_key in cache and cache[cache_key].get("commentaire") and cache[cache_key].get("coup_annote"):
-            commentaire = cache[cache_key]["commentaire"]
+            cached_comment = cache[cache_key]["commentaire"]
+            commentaire = AIAnalyzer.normalize_comment(cached_comment)
             coup_annote = cache[cache_key]["coup_annote"]
+            if commentaire != cached_comment:
+                cache[cache_key]["commentaire"] = commentaire
+                cache_updated = True
         else:
             commentaire, coup_annote, _, _ = AIAnalyzer.generate_move_comment(move_raw, move_san, board, is_trap=False, future_moves=future_moves)
             cache[cache_key] = {"commentaire": commentaire, "coup_annote": coup_annote}

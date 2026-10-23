@@ -45,6 +45,19 @@ _OPENING_PHRASES = [
     (re.compile(r"\bQueen's Indian Attack\b", re.I), "Attaque Ouest-Indienne"),
     (re.compile(r"\bKing's Pawn Game\b", re.I), "Partie du Pion du Roi"),
     (re.compile(r"\bQueen's Pawn Game\b", re.I), "Partie du Pion de la Dame"),
+    (re.compile(r"\bQueen's Gambit\b", re.I), "Gambit Dame"),
+    (re.compile(r"\bKing's Gambit\b", re.I), "Gambit du Roi"),
+    (re.compile(r"\bQueen's Pawn\b", re.I), "Pion de la Dame"),
+    (re.compile(r"\bKing's Pawn\b", re.I), "Pion du Roi"),
+    (re.compile(r"\bBishop's Opening\b", re.I), "Ouverture du Fou"),
+    (re.compile(r"\bPetrov's Defense\b", re.I), "Défense Petrov"),
+    (re.compile(r"\bO'Neill Gambit\b", re.I), "Gambit O'Neill"),
+    (re.compile(r"\bScotch Gambit\b", re.I), "Gambit écossais"),
+    (re.compile(r"\bRussian Game\b", re.I), "Partie russe"),
+    (re.compile(r"\bOpen Game\b", re.I), "Partie ouverte"),
+    (re.compile(r"\bAccelerated Dragon\b", re.I), "Dragon accéléré"),
+    (re.compile(r"\bAccelerated London System\b", re.I), "Système de Londres accéléré"),
+    (re.compile(r"\bSmall Center Defense\b", re.I), "Défense du petit centre"),
     (re.compile(r"\bEnglish Opening\b", re.I), "Ouverture Anglaise"),
     (re.compile(r"\bItalian Game\b", re.I), "Partie Italienne"),
     (re.compile(r"\bScotch Game\b", re.I), "Partie Écossaise"),
@@ -54,6 +67,28 @@ _OPENING_PHRASES = [
 ]
 
 class AIAnalyzer:
+
+    @staticmethod
+    def normalize_comment(comment):
+        if not isinstance(comment, str):
+            return comment
+
+        def normalize_mate_distance(match):
+            moves = int(match.group(1))
+            suffix = "" if moves == 1 else "s"
+            return f"{moves} coup{suffix}"
+
+        comment = re.sub(
+            r"\b(\d+)\s+coup(?:s|\(s\))(?=\s|$|[.,;])",
+            normalize_mate_distance,
+            comment,
+        )
+        return re.sub(
+            r"Coup douteux\s*-\s*Tactique\s*:\s*Coup douteux qui déséquilibre ou affaiblit la position",
+            "Coup douteux",
+            comment,
+            flags=re.IGNORECASE,
+        )
 
     @staticmethod
     def classify_move_quality(delta, *, is_mate=False, is_blunder_into_mate=False, is_sacrifice=False, is_mate_for_player=False):
@@ -114,7 +149,17 @@ class AIAnalyzer:
         for compiled_pattern, fr_str in _OPENING_TRANSLATIONS:
             result = compiled_pattern.sub(fr_str, result)
             
-        result = re.sub(r'\b([a-zA-ZÀ-ÿ]+)\s+(Défense|Ouverture|Variante|Attaque|Gambit|Système)\b', r'\2 \1', result, flags=re.IGNORECASE)
+        def reorder_category(match):
+            if match.start() and result[match.start() - 1] in {"'", "’"}:
+                return match.group(0)
+            return f"{match.group(2)} {match.group(1)}"
+
+        result = re.sub(
+            r'\b([a-zA-ZÀ-ÿ]+)\s+(Défense|Ouverture|Variante|Attaque|Gambit|Système|Partie)\b',
+            reorder_category,
+            result,
+            flags=re.IGNORECASE,
+        )
 
         def titlecase_custom(match):
             return match.group(0).capitalize()
@@ -149,7 +194,8 @@ class AIAnalyzer:
             if t_best == 'mate' and val_best_raw is not None and val_best_raw < 0:
                 mate_in_best = abs(val_best_raw)
                 alt_str = f" (meilleur coup : {best_pv_san})" if best_pv_san else ""
-                tactics.append(f"Manque un échec et mat forcé en {mate_in_best} coup(s){alt_str}")
+                mate_distance = f"{mate_in_best} coup{'s' if mate_in_best != 1 else ''}"
+                tactics.append(f"Manque un mat forcé en {mate_distance}{alt_str}")
 
         if board_before.is_capture(move_obj):
             captured_piece = board_before.piece_at(move_obj.to_square)
@@ -392,7 +438,12 @@ class AIAnalyzer:
             if cache_key in trap_cache:
                 Logger.debug_log(f"[Cache Trap] Récupération de l'analyse pour le coup {raw}", "INFO")
                 cached = trap_cache[cache_key]
-                return cached.get("comment", ""), cached.get("move_str", ""), cached.get("tactics", ""), cached.get("alt_recom", "Aucune")
+                return (
+                    AIAnalyzer.normalize_comment(cached.get("comment", "")),
+                    cached.get("move_str", ""),
+                    cached.get("tactics", ""),
+                    cached.get("alt_recom", "Aucune"),
+                )
 
         continuation = played_continuation if played_continuation is not None else future_moves
         
@@ -485,15 +536,16 @@ class AIAnalyzer:
                         is_mate_for_player = (val_after_raw < 0)
                         winning_side = "les Blancs" if (side_to_move_after == chess.WHITE and val_after_raw > 0) or (side_to_move_after == chess.BLACK and val_after_raw < 0) else "les Noirs"
                         mate_in = abs(val_after_raw)
+                        mate_distance = f"{mate_in} coup{'s' if mate_in != 1 else ''}"
 
                         if not is_mate_for_player:
                             if t_before != 'mate':
-                                mate_status = f"Gaffe critique - Autorise un Mat forcé en {mate_in} coups par {winning_side}"
+                                mate_status = f"Gaffe critique - Autorise un Mat forcé en {mate_distance} par {winning_side}"
                             else:
-                                mate_status = f"Mat forcé en {mate_in} coups par {winning_side}"
+                                mate_status = f"Mat forcé en {mate_distance} par {winning_side}"
                             is_blunder_into_mate = True
                         else:
-                            mate_status = f"Mat forcé en {mate_in} coups par {winning_side}"
+                            mate_status = f"Mat forcé en {mate_distance} par {winning_side}"
 
                     is_sacrifice = False
                     piece_moved = board.piece_at(move_obj.from_square)
@@ -566,7 +618,7 @@ class AIAnalyzer:
                     if board_after.is_checkmate() or (best_uci and move_obj.uci() == best_uci):
                         alt_recom_value = "Aucune"
 
-                    comment_final = f"{eval_exacte}."
+                    comment_final = AIAnalyzer.normalize_comment(f"{eval_exacte}.")
                     if alt_recom_value != "Aucune" and (not best_uci or move_obj.uci() != best_uci) and not board_after.is_checkmate():
                         comment_final += f" L'alternative recommandée était : {alt_recom_value}."
 
