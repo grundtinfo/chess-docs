@@ -80,12 +80,10 @@ def generate_moves_table(piege, stockfish_depth=18, return_analysis=False, legac
     for move in moves:
         move_san = move.get("san", "")
         fen_before = migration_board.fen()
-        new_key = f"trap_{fen_before}_{move_san}"
-        old_key = f"{fen_before}_{ChessUtils.remove_special_chars(move.get('raw', '').strip())}"
-        for key in (new_key, old_key):
-            if key in legacy_cache and key not in cache:
-                cache[key] = legacy_cache[key]
-                cache_updated = True
+        new_key = f"trap_v2_{fen_before}_{move_san}"
+        if new_key in legacy_cache and new_key not in cache:
+            cache[new_key] = legacy_cache[new_key]
+            cache_updated = True
         try:
             migration_board.push(migration_board.parse_san(move_san))
         except Exception:
@@ -94,7 +92,7 @@ def generate_moves_table(piege, stockfish_depth=18, return_analysis=False, legac
     analysis_needed = False
     cache_board = chess.Board()
     for move in moves:
-        cache_key = f"trap_{cache_board.fen()}_{move.get('san', '')}"
+        cache_key = f"trap_v2_{cache_board.fen()}_{move.get('san', '')}"
         cached_move = cache.get(cache_key, {})
         if not (cached_move.get("commentaire") and cached_move.get("coup_annote") and
                 cached_move.get("precision") is not None and cached_move.get("color")):
@@ -116,7 +114,7 @@ def generate_moves_table(piege, stockfish_depth=18, return_analysis=False, legac
         
         # Clé unique basée sur la position exacte (FEN) et le coup joué
         fen_before = board.fen()
-        cache_key = f"trap_{fen_before}_{move_san}"
+        cache_key = f"trap_v2_{fen_before}_{move_san}"
         
         cached_move = cache.get(cache_key, {})
         has_comment = bool(cached_move.get("commentaire") and cached_move.get("coup_annote"))

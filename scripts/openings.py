@@ -50,7 +50,7 @@ def generate_moves_table(item, stockfish_depth=18):
         
         # Clé unique basée sur la position exacte (FEN) et le coup joué
         fen_before = board.fen()
-        cache_key = f"opening_{fen_before}_{move_san}"
+        cache_key = f"opening_v2_{fen_before}_{move_san}"
         
         # Vérification du cache : si vide ou absent, on regénère
         if cache_key in cache and cache[cache_key].get("commentaire") and cache[cache_key].get("coup_annote"):

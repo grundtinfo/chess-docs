@@ -427,6 +427,7 @@ class AIAnalyzer:
     def generate_move_comment(move_raw, move_san, board_state, is_trap=False, played_continuation=None, best_alternative=None, future_moves=None, precomputed_data=None, trap_cache=None):
         raw = ChessUtils.remove_special_chars(move_raw.strip())
         board = board_state.copy()
+        is_theory = ChessUtils.istheory(board, move_san)
         
         cache_key = None
         owns_trap_cache = trap_cache is None
@@ -434,7 +435,7 @@ class AIAnalyzer:
             from classes.json_cache import CacheManager
             if owns_trap_cache:
                 trap_cache = CacheManager.load_cache(CacheManager.TRAP_CACHE_FILE)
-            cache_key = f"{board_state.fen()}_{raw}"
+            cache_key = f"v2_{board_state.fen()}_{raw}"
             if cache_key in trap_cache:
                 Logger.debug_log(f"[Cache Trap] Récupération de l'analyse pour le coup {raw}", "INFO")
                 cached = trap_cache[cache_key]
@@ -607,6 +608,9 @@ class AIAnalyzer:
                     elif "(suite illustrée)" in tactics:
                         tactics = tactics.replace("(suite illustrée)", "- Meilleure ligne calculée : (illustrée dans la partie)")
 
+                    if is_theory and qualif_math in ["Meilleur coup", "Coup solide"]:
+                        qualif_math = "Coup théorique"
+
                     eval_exacte = mate_status if mate_status else qualif_math
                     if tactics:
                         eval_exacte += f" - Tactique : {tactics}"
@@ -642,11 +646,14 @@ class AIAnalyzer:
 
             except Exception as e:
                 Logger.debug_log(f"Analyse Stockfish échouée : {str(e)}. Fallback.", "ERROR")
-                return "Analyse impossible : erreur de calcul.", ChessUtils.convert_english_to_french_notation(move_san), tactics, "Aucune"
+                error_comment = "Coup théorique. Analyse impossible : erreur de calcul." if is_theory else "Analyse impossible : erreur de calcul."
+                return error_comment, ChessUtils.convert_english_to_french_notation(move_san), tactics, "Aucune"
 
         san_fr_fb = ChessUtils.convert_english_to_french_notation(move_san)
 
-        if "x" in raw:
+        if is_theory:
+            fallback_comment = "Coup théorique."
+        elif "x" in raw:
             fallback_comment = "Coup de prise : attention à la position des pièces."
         elif "#" in raw:
             fallback_comment = "Échec et mat. La partie est terminée."

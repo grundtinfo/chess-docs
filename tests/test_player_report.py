@@ -83,6 +83,36 @@ class PlayerReportTests(unittest.TestCase):
         self.assertEqual(AIAnalyzer.classify_move_quality(-200), "Erreur sérieuse")
         self.assertEqual(AIAnalyzer.classify_move_quality(300), "Excellent coup")
 
+    def test_istheory_uses_the_full_move_history_after_a_deviation(self):
+        board = chess.Board()
+        for san in ("e4", "e5", "Nf3"):
+            self.assertTrue(ChessUtils.istheory(board, san))
+            board.push_san(san)
+
+        self.assertFalse(ChessUtils.istheory(board, "a6"))
+        board.push_san("a6")
+        self.assertFalse(ChessUtils.istheory(board, "Nc3"))
+
+    def test_generate_move_comment_labels_theoretical_best_move(self):
+        board = chess.Board()
+        move = board.parse_san("e4")
+        evaluation = {"type": "cp", "value": 0}
+        precomputed = {
+            "eval_before": evaluation,
+            "eval_after": evaluation,
+            "move_obj": move,
+            "best_eval": evaluation,
+            "best_uci": move.uci(),
+        }
+
+        with patch.object(StockfishAnalyzer, "get_engine", return_value=object()), \
+                patch.object(AIAnalyzer, "detect_tactics", return_value=""):
+            comment, _, _, _ = AIAnalyzer.generate_move_comment(
+                "e4", "e4", board, precomputed_data=precomputed
+            )
+
+        self.assertEqual(comment, "Coup théorique.")
+
     def test_best_move_is_reused_when_position_is_already_cached(self):
         board = chess.Board()
         analyzer = StockfishAnalyzer()

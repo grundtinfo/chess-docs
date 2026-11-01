@@ -170,6 +170,33 @@ class ChessUtils:
 
         Logger.debug_log("Étape Analyse : Aucune ouverture formelle reconnue.", "DEBUG")
         return opening_name
+
+    @staticmethod
+    def istheory(board, move_san):
+        if not OPENIX_AVAILABLE:
+            return False
+
+        start_board = board.root()
+        if start_board.fen() != chess.Board().fen():
+            return False
+
+        try:
+            move = board.parse_san(ChessUtils.convert_french_to_english_notation(move_san))
+            position = start_board
+            san_stack = []
+            for played_move in board.move_stack:
+                san_stack.append(position.san(played_move))
+                position.push(played_move)
+            san_stack.append(position.san(move))
+        except ValueError as exc:
+            Logger.debug_log(f"Coup invalide lors de la vérification Openix ({move_san}) : {exc}", "WARNING")
+            return False
+
+        try:
+            return bool(_op_lib.find_openings_after_moves(san_stack))
+        except Exception as exc:
+            Logger.debug_log(f"Erreur de vérification de la théorie Openix : {exc}", "ERROR")
+            return False
     
     @staticmethod
     def is_raw_opening(name):
