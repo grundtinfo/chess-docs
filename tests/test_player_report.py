@@ -93,6 +93,17 @@ class PlayerReportTests(unittest.TestCase):
         board.push_san("a6")
         self.assertFalse(ChessUtils.istheory(board, "Nc3"))
 
+    def test_istheory_parses_english_rook_san_without_french_conversion(self):
+        board = chess.Board()
+        history = ("e4", "e5", "Nf3", "Nc6", "Bb5", "a6", "Ba4", "Nf6", "O-O", "Be7")
+        for san in history:
+            board.push_san(san)
+
+        with patch("classes.chess_utils._op_lib.find_openings_after_moves", return_value=[object()]) as lookup:
+            self.assertTrue(ChessUtils.istheory(board, "Re1"))
+
+        lookup.assert_called_once_with([*history, "Re1"])
+
     def test_generate_move_comment_labels_theoretical_best_move(self):
         board = chess.Board()
         move = board.parse_san("e4")

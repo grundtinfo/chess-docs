@@ -181,7 +181,7 @@ class ChessUtils:
             return False
 
         try:
-            move = board.parse_san(ChessUtils.convert_french_to_english_notation(move_san))
+            move = board.parse_san(move_san)
             position = start_board
             san_stack = []
             for played_move in board.move_stack:
